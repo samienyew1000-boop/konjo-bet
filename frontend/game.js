@@ -1273,17 +1273,29 @@ function extractFixtureRows(data) {
 }
 
 async function fetchInPlayLiveFixtures() {
-  const url = useApi()
+  const primaryUrl = useApi()
     ? `${api().apiUrl()}/api/odds/fixtures/live`
     : `${API_BASE}/football/fixtures?live=all`;
 
   try {
-    const data = await fetchJson(url, 6000);
+    const data = await fetchJson(primaryUrl, 6000);
     const rows = extractFixtureRows(data);
-    return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-  } catch (_) {
-    return [];
+    if (rows && rows.length) {
+      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+    }
+  } catch (_) {}
+
+  // Fallback: If deployed without backend API or custom API failed, load from multi-shop public endpoint directly
+  if (useApi()) {
+    try {
+      const fallbackUrl = `${API_BASE}/football/fixtures?live=all`;
+      const data = await fetchJson(fallbackUrl, 6000);
+      const rows = extractFixtureRows(data);
+      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+    } catch (_) {}
   }
+
+  return [];
 }
 
 /**
@@ -1316,34 +1328,60 @@ async function fetchLeagueUpcomingFixtures(leagueId, season = 2026) {
 }
 
 async function fetchAllUpcomingFixtures() {
-  const url = useApi()
+  const primaryUrl = useApi()
     ? `${api().apiUrl()}/api/odds/fixtures/upcoming`
     : `${API_BASE}/football/board/upcoming?bookmaker=${BOOKMAKER}`;
 
   try {
-    const data = await fetchJson(url, 8000);
+    const data = await fetchJson(primaryUrl, 7000);
     const rows = extractFixtureRows(data);
-    return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-  } catch (_) {
-    return [];
+    if (rows && rows.length) {
+      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+    }
+  } catch (_) {}
+
+  // Fallback: If deployed without backend API or custom API failed, load from multi-shop public endpoint directly
+  if (useApi()) {
+    try {
+      const fallbackUrl = `${API_BASE}/football/board/upcoming?bookmaker=${BOOKMAKER}`;
+      const data = await fetchJson(fallbackUrl, 8000);
+      const rows = extractFixtureRows(data);
+      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+    } catch (_) {}
   }
+
+  return [];
 }
 
 async function fetchLiveFixtures() {
   const topLeagues = "39-140-61-88-78-135-40-235";
-  const url = useApi()
+  const primaryUrl = useApi()
     ? `${api().apiUrl()}/api/odds/fixtures/prematch?leagues=${topLeagues}`
     : `${API_BASE}/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${topLeagues}`;
 
   try {
-    const data = await fetchJson(url, 8000);
+    const data = await fetchJson(primaryUrl, 7000);
     const rows = extractFixtureRows(data);
-    if (!rows.length) return [];
-    state.liveSource = true;
-    return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-  } catch (_) {
-    return [];
+    if (rows && rows.length) {
+      state.liveSource = true;
+      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+    }
+  } catch (_) {}
+
+  // Fallback: If backend is offline on deployed host, load directly from multi-shop public endpoint
+  if (useApi()) {
+    try {
+      const fallbackUrl = `${API_BASE}/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${topLeagues}`;
+      const data = await fetchJson(fallbackUrl, 8000);
+      const rows = extractFixtureRows(data);
+      if (rows && rows.length) {
+        state.liveSource = true;
+        return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+      }
+    } catch (_) {}
   }
+
+  return [];
 }
 
 function showBrandLoader(loaderEl, targetEl) {
