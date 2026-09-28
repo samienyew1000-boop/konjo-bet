@@ -80,7 +80,7 @@ function toggleNightMode() {
   const savedNight = localStorage.getItem(NIGHT_MODE_STORAGE_KEY);
 
   const color = VALID_THEMES.includes(savedColor) ? savedColor : "red";
-  const isNight = savedNight === "0" ? false : true;
+  const isNight = savedNight === "1";
 
   applyTheme(color);
   setNightMode(isNight);

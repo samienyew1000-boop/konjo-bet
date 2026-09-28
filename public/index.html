@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-night="true" class="is-night-mode">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
@@ -10,12 +10,12 @@
     (function () {
       try {
         var n = localStorage.getItem("hope-bet-night-mode");
-        if (n === "0") {
-          document.documentElement.removeAttribute("data-night");
-          document.documentElement.classList.remove("is-night-mode");
-        } else {
+        if (n === "1") {
           document.documentElement.setAttribute("data-night", "true");
           document.documentElement.classList.add("is-night-mode");
+        } else {
+          document.documentElement.removeAttribute("data-night");
+          document.documentElement.classList.remove("is-night-mode");
         }
       } catch (e) {}
     })();
