@@ -10990,7 +10990,19 @@ function renderTopLeaguesGrid() {
 function updateAdCarousel() {
   const track = $("ad-carousel-track");
   if (!track || !state.adSlides.length) return;
-  track.style.transform = `translateX(-${state.adIndex * 100}%)`;
+  const slide = track.querySelector(".ad-carousel-slide");
+  if (slide) {
+    const gap = 8;
+    const slideWidth = slide.offsetWidth || slide.getBoundingClientRect().width;
+    if (slideWidth > 0) {
+      const shift = state.adIndex * (slideWidth + gap);
+      track.style.transform = `translateX(-${shift}px)`;
+    } else {
+      track.style.transform = `translateX(-${state.adIndex * 100}%)`;
+    }
+  } else {
+    track.style.transform = `translateX(-${state.adIndex * 100}%)`;
+  }
   document.querySelectorAll(".ad-carousel-dot").forEach((d, i) => {
     d.classList.toggle("is-on", i === state.adIndex);
   });
@@ -11003,19 +11015,17 @@ async function initAdvertCarousel() {
   let slides = [];
   try {
     const res = await fetch(`assets/advert/manifest.json?v=${Date.now()}`);
-    const data = await res.json();
-    slides = Array.isArray(data.slides) ? data.slides.filter(Boolean) : [];
+    if (res.ok) {
+      const data = await res.json();
+      slides = Array.isArray(data.slides) ? data.slides.filter(Boolean) : [];
+    }
   } catch {
     slides = [];
   }
-  state.adSlides = slides;
   if (!slides.length) {
-    track.innerHTML = `<div class="ad-carousel-slide ad-carousel-slide--placeholder"><div><strong>KONJO BET</strong><p>Add images to assets/advert/ and list them in manifest.json</p></div></div>`;
-    if ($("ad-prev")) $("ad-prev").hidden = true;
-    if ($("ad-next")) $("ad-next").hidden = true;
-    if (dots) dots.innerHTML = "";
-    return;
+    slides = ["banner-football-weekly.jpg", "banner-1.jpg", "banner-2.jpg"];
   }
+  state.adSlides = slides;
   track.innerHTML = slides
     .map(
       (s, i) =>

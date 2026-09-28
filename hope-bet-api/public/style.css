@@ -5867,37 +5867,32 @@ button {
   }
 
   .ad-carousel {
-    min-height: 130px;
+    min-height: 120px;
     border-radius: 8px;
     margin: 8px 8px 10px;
     overflow: hidden;
     background: transparent;
+    position: relative;
   }
 
   .ad-carousel-track {
     display: flex;
     gap: 8px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .ad-carousel-track::-webkit-scrollbar {
-    display: none;
+    transition: transform 0.45s ease-in-out;
+    padding: 0;
   }
 
   .ad-carousel-slide {
-    flex: 0 0 calc(100vw - 44px);
-    max-width: 330px;
-    scroll-snap-align: start;
+    flex: 0 0 calc(100vw - 52px);
+    max-width: 320px;
     border-radius: 8px;
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   .ad-carousel-slide img {
     width: 100%;
-    height: auto;
+    height: 135px;
     display: block;
     border-radius: 8px;
     object-fit: cover;
