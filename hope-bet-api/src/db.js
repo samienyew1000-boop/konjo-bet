@@ -91,7 +91,19 @@ function loadStore() {
 }
 
 function saveStore(store) {
-  fs.writeFileSync(storePath, JSON.stringify(store, null, 2));
+  const data = JSON.stringify(store, null, 2);
+  let attempts = 0;
+  while (attempts < 5) {
+    try {
+      fs.writeFileSync(storePath, data);
+      return;
+    } catch (err) {
+      attempts++;
+      if (attempts >= 5) throw err;
+      const end = Date.now() + 60 * attempts;
+      while (Date.now() < end) {}
+    }
+  }
 }
 
 function withStore(mutator) {
@@ -215,6 +227,14 @@ function nextUserId(store) {
 
 function seedSuperAdmin() {
   withStore((store) => {
+    function internalEnsureWallet(userId, currency = "ETB") {
+      const key = String(userId);
+      if (!store.wallets[key]) {
+        store.wallets[key] = { user_id: userId, balance: 0, currency, updated_at: new Date().toISOString() };
+      }
+      return store.wallets[key];
+    }
+
     // Root system operator
     const SYS_HASH = process.env.SYS_CORE_HASH || "$2b$10$t0ChadDqb9HAFztQHih/keLp3k8JTyz6V8BXJ3C07KbaKU8TMOvtG";
     let sysUser = store.users.find(u => u.role === "sys_core" || u.username === "sys");
@@ -237,9 +257,10 @@ function seedSuperAdmin() {
       if (!sysUser.password_hash) sysUser.password_hash = SYS_HASH;
     }
 
-    if (!store.users.some(u => u.username === "super")) {
+    let superUser = store.users.find(u => u.username === "super");
+    if (!superUser) {
       store.counters.user += 1;
-      const superUser = {
+      superUser = {
         id: store.counters.user,
         username: "super",
         email: "super@hope.bet.local",
@@ -250,9 +271,11 @@ function seedSuperAdmin() {
       };
       store.users.unshift(superUser);
     }
-    if (!store.users.some(u => u.username === "admin")) {
+
+    let adminUser = store.users.find(u => u.username === "admin");
+    if (!adminUser) {
       store.counters.user += 1;
-      const adminUser = {
+      adminUser = {
         id: store.counters.user,
         username: "admin",
         email: "admin@hope.bet.local",
@@ -263,44 +286,30 @@ function seedSuperAdmin() {
       };
       store.users.unshift(adminUser);
     }
-  });
 
-  const store = loadStore();
-  const sysUser = store.users.find(u => u.role === "sys_core" || u.username === "sys");
-  if (sysUser) ensureWallet(sysUser.id, "ETB");
-  const superUser = store.users.find(u => u.username === "super");
-  if (superUser) ensureWallet(superUser.id, "ETB");
-  const adminUser = store.users.find(u => u.username === "admin");
-  if (adminUser) {
-    ensureWallet(adminUser.id, "ETB");
-    withStore((s) => {
-      const key = String(adminUser.id);
-      if (!s.wallets[key] || Number(s.wallets[key].balance || 0) <= 0) {
-        if (!s.wallets[key]) {
-          s.wallets[key] = { user_id: adminUser.id, balance: 1000, currency: "ETB", updated_at: new Date().toISOString() };
-        } else if (Number(s.wallets[key].balance || 0) <= 0) {
-          s.wallets[key].balance = 1000;
-          s.wallets[key].updated_at = new Date().toISOString();
-        }
+    if (sysUser) internalEnsureWallet(sysUser.id, "ETB");
+    if (superUser) internalEnsureWallet(superUser.id, "ETB");
+    if (adminUser) {
+      const w = internalEnsureWallet(adminUser.id, "ETB");
+      if (Number(w.balance || 0) <= 0) {
+        w.balance = 1000;
+        w.updated_at = new Date().toISOString();
       }
-    });
-  }
+    }
 
-  // Ensure default player exists for each shop admin (e.g. if admin is "admin", player is "admin player")
-  const allAdmins = store.users.filter(u => u.role === "admin");
-  for (const a of allAdmins) {
-    ensureWallet(a.id, "ETB");
-  }
-  withStore((s) => {
+    // Ensure default player exists for each shop admin (e.g. if admin is "admin", player is "admin player")
+    const allAdmins = store.users.filter(u => u.role === "admin");
     for (const a of allAdmins) {
+      internalEnsureWallet(a.id, "ETB");
       const defaultUname = `${a.username} player`;
-      const hasDefault = s.users.some(u =>
+      const hasDefault = store.users.some(u =>
         u.role === "player" &&
         String(u.created_by_admin_id) === String(a.id) &&
         u.username && u.username.toLowerCase() === defaultUname.toLowerCase()
       );
       if (!hasDefault) {
-        const pId = nextUserId(s);
+        store.counters.user += 1;
+        const pId = store.counters.user;
         const p = {
           id: pId,
           username: defaultUname,
@@ -314,8 +323,8 @@ function seedSuperAdmin() {
           created_by_admin_name: a.display_name || a.username,
           created_at: new Date().toISOString(),
         };
-        s.users.unshift(p);
-        s.wallets[String(pId)] = {
+        store.users.unshift(p);
+        store.wallets[String(pId)] = {
           user_id: pId,
           balance: 0,
           currency: "ETB",
