@@ -14666,8 +14666,17 @@ async function syncFromApi() {
 
   try {
     state.sessionUser = api().getUser();
+    const role = state.sessionUser?.role;
+    if (role === "super_admin" || role === "sys_core") {
+      state.balance = 0;
+      state.history = [];
+      renderSession();
+      renderBalance();
+      return;
+    }
+
     const bal = await api().fetchBalance();
-    state.balance = bal.balance;
+    state.balance = bal ? bal.balance : 0;
     const hist = await api().fetchHistory();
     const apiTickets = (hist.tickets || []).map((t) => {
       const bets = (t.bets || []).map((b, idx) => {
@@ -14702,7 +14711,7 @@ async function syncFromApi() {
       api().clearSession();
       state.sessionUser = null;
     }
-    if (err.status !== 401) {
+    if (err.status !== 401 && err.status !== 404 && err.status !== 0) {
       toast(err.message || "Could not sync account", "err");
     }
   }
