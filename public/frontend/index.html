@@ -9,6 +9,13 @@
   <script>
     (function () {
       try {
+        var isDesktop = window.innerWidth > 900;
+        if (isDesktop) {
+          document.documentElement.removeAttribute("data-night");
+          document.documentElement.classList.remove("is-night-mode");
+          try { localStorage.removeItem("hope-bet-night-mode"); } catch (e) {}
+          return;
+        }
         var n = localStorage.getItem("hope-bet-night-mode");
         if (n === "1") {
           document.documentElement.setAttribute("data-night", "true");

@@ -46,7 +46,22 @@ function applyTheme(colorName) {
   });
 }
 
+function isDesktopView() {
+  return typeof window !== "undefined" && window.innerWidth > 900;
+}
+
 function setNightMode(enable) {
+  if (isDesktopView()) {
+    currentNightMode = false;
+    if (document.documentElement) {
+      document.documentElement.removeAttribute("data-night");
+      if (document.documentElement.classList) {
+        document.documentElement.classList.remove("is-night-mode");
+      }
+    }
+    try { localStorage.removeItem(NIGHT_MODE_STORAGE_KEY); } catch (e) {}
+    return;
+  }
   currentNightMode = Boolean(enable);
   if (document.documentElement) {
     document.documentElement.setAttribute("data-night", currentNightMode ? "true" : "false");
@@ -71,16 +86,24 @@ function setNightMode(enable) {
 }
 
 function toggleNightMode() {
+  if (isDesktopView()) {
+    setNightMode(false);
+    return;
+  }
   const isNight = document.documentElement.getAttribute("data-night") === "true";
   setNightMode(!isNight);
 }
 
 (function initTheme() {
+  const isDesktop = isDesktopView();
+  if (isDesktop) {
+    try { localStorage.removeItem(NIGHT_MODE_STORAGE_KEY); } catch (e) {}
+  }
   const savedColor = localStorage.getItem(THEME_COLOR_STORAGE_KEY) || localStorage.getItem("hope-bet-theme") || "red";
-  const savedNight = localStorage.getItem(NIGHT_MODE_STORAGE_KEY);
+  const savedNight = isDesktop ? null : localStorage.getItem(NIGHT_MODE_STORAGE_KEY);
 
   const color = VALID_THEMES.includes(savedColor) ? savedColor : "red";
-  const isNight = savedNight === "1";
+  const isNight = !isDesktop && (savedNight === "1");
 
   applyTheme(color);
   setNightMode(isNight);
@@ -88,6 +111,14 @@ function toggleNightMode() {
   window.addEventListener("DOMContentLoaded", () => {
     applyTheme(color);
     setNightMode(isNight);
+  });
+
+  window.addEventListener("resize", () => {
+    if (isDesktopView()) {
+      if (document.documentElement.hasAttribute("data-night") || document.documentElement.classList.contains("is-night-mode")) {
+        setNightMode(false);
+      }
+    }
   });
 })();
 

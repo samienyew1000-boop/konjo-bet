@@ -24768,4 +24768,158 @@ html.is-night-mode .uf-breadcrumb {
   color: #a1a1aa !important;
 }
 
+/* ==========================================================================
+   DESKTOP THEME GUARD: Desktop view MUST ALWAYS have Dark / Night Mode OFF.
+   ========================================================================== */
+@media (min-width: 901px) {
+  html[data-night="true"],
+  html.is-night-mode,
+  [data-night="true"] body,
+  html.is-night-mode body,
+  [data-night="true"] .web-body,
+  html.is-night-mode .web-body,
+  [data-night="true"] .content,
+  html.is-night-mode .content,
+  [data-night="true"] #sports-home-wrap,
+  [data-night="true"] .events-board-wrap,
+  [data-night="true"] #football-menu-wrap,
+  [data-night="true"] .content-view {
+    background: var(--bg, #eceff1) !important;
+    color: var(--text, #1a1a1a) !important;
+  }
+
+  html[data-night="true"] .site-header,
+  html.is-night-mode .site-header,
+  html[data-night="true"] .top-nav-bar,
+  html.is-night-mode .top-nav-bar {
+    background: var(--brand-top-bar, #8e1515) !important;
+    border-bottom: 0 !important;
+  }
+
+  html[data-night="true"] .main-nav,
+  html.is-night-mode .main-nav {
+    background: var(--brand-red, #a61218) !important;
+  }
+
+  html[data-night="true"] .main-nav-tab.is-on,
+  html.is-night-mode .main-nav-tab.is-on {
+    background: #ffc107 !important;
+    color: #000000 !important;
+    border-bottom-color: #ffc107 !important;
+  }
+
+  html[data-night="true"] .top-matches-header-bar,
+  html[data-night="true"] .top-leagues-bar,
+  html.is-night-mode .top-matches-header-bar,
+  html.is-night-mode .top-leagues-bar {
+    background: var(--brand-red, #c62828) !important;
+    color: #ffffff !important;
+  }
+
+  html[data-night="true"] .pop-card,
+  html.is-night-mode .pop-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    color: #1a1a1a !important;
+  }
+
+  html[data-night="true"] .pop-match-teams,
+  html.is-night-mode .pop-match-teams,
+  html[data-night="true"] .pop-team-name,
+  html.is-night-mode .pop-team-name {
+    color: #1a1a1a !important;
+  }
+
+  html[data-night="true"] .sidebar-search-header,
+  html[data-night="true"] .sidebar-section-header,
+  html[data-night="true"] .sidebar-menu-top,
+  html.is-night-mode .sidebar-search-header,
+  html.is-night-mode .sidebar-section-header,
+  html.is-night-mode .sidebar-menu-top {
+    background: var(--brand-red, #c62828) !important;
+    color: #ffffff !important;
+  }
+
+  html[data-night="true"] .sidebar-sport-item,
+  html.is-night-mode .sidebar-sport-item {
+    color: #1a1a1a !important;
+    background: transparent !important;
+  }
+
+  html[data-night="true"] .betslip-panel,
+  html.is-night-mode .betslip-panel,
+  html[data-night="true"] .betslip-wrap,
+  html.is-night-mode .betslip-wrap {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+
+  html[data-night="true"] .betslip-header,
+  html.is-night-mode .betslip-header {
+    background: var(--brand-red, #c62828) !important;
+    color: #ffffff !important;
+  }
+
+  html[data-night="true"] .btn-load-red,
+  html.is-night-mode .btn-load-red {
+    background: var(--brand-red, #e41b23) !important;
+    color: #ffffff !important;
+  }
+
+  html[data-night="true"] .betslip-load-booked-bar,
+  html.is-night-mode .betslip-load-booked-bar {
+    background: var(--brand-red, #c62828) !important;
+    color: #ffffff !important;
+  }
+
+  html[data-night="true"] .btn-inplay,
+  html.is-night-mode .btn-inplay {
+    background: var(--brand-red, #e41b23) !important;
+    color: #ffffff !important;
+  }
+
+  html[data-night="true"] .hmt-odd-btn,
+  html[data-night="true"] .odd-btn,
+  html[data-night="true"] .pop-odd-btn,
+  html[data-night="true"] .md-odd,
+  html.is-night-mode .hmt-odd-btn,
+  html.is-night-mode .odd-btn,
+  html.is-night-mode .pop-odd-btn,
+  html.is-night-mode .md-odd {
+    background: #f0f0f0 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    color: #1a1a1a !important;
+  }
+
+  html[data-night="true"] .hmt-odd-btn span,
+  html[data-night="true"] .odd-btn span,
+  html[data-night="true"] .pop-odd-val,
+  html[data-night="true"] .odd-val,
+  html.is-night-mode .hmt-odd-btn span,
+  html.is-night-mode .odd-btn span,
+  html.is-night-mode .pop-odd-val,
+  html.is-night-mode .odd-val {
+    color: #1a1a1a !important;
+  }
+
+  html[data-night="true"] .hmt-row,
+  html[data-night="true"] .match-row,
+  html.is-night-mode .hmt-row,
+  html.is-night-mode .match-row {
+    background: #ffffff !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #1a1a1a !important;
+  }
+
+  html[data-night="true"] .match-row-teams,
+  html[data-night="true"] .hmt-team-name,
+  html[data-night="true"] .match-name,
+  html.is-night-mode .match-row-teams,
+  html.is-night-mode .hmt-team-name,
+  html.is-night-mode .match-name {
+    color: #1a1a1a !important;
+  }
+}
+
+
 
