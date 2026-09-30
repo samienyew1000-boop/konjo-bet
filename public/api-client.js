@@ -207,9 +207,6 @@
       pagination: { page, limit, total: list.length, pages: Math.ceil(list.length / limit) || 1 }
     };
   }
-      pagination: { page, limit, total: list.length, pages: Math.ceil(list.length / limit) || 1 }
-    };
-  }
 
   function getOfflineSettings() {
     const store = getStandaloneStore();
