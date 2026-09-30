@@ -36,131 +36,12 @@
   // =========================================================================
   // STANDALONE / OFFLINE DATA STORE (Active when backend is unavailable/static)
   // =========================================================================
-  const STANDALONE_STORAGE_KEY = "konjo_standalone_store_v1";
+  const STANDALONE_STORAGE_KEY = "konjo_standalone_store_v2";
 
   function getInitialStandaloneStore() {
     return {
-      admins: [
-        {
-          id: 10,
-          username: "admin",
-          displayName: "Downtown Shop",
-          email: "admin@hope.bet.local",
-          phone: "0911223344",
-          role: "admin",
-          status: "active",
-          balance: 25000,
-          currency: "ETB",
-          playersCreated: 35,
-          playersCount: 35,
-          ticketsCount: 148,
-          pendingDeposits: 0,
-          stake: 120500,
-          payout: 84200,
-          profit: 36300,
-          createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 11,
-          username: "bole_shop",
-          displayName: "Bole Branch",
-          email: "bole@hope.bet.local",
-          phone: "0922334455",
-          role: "admin",
-          status: "active",
-          balance: 40000,
-          currency: "ETB",
-          playersCreated: 58,
-          playersCount: 58,
-          ticketsCount: 290,
-          pendingDeposits: 1,
-          stake: 298000,
-          payout: 210000,
-          profit: 88000,
-          createdAt: new Date(Date.now() - 25 * 86400000).toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 12,
-          username: "piazza_shop",
-          displayName: "Piazza Branch",
-          email: "piazza@hope.bet.local",
-          phone: "0933445566",
-          role: "admin",
-          status: "active",
-          balance: 18500,
-          currency: "ETB",
-          playersCreated: 49,
-          playersCount: 49,
-          ticketsCount: 182,
-          pendingDeposits: 0,
-          stake: 201500,
-          payout: 141550,
-          profit: 59950,
-          createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ],
-      players: [
-        {
-          id: 101,
-          username: "admin player",
-          displayName: "Downtown Player",
-          name: "Downtown Player",
-          phone: "0911000001",
-          email: "admin_player@hopebet.local",
-          role: "player",
-          status: "active",
-          balance: 2450,
-          currency: "ETB",
-          betsCount: 14,
-          stake: 7800,
-          payout: 5200,
-          profit: 2600,
-          createdByAdminId: 10,
-          createdByAdminName: "Downtown Shop",
-          createdAt: new Date(Date.now() - 28 * 86400000).toISOString()
-        },
-        {
-          id: 102,
-          username: "bole player",
-          displayName: "Bole Player",
-          name: "Bole Player",
-          phone: "0922000002",
-          email: "bole_player@hopebet.local",
-          role: "player",
-          status: "active",
-          balance: 5200,
-          currency: "ETB",
-          betsCount: 22,
-          stake: 16500,
-          payout: 11000,
-          profit: 5500,
-          createdByAdminId: 11,
-          createdByAdminName: "Bole Branch",
-          createdAt: new Date(Date.now() - 24 * 86400000).toISOString()
-        },
-        {
-          id: 103,
-          username: "john_bet",
-          displayName: "John Winner",
-          name: "John Winner",
-          phone: "0944556677",
-          email: "john@example.com",
-          role: "player",
-          status: "active",
-          balance: 1800,
-          currency: "ETB",
-          betsCount: 9,
-          stake: 4500,
-          payout: 3100,
-          profit: 1400,
-          createdByAdminId: 10,
-          createdByAdminName: "Downtown Shop",
-          createdAt: new Date(Date.now() - 15 * 86400000).toISOString()
-        }
-      ],
+      admins: [],
+      players: [],
       settings: {
         telebirr_receiver: "0911223344",
         cbe_receiver: "1000123456789",
@@ -181,13 +62,15 @@
       deposits: [],
       transactions: [],
       audit: [
-        { id: 1, action: "system.init", actor: "Super Admin", target: "platform", details: "Super Admin Control Center initialized", timestamp: new Date().toISOString() }
+        { id: 1, action: "system.init", actor: "Super Admin", target: "platform", details: "Konjo Bet Control Center initialized fresh from zero", timestamp: new Date().toISOString() }
       ]
     };
   }
 
   function getStandaloneStore() {
     try {
+      // Clear legacy mock stores
+      localStorage.removeItem("konjo_standalone_store_v1");
       const raw = localStorage.getItem(STANDALONE_STORAGE_KEY);
       if (raw) return JSON.parse(raw);
     } catch (_) {}
@@ -205,7 +88,10 @@
   function getOfflineDashboard() {
     const store = getStandaloneStore();
     const totalShops = store.admins.length;
+    const activeShops = store.admins.filter(a => a.status !== "blocked" && a.status !== "suspended").length;
+    const blockedShops = totalShops - activeShops;
     const totalPlayers = store.players.length;
+    const activePlayers = store.players.filter(p => p.status !== "blocked" && p.status !== "suspended").length;
     const adminWalletTotal = store.admins.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
     const playerWalletTotal = store.players.reduce((sum, p) => sum + (Number(p.balance) || 0), 0);
     const totalStake = store.admins.reduce((sum, a) => sum + (Number(a.stake) || 0), 0);
@@ -215,16 +101,14 @@
     const daily = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      const s = Math.round(15000 + (i * 1420) % 18000);
-      const p = Math.round(9000 + (i * 1150) % 12000);
       daily.push({
         date: d,
-        stake: s,
-        payout: p,
-        profit: s - p,
-        deposits: Math.round(6000 + (i * 754) % 8000),
-        registrations: 2 + (i % 4),
-        tickets: 25 + (i % 30)
+        stake: 0,
+        payout: 0,
+        profit: 0,
+        deposits: 0,
+        registrations: 0,
+        tickets: 0
       });
     }
 
@@ -232,43 +116,30 @@
       id: a.id,
       username: a.username,
       displayName: a.displayName || a.username,
-      playersCreated: a.playersCreated || 30,
+      playersCreated: (store.players || []).filter(p => String(p.createdByAdminId) === String(a.id)).length,
       status: a.status || "active",
-      profit: a.profit || 35000,
-      stake: a.stake || 100000,
-      payout: a.payout || 65000
+      profit: Number(a.profit) || 0,
+      stake: Number(a.stake) || 0,
+      payout: Number(a.payout) || 0
     })).sort((a, b) => b.profit - a.profit);
 
-    const pendingDeposits = [
-      { id: 101, username: "john_bet", userDisplayName: "John Winner", shopAdminName: "Downtown Shop", amount: 500, created_at: new Date(Date.now() - 3600000).toISOString() }
-    ];
-
-    const recentTickets = [
-      { id: "T-8941", ticketId: "T-8941", username: "admin player", userDisplayName: "Downtown Player", status: "open", stake: 200, potential_win: 1400 },
-      { id: "T-8940", ticketId: "T-8940", username: "bole player", userDisplayName: "Bole Player", status: "won", stake: 500, potential_win: 2850 },
-      { id: "T-8939", ticketId: "T-8939", username: "john_bet", userDisplayName: "John Winner", status: "lost", stake: 100, potential_win: 650 },
-      { id: "T-8938", ticketId: "T-8938", username: "admin player", userDisplayName: "Downtown Player", status: "won", stake: 300, potential_win: 1200 }
-    ];
-
-    const recentTransactions = [
-      { id: 201, username: "admin", displayName: "Downtown Shop", type: "float_deposit", amount: 10000, isDebit: false, created_at: new Date().toISOString() },
-      { id: 202, username: "bole player", displayName: "Bole Player", type: "bet_win", amount: 2850, isDebit: false, created_at: new Date(Date.now() - 7200000).toISOString() },
-      { id: 203, username: "admin player", displayName: "Downtown Player", type: "bet_stake", amount: 200, isDebit: true, created_at: new Date(Date.now() - 14400000).toISOString() }
-    ];
+    const pendingDeposits = (store.deposits || []).filter(d => d.status === "pending");
+    const recentTickets = (store.tickets || []).slice(0, 10);
+    const recentTransactions = (store.transactions || []).slice(0, 10);
 
     return {
       ok: true,
       dashboard: {
         summary: {
           totalShops,
-          activeShops: totalShops,
-          blockedShops: 0,
+          activeShops,
+          blockedShops,
           totalPlayers,
-          activePlayers: totalPlayers,
-          totalTickets: 620,
-          openTickets: 12,
-          wonTickets: 384,
-          lostTickets: 224,
+          activePlayers,
+          totalTickets: (store.tickets || []).length,
+          openTickets: 0,
+          wonTickets: 0,
+          lostTickets: 0,
           totalStake,
           totalPayout,
           grossProfit: GGR,
@@ -277,14 +148,14 @@
           totalBalance: adminWalletTotal + playerWalletTotal,
           adminWalletTotal,
           playerWalletTotal,
-          pendingDeposits: 1,
-          pendingDepositAmount: 500,
-          approvedDepositAmount: 145000,
-          exposure: 35000,
-          todayTickets: 42,
-          todayStake: 24500,
-          todayPayout: 16800,
-          todayProfit: 7700
+          pendingDeposits: pendingDeposits.length,
+          pendingDepositAmount: pendingDeposits.reduce((s, d) => s + (Number(d.amount) || 0), 0),
+          approvedDepositAmount: (store.deposits || []).filter(d => d.status === "approved").reduce((s, d) => s + (Number(d.amount) || 0), 0),
+          exposure: 0,
+          todayTickets: 0,
+          todayStake: 0,
+          todayPayout: 0,
+          todayProfit: 0
         },
         charts: {
           daily
@@ -301,8 +172,8 @@
   function getOfflineAdmins(params = {}) {
     const store = getStandaloneStore();
     let list = [...store.admins];
-    if (params.search) {
-      const q = String(params.search).toLowerCase();
+    if (params.search || params.q) {
+      const q = String(params.search || params.q).toLowerCase();
       list = list.filter(a => (a.username && a.username.toLowerCase().includes(q)) || (a.displayName && a.displayName.toLowerCase().includes(q)));
     }
     const page = Number(params.page) || 1;
@@ -317,10 +188,15 @@
 
   function getOfflinePlayers(params = {}) {
     const store = getStandaloneStore();
+    const currentUser = getUser() || {};
     let list = [...store.players];
-    if (params.search) {
-      const q = String(params.search).toLowerCase();
-      list = list.filter(p => (p.username && p.username.toLowerCase().includes(q)) || (p.displayName && p.displayName.toLowerCase().includes(q)));
+    // If called in shop admin context, scope strictly to this admin's created players
+    if (currentUser.role === "admin" && currentUser.id) {
+      list = list.filter(p => String(p.createdByAdminId) === String(currentUser.id));
+    }
+    if (params.search || params.q) {
+      const q = String(params.search || params.q).toLowerCase();
+      list = list.filter(p => (p.username && p.username.toLowerCase().includes(q)) || (p.displayName && p.displayName.toLowerCase().includes(q)) || (p.phone && p.phone.includes(q)));
     }
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 100;
@@ -328,6 +204,9 @@
       ok: true,
       players: list,
       total: list.length,
+      pagination: { page, limit, total: list.length, pages: Math.ceil(list.length / limit) || 1 }
+    };
+  }
       pagination: { page, limit, total: list.length, pages: Math.ceil(list.length / limit) || 1 }
     };
   }
@@ -418,8 +297,8 @@
       finance: {
         adminFloatTotal,
         playerBalanceTotal,
-        totalDeposits: 320000,
-        totalWithdrawals: 195000,
+        totalDeposits: adminFloatTotal,
+        totalWithdrawals: 0,
         totalBets: totalStake,
         totalWins: totalPayout,
         grossGamingRevenue: totalStake - totalPayout,
@@ -447,8 +326,8 @@
       status: "active",
       balance: initialCredit,
       currency: "ETB",
-      playersCreated: 1,
-      playersCount: 1,
+      playersCreated: 0,
+      playersCount: 0,
       ticketsCount: 0,
       pendingDeposits: 0,
       stake: 0,
@@ -459,34 +338,24 @@
     };
     store.admins.unshift(newAdmin);
 
-    const newPlayerId = newId + 1;
-    const newPlayer = {
-      id: newPlayerId,
-      username: `${username} player`,
-      password: cleanPassword,
-      displayName: `${username} player`,
-      name: `${username} player`,
-      phone: null,
-      email: `${username}_player@hopebet.local`,
-      role: "player",
-      status: "active",
-      balance: 0,
-      currency: "ETB",
-      betsCount: 0,
-      stake: 0,
-      payout: 0,
-      profit: 0,
-      createdByAdminId: newId,
-      createdByAdminName: name,
-      createdAt: new Date().toISOString()
-    };
-    store.players.unshift(newPlayer);
+    if (initialCredit > 0) {
+      if (!Array.isArray(store.transactions)) store.transactions = [];
+      store.transactions.unshift({
+        id: Date.now() + 1,
+        type: "super_admin_deposit",
+        shopAdminId: newAdmin.id,
+        shopAdminName: newAdmin.displayName,
+        amount: initialCredit,
+        shopBalanceAfter: initialCredit,
+        createdAt: new Date().toISOString()
+      });
+    }
+
     saveStandaloneStore(store);
 
     return {
       ok: true,
       admin: newAdmin,
-      defaultPlayer: newPlayer,
       message: `Shop Admin '${username}' created successfully`
     };
   }
@@ -497,14 +366,32 @@
     if (admin) {
       const amount = Number(payload.amount) || 0;
       if (payload.action === "deduct") {
-        admin.balance = Math.max(0, (Number(admin.balance) || 0) - amount);
+        admin.balance = Math.max(0, Number(((Number(admin.balance) || 0) - amount).toFixed(2)));
       } else {
-        admin.balance = (Number(admin.balance) || 0) + amount;
+        admin.balance = Number(((Number(admin.balance) || 0) + amount).toFixed(2));
       }
       admin.updatedAt = new Date().toISOString();
+
+      if (!Array.isArray(store.transactions)) store.transactions = [];
+      store.transactions.unshift({
+        id: Date.now(),
+        type: payload.action === "deduct" ? "super_admin_deduct" : "super_admin_deposit",
+        shopAdminId: admin.id,
+        shopAdminName: admin.displayName || admin.username,
+        amount,
+        shopBalanceAfter: admin.balance,
+        createdAt: new Date().toISOString()
+      });
+
       saveStandaloneStore(store);
+
+      const currentUser = getUser();
+      if (currentUser && String(currentUser.id) === String(admin.id)) {
+        currentUser.balance = admin.balance;
+        localStorage.setItem(cfg().USER_KEY || "hope-bet-user", JSON.stringify(currentUser));
+      }
     }
-    return { ok: true, admin, message: "Transfer completed successfully" };
+    return { ok: true, admin, message: `Transfer completed successfully. Shop balance: ${admin?.balance || 0} ETB.` };
   }
 
   function setOfflineAdminStatus(adminId, status) {
@@ -528,16 +415,35 @@
   function transferOfflinePlayer(playerId, payload) {
     const store = getStandaloneStore();
     const player = store.players.find(p => String(p.id) === String(playerId));
-    if (player) {
-      const amount = Number(payload.amount) || 0;
-      if (payload.action === "deduct") {
-        player.balance = Math.max(0, (Number(player.balance) || 0) - amount);
-      } else {
-        player.balance = (Number(player.balance) || 0) + amount;
+    if (!player) return { ok: false, error: "Player not found" };
+
+    const amount = Number(payload.amount) || 0;
+    const currentUser = getUser() || {};
+    const admin = store.admins.find(a => String(a.id) === String(player.createdByAdminId) || String(a.id) === String(currentUser.id));
+
+    if (payload.action === "deduct") {
+      player.balance = Math.max(0, Number(((Number(player.balance) || 0) - amount).toFixed(2)));
+      if (admin) {
+        admin.balance = Number(((Number(admin.balance) || 0) + amount).toFixed(2));
       }
-      saveStandaloneStore(store);
+    } else {
+      if (admin) {
+        const aBal = Number(admin.balance) || 0;
+        if (aBal < amount) {
+          throw new Error(`Insufficient shop balance (${aBal} ETB available). Please request funds from Super Admin.`);
+        }
+        admin.balance = Number((aBal - amount).toFixed(2));
+      }
+      player.balance = Number(((Number(player.balance) || 0) + amount).toFixed(2));
     }
-    return { ok: true, player, message: "Transfer completed successfully" };
+    saveStandaloneStore(store);
+
+    if (admin && currentUser.id && String(currentUser.id) === String(admin.id)) {
+      currentUser.balance = admin.balance;
+      localStorage.setItem(cfg().USER_KEY || "hope-bet-user", JSON.stringify(currentUser));
+    }
+
+    return { ok: true, player, adminBalance: admin ? admin.balance : undefined, message: "Transfer completed successfully" };
   }
 
   function setOfflinePlayerStatus(playerId, status) {
@@ -1204,17 +1110,21 @@
     try {
       return await request("/api/admin/dashboard");
     } catch (_) {
-      const user = getUser() || {};
+      const store = getStandaloneStore();
+      const currentUser = getUser() || {};
+      const admin = store.admins.find(a => String(a.id) === String(currentUser.id) || (currentUser.username && a.username && a.username.toLowerCase() === currentUser.username.toLowerCase()));
+      const adminBalance = admin ? Number(admin.balance || 0) : 0;
+      const myPlayers = store.players.filter(p => !currentUser.id || String(p.createdByAdminId) === String(currentUser.id));
       return {
         ok: true,
         stats: {
-          balance: 25000,
-          credits: 5000,
-          availability: 20000,
-          players: 35,
-          players24h: 3,
-          players7d: 12,
-          promoterCode: "KB" + (user.id || 100)
+          balance: adminBalance,
+          credits: 0,
+          availability: adminBalance,
+          players: myPlayers.length,
+          players24h: 0,
+          players7d: 0,
+          promoterCode: "KB" + (currentUser.id || 100)
         }
       };
     }
@@ -1233,7 +1143,15 @@
     } catch (_) {
       const store = getStandaloneStore();
       const currentUser = getUser() || {};
-      let list = store.players.filter(p => !currentUser.id || String(p.createdByAdminId) === String(currentUser.id) || p.role === "player");
+      let list = store.players;
+      // Strictly scope to current shop admin if role is admin
+      if (currentUser.role === "admin" && currentUser.id) {
+        list = list.filter(p => String(p.createdByAdminId) === String(currentUser.id));
+      }
+      if (params.search || params.q) {
+        const q = String(params.search || params.q).toLowerCase();
+        list = list.filter(p => (p.username && p.username.toLowerCase().includes(q)) || (p.displayName && p.displayName.toLowerCase().includes(q)) || (p.phone && p.phone.includes(q)));
+      }
       return { ok: true, players: list, total: list.length };
     }
   }
@@ -1244,33 +1162,70 @@
         method: "POST",
         body: JSON.stringify(payload),
       });
-    } catch (_) {
+    } catch (err) {
+      if (err?.data?.code === "INSUFFICIENT_ADMIN_BALANCE" || (err?.data?.error && err.data.code)) {
+        throw err;
+      }
       const store = getStandaloneStore();
       const currentUser = getUser() || {};
       const newId = Date.now();
       const username = String(payload.username || payload.phone || "player").trim();
+      const initialBalance = Number(payload.initialBalance || 0);
+
+      const admin = store.admins.find(a => String(a.id) === String(currentUser.id) || (currentUser.username && a.username && a.username.toLowerCase() === currentUser.username.toLowerCase()));
+
+      if (initialBalance > 0) {
+        const aBal = Number(admin?.balance || 0);
+        if (aBal < initialBalance) {
+          const errObj = new Error(`Insufficient shop balance (${aBal} ETB available). You cannot provide initial balance to players when you have insufficient balance. Please request funds from Super Admin.`);
+          errObj.code = "INSUFFICIENT_ADMIN_BALANCE";
+          throw errObj;
+        }
+        if (admin) {
+          admin.balance = Number((aBal - initialBalance).toFixed(2));
+          if (currentUser.id && String(currentUser.id) === String(admin.id)) {
+            currentUser.balance = admin.balance;
+            localStorage.setItem(cfg().USER_KEY || "hope-bet-user", JSON.stringify(currentUser));
+          }
+        }
+      }
+
       const p = {
         id: newId,
         username,
-        displayName: payload.displayName || username,
-        name: payload.displayName || username,
+        displayName: payload.displayName || (payload.name ? `${payload.name || ""} ${payload.lastname || ""}`.trim() : username),
+        name: payload.name ? `${payload.name || ""} ${payload.lastname || ""}`.trim() : username,
         phone: payload.phone || null,
         email: payload.email || `${username}@hopebet.local`,
         role: "player",
         status: "active",
-        balance: 0,
+        balance: initialBalance > 0 ? initialBalance : 0,
         currency: "ETB",
         betsCount: 0,
         stake: 0,
         payout: 0,
         profit: 0,
         createdByAdminId: currentUser.id || null,
-        createdByAdminName: currentUser.displayName || currentUser.username || "Admin",
+        createdByAdminName: currentUser.displayName || currentUser.username || "Shop Admin",
         createdAt: new Date().toISOString()
       };
       store.players.unshift(p);
+
+      if (initialBalance > 0) {
+        if (!Array.isArray(store.transactions)) store.transactions = [];
+        store.transactions.unshift({
+          id: Date.now() + 1,
+          type: "admin_transfer_out",
+          shopAdminId: admin ? admin.id : currentUser.id,
+          targetUserId: newId,
+          amount: initialBalance,
+          shopBalanceAfter: admin ? admin.balance : 0,
+          createdAt: new Date().toISOString()
+        });
+      }
+
       saveStandaloneStore(store);
-      return { ok: true, player: p, user: p, message: "Player created successfully" };
+      return { ok: true, player: p, user: p, adminBalance: admin ? admin.balance : undefined, message: `Player '${username}' created successfully` };
     }
   }
 
@@ -1280,14 +1235,48 @@
         method: "POST",
         body: JSON.stringify({ amount }),
       });
-    } catch (_) {
-      const store = getStandaloneStore();
-      const p = store.players.find(x => String(x.id) === String(userId));
-      if (p) {
-        p.balance = (Number(p.balance) || 0) + Number(amount);
-        saveStandaloneStore(store);
+    } catch (err) {
+      if (err?.data?.code === "INSUFFICIENT_ADMIN_BALANCE" || (err?.data?.error && err.data.code)) {
+        throw err;
       }
-      return { ok: true, balance: p ? p.balance : 0, message: "Top-up successful" };
+      const store = getStandaloneStore();
+      const currentUser = getUser() || {};
+      const p = store.players.find(x => String(x.id) === String(userId));
+      if (!p) throw new Error("Player not found");
+      const numAmount = Number(amount) || 0;
+      if (numAmount <= 0) throw new Error("Invalid deposit amount");
+
+      const admin = store.admins.find(a => String(a.id) === String(currentUser.id) || String(a.id) === String(p.createdByAdminId));
+      const aBal = Number(admin?.balance || 0);
+      if (aBal < numAmount) {
+        return {
+          ok: false,
+          code: "INSUFFICIENT_ADMIN_BALANCE",
+          error: `Insufficient shop balance (${aBal} ETB available). You cannot fund players when you have insufficient balance. Please request funds from Super Admin.`
+        };
+      }
+      if (admin) {
+        admin.balance = Number((aBal - numAmount).toFixed(2));
+        if (currentUser.id && String(currentUser.id) === String(admin.id)) {
+          currentUser.balance = admin.balance;
+          localStorage.setItem(cfg().USER_KEY || "hope-bet-user", JSON.stringify(currentUser));
+        }
+      }
+      p.balance = Number(((Number(p.balance) || 0) + numAmount).toFixed(2));
+
+      if (!Array.isArray(store.transactions)) store.transactions = [];
+      store.transactions.unshift({
+        id: Date.now(),
+        type: "admin_transfer_out",
+        shopAdminId: admin ? admin.id : currentUser.id,
+        targetUserId: p.id,
+        amount: numAmount,
+        shopBalanceAfter: admin ? admin.balance : 0,
+        createdAt: new Date().toISOString()
+      });
+
+      saveStandaloneStore(store);
+      return { ok: true, balance: p.balance, adminBalance: admin ? admin.balance : undefined, message: "Top-up successful" };
     }
   }
 
@@ -1310,10 +1299,21 @@
   }
 
   async function adminTransferFunds(userId, payload) {
-    return request(`/api/admin/players/${encodeURIComponent(userId)}/transfer`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await request(`/api/admin/players/${encodeURIComponent(userId)}/transfer`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      if (err?.data?.error) {
+        throw err;
+      }
+      return transferOfflinePlayer(userId, {
+        action: payload.operation === "withdraw" ? "deduct" : "topup",
+        amount: payload.amount,
+        reason: payload.reason
+      });
+    }
   }
 
   async function fetchAdminTransactions(params = {}) {

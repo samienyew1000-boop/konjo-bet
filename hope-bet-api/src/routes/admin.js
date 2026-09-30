@@ -240,7 +240,22 @@ router.post("/players", adminRequired, (req, res) => {
       return res.status(400).json({ ok: false, error: "Password must be at least 6 characters" });
     }
 
+    const initBal = Number(initialBalance) || 0;
+    if (initBal > 0 && req.user.role === "admin") {
+      const currentStore = loadStore();
+      const adminWallet = (currentStore.wallets && currentStore.wallets[String(req.user.id)]) || { balance: 0 };
+      const adminBal = Number(adminWallet.balance || 0);
+      if (adminBal < initBal) {
+        return res.status(400).json({
+          ok: false,
+          code: "INSUFFICIENT_ADMIN_BALANCE",
+          error: `Insufficient admin balance (${adminBal} ETB available). You cannot provide initial balance to cashiers when you have no balance. Your balance can only be topped up by the Super Admin.`,
+        });
+      }
+    }
+
     let createdUser;
+    let freshAdminBal = undefined;
     withStore((store) => {
       if (store.users.some((u) =>
         (u.username && u.username.toLowerCase() === identifier.toLowerCase()) ||
@@ -248,6 +263,23 @@ router.post("/players", adminRequired, (req, res) => {
         (u.email && u.email.toLowerCase() === identifier.toLowerCase())
       )) {
         throw new Error("A player with this identifier already exists");
+      }
+
+      if (initBal > 0 && req.user.role === "admin") {
+        const aKey = String(req.user.id);
+        const aWallet = store.wallets[aKey] || { balance: 0 };
+        if (Number(aWallet.balance || 0) < initBal) {
+          const err = new Error(`Insufficient admin balance (${aWallet.balance || 0} ETB available).`);
+          err.code = "INSUFFICIENT_ADMIN_BALANCE";
+          throw err;
+        }
+        aWallet.balance = Number((Number(aWallet.balance || 0) - initBal).toFixed(2));
+        aWallet.updated_at = new Date().toISOString();
+        freshAdminBal = aWallet.balance;
+        addTransaction(store, req.user.id, "admin_transfer_out", initBal, aWallet.balance, "CASHIER_INITIAL_FLOAT", {
+          note: `Initial float for cashier ${identifier}`,
+          targetUserId: null,
+        });
       }
 
       const newId = nextUserId(store);
@@ -274,37 +306,17 @@ router.post("/players", adminRequired, (req, res) => {
 
       store.wallets[String(newId)] = {
         user_id: newId,
-        balance: 0,
+        balance: initBal > 0 ? initBal : 0,
         currency: "ETB",
         updated_at: new Date().toISOString(),
       };
-    });
 
-    // Handle initial balance if provided
-    const initBal = Number(initialBalance);
-    if (initBal && initBal > 0) {
-      if (req.user.role === "admin") {
-        const storeBefore = loadStore();
-        const adminWallet = (storeBefore.wallets && storeBefore.wallets[String(req.user.id)]) || { balance: 0 };
-        const adminBal = Number(adminWallet.balance || 0);
-        if (adminBal <= 0 || adminBal < initBal) {
-          return res.status(400).json({
-            ok: false,
-            code: "INSUFFICIENT_ADMIN_BALANCE",
-            error: `Insufficient admin balance (${adminBal} ETB available). You cannot provide initial balance to cashiers when you have no balance. Your balance can only be topped up by the Super Admin.`,
-          });
-        }
-        debitWallet(req.user.id, initBal, "admin_transfer_out", "CASHIER_INITIAL_FLOAT", {
-          note: `Initial float for cashier ${createdUser.username}`,
-          targetUserId: createdUser.id,
+      if (initBal > 0) {
+        addTransaction(store, newId, "admin_grant", initBal, initBal, "ADMIN_NEW_PLAYER", {
+          note: "Initial balance by Admin",
         });
       }
-      creditWallet(createdUser.id, initBal, "admin_grant", "ADMIN_NEW_PLAYER", { note: "Initial balance by Admin" });
-      const store = loadStore();
-      createdUser.balance = (store.wallets[String(createdUser.id)] || {}).balance || initBal;
-    } else {
-      createdUser.balance = 0;
-    }
+    });
 
     res.json({
       ok: true,
@@ -314,15 +326,23 @@ router.post("/players", adminRequired, (req, res) => {
         name: createdUser.display_name,
         phone: createdUser.phone || "—",
         email: createdUser.email || "—",
-        balance: createdUser.balance,
+        balance: initBal > 0 ? initBal : 0,
         createdByAdminId: createdUser.created_by_admin_id,
         createdByAdminName: createdUser.created_by_admin_name,
         createdAt: createdUser.created_at,
         status: createdUser.status,
       },
+      adminBalance: freshAdminBal,
       message: `Player ${createdUser.username} created successfully`,
     });
   } catch (err) {
+    if (err.code === "INSUFFICIENT_ADMIN_BALANCE") {
+      return res.status(400).json({
+        ok: false,
+        code: "INSUFFICIENT_ADMIN_BALANCE",
+        error: err.message,
+      });
+    }
     res.status(400).json({ ok: false, error: err.message });
   }
 });

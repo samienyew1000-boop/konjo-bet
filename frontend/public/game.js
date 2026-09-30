@@ -19607,18 +19607,10 @@ async function loadAdminPlayers(filters = {}) {
     }
   }
 
-  if (!players.length && (!useApi() || !api().getToken())) {
-    // Fallback demo players
-    players = [
-      { id: 2, username: "+251937888888", name: "Player 1", phone: "+251937888888", email: "player1@hope.bet", balance: 950, betsCount: 1, createdAt: "2026-09-07T09:32:00Z", status: "active" },
-      { id: 4, username: "testplayer1", name: "Abebe Kebede", phone: "+251911223344", email: "abebe@example.com", balance: 350, betsCount: 0, createdAt: "2026-09-07T10:00:00Z", status: "active" }
-    ];
-  }
-
   if (countEl) countEl.textContent = `Showing ${players.length} player${players.length === 1 ? "" : "s"}`;
 
   if (!players.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="admin-table-empty">No players found matching your criteria.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="admin-table-empty">No players found. Click '+ New Player' to create one.</td></tr>`;
     return;
   }
 
@@ -19657,6 +19649,12 @@ function openAdminNewPlayerModal() {
   backdrop.hidden = false;
   const form = $("admin-new-player-form");
   if (form) form.reset();
+  const balInput = $("admin-np-balance");
+  const currentFloat = state.adminStats ? Number(state.adminStats.balance || 0) : 0;
+  if (balInput) {
+    balInput.max = currentFloat;
+    balInput.placeholder = currentFloat > 0 ? `Max ${fmt(currentFloat)} ETB` : "0 (No float)";
+  }
 }
 
 function closeAdminNewPlayerModal() {
@@ -21293,6 +21291,11 @@ function bindAdminEvents() {
       if (!username) return toast("Username/Phone is required", "err");
       if (!password || password.length < 6) return toast("Password must be at least 6 characters", "err");
 
+      const currentFloat = state.adminStats ? Number(state.adminStats.balance || 0) : null;
+      if (initialBalance > 0 && currentFloat !== null && currentFloat < initialBalance) {
+        return toast(`Initial balance exceeds your available float (${fmt(currentFloat)} ETB). Contact Super Admin.`, "err");
+      }
+
       try {
         const submitBtn = $("admin-np-btn-submit");
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Creating..."; }
@@ -21301,6 +21304,14 @@ function bindAdminEvents() {
 
         if (res && res.ok) {
           toast(res.message || "Player created successfully", "ok");
+          if (res.adminBalance !== undefined && state.adminStats) {
+            state.adminStats.balance = res.adminBalance;
+            state.adminStats.availability = res.adminBalance;
+            const balEl = $("admin-header-balance");
+            const availEl = $("admin-header-availability");
+            if (balEl) balEl.textContent = `ETB ${fmt(res.adminBalance)}`;
+            if (availEl) availEl.textContent = `ETB ${Math.round(res.adminBalance)}`;
+          }
           closeAdminNewPlayerModal();
           await loadAdminPlayers();
         } else {
@@ -21309,7 +21320,8 @@ function bindAdminEvents() {
       } catch (err) {
         const submitBtn = $("admin-np-btn-submit");
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Create Player"; }
-        toast(err.message || "Failed to create player", "err");
+        const msg = err?.data?.error || err.message || "Failed to create player";
+        toast(msg, "err");
       }
     });
   }

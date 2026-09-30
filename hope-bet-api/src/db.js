@@ -272,66 +272,8 @@ function seedSuperAdmin() {
       store.users.unshift(superUser);
     }
 
-    let adminUser = store.users.find(u => u.username === "admin");
-    if (!adminUser) {
-      store.counters.user += 1;
-      adminUser = {
-        id: store.counters.user,
-        username: "admin",
-        email: "admin@hope.bet.local",
-        password_hash: bcrypt.hashSync("admin123", 10),
-        display_name: "Admin",
-        role: "admin",
-        created_at: new Date().toISOString(),
-      };
-      store.users.unshift(adminUser);
-    }
-
     if (sysUser) internalEnsureWallet(sysUser.id, "ETB");
     if (superUser) internalEnsureWallet(superUser.id, "ETB");
-    if (adminUser) {
-      const w = internalEnsureWallet(adminUser.id, "ETB");
-      if (Number(w.balance || 0) <= 0) {
-        w.balance = 1000;
-        w.updated_at = new Date().toISOString();
-      }
-    }
-
-    // Ensure default player exists for each shop admin (e.g. if admin is "admin", player is "admin player")
-    const allAdmins = store.users.filter(u => u.role === "admin");
-    for (const a of allAdmins) {
-      internalEnsureWallet(a.id, "ETB");
-      const defaultUname = `${a.username} player`;
-      const hasDefault = store.users.some(u =>
-        u.role === "player" &&
-        String(u.created_by_admin_id) === String(a.id) &&
-        u.username && u.username.toLowerCase() === defaultUname.toLowerCase()
-      );
-      if (!hasDefault) {
-        store.counters.user += 1;
-        const pId = store.counters.user;
-        const p = {
-          id: pId,
-          username: defaultUname,
-          display_name: `${a.display_name || a.username} Player`,
-          email: `${a.username}_player@hopebet.local`,
-          phone: null,
-          password_hash: a.password_hash || "",
-          role: "player",
-          status: "active",
-          created_by_admin_id: a.id,
-          created_by_admin_name: a.display_name || a.username,
-          created_at: new Date().toISOString(),
-        };
-        store.users.unshift(p);
-        store.wallets[String(pId)] = {
-          user_id: pId,
-          balance: 0,
-          currency: "ETB",
-          updated_at: new Date().toISOString(),
-        };
-      }
-    }
   });
 }
 

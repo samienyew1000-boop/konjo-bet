@@ -436,7 +436,6 @@ router.post("/admins", (req, res) => {
     if (cleanPassword.length < 6) return res.status(400).json({ ok: false, error: "Password must be at least 6 characters" });
 
     let createdAdmin;
-    let createdPlayer;
     withStore((store) => {
       if (store.users.some((u) => u.username && u.username.toLowerCase() === cleanUsername.toLowerCase())) {
         throw new Error("An account with this username already exists");
@@ -460,25 +459,7 @@ router.post("/admins", (req, res) => {
       };
       store.users.unshift(createdAdmin);
       store.wallets[String(newId)] = { user_id: newId, balance: 0, currency: "ETB", updated_at: nowIso() };
-
-      const playerUsername = `${cleanUsername} player`;
-      const playerId = nextUserId(store);
-      createdPlayer = {
-        id: playerId,
-        username: playerUsername,
-        display_name: `${cleanUsername} player`,
-        email: `${cleanUsername}_player@hopebet.local`,
-        phone: null,
-        password_hash: bcrypt.hashSync(cleanPassword, 10),
-        role: "player",
-        status: "active",
-        created_by_admin_id: createdAdmin.id,
-        created_by_admin_name: createdAdmin.display_name || createdAdmin.username,
-        created_at: nowIso(),
-      };
-      store.users.unshift(createdPlayer);
-      store.wallets[String(playerId)] = { user_id: playerId, balance: 0, currency: "ETB", updated_at: nowIso() };
-      addAuditLog(store, req.user, "shop.create", { type: "admin", id: createdAdmin.id }, { username: cleanUsername, defaultPlayerId: playerId });
+      addAuditLog(store, req.user, "shop.create", { type: "admin", id: createdAdmin.id }, { username: cleanUsername });
     });
 
     const initAmount = toNumber(initialCredit, 0);
@@ -492,8 +473,7 @@ router.post("/admins", (req, res) => {
     res.json({
       ok: true,
       admin: enriched,
-      defaultPlayer: createdPlayer ? enrichPlayer(store, createdPlayer, usersById(store)) : null,
-      message: `Shop Admin '${createdAdmin.username}' and player '${cleanUsername} player' created successfully`,
+      message: `Shop Admin '${createdAdmin.username}' created successfully`,
     });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
