@@ -761,7 +761,30 @@
       return await request("/api/bets/place", { method: "POST", body: JSON.stringify(payload) });
     } catch (err) {
       if (err.status === 0 || err.status === 404) {
-        return { ok: true, ticket: { id: "TB" + Date.now(), stake: payload.stake, totalOdds: payload.totalOdds, potentialWin: payload.potentialWin, status: "open", selections: payload.selections } };
+        const store = getStandaloneStore();
+        const currentUser = getUser() || {};
+        let finalBal = 0;
+        const targetId = payload.playerId || (currentUser ? currentUser.id : null);
+        if (targetId) {
+          const p = (store.players || []).find(x => String(x.id) === String(targetId));
+          if (p) {
+            p.balance = Math.max(0, Number(((Number(p.balance) || 0) - Number(payload.stake || 0)).toFixed(2)));
+            finalBal = p.balance;
+            saveStandaloneStore(store);
+          }
+        }
+        return {
+          ok: true,
+          balance: finalBal,
+          ticket: {
+            id: "TB" + Date.now(),
+            stake: payload.stake,
+            totalOdds: payload.totalOdds,
+            potentialWin: payload.potentialWin,
+            status: "open",
+            selections: payload.selections
+          }
+        };
       }
       throw err;
     }
@@ -1317,7 +1340,7 @@
       });
 
       saveStandaloneStore(store);
-      return { ok: true, balance: p.balance, adminBalance: admin ? admin.balance : undefined, message: "Top-up successful" };
+      return { ok: true, balance: p.balance, newBalance: p.balance, adminBalance: admin ? admin.balance : undefined, message: "Top-up successful" };
     }
   }
 

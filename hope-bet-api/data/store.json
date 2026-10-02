@@ -1,6 +1,87 @@
 {
   "users": [
     {
+      "id": 20,
+      "username": "player_1790919824791",
+      "phone": "0989147210",
+      "email": "0989147210@hopebet.local",
+      "first_name": "",
+      "last_name": "",
+      "display_name": "0989147210",
+      "password_hash": "$2b$10$y7wYTUlPHJGuNcnZRcWjMe1/dr9rrKckrJav4m4E/U50m4C8pEKa2",
+      "role": "player",
+      "status": "active",
+      "created_by_admin_id": 19,
+      "created_by_admin_name": "shop_1790919824551",
+      "created_at": "2026-10-02T05:43:44.887Z"
+    },
+    {
+      "id": 19,
+      "username": "shop_1790919824551",
+      "display_name": "Test Shop",
+      "email": "shop_1790919824551@hope.bet.local",
+      "phone": null,
+      "password_hash": "$2b$10$gqPYEgil.IZfcJgb2BkynOIXChthcS9IYYXGQ.8N/Ocsv4w3wTtOy",
+      "role": "admin",
+      "status": "active",
+      "created_at": "2026-10-02T05:43:44.662Z",
+      "updated_at": "2026-10-02T05:43:44.662Z"
+    },
+    {
+      "id": 18,
+      "username": "player_1790915031321",
+      "phone": "0924070480",
+      "email": "0924070480@hopebet.local",
+      "first_name": "",
+      "last_name": "",
+      "display_name": "0924070480",
+      "password_hash": "$2b$10$03uFEKAURNolhjyqfd1wGeObUxVgE1DJd2Kj6QnzcIKivGOgf4gdS",
+      "role": "player",
+      "status": "active",
+      "created_by_admin_id": 17,
+      "created_by_admin_name": "shop_1790915031066",
+      "created_at": "2026-10-02T04:23:51.451Z"
+    },
+    {
+      "id": 17,
+      "username": "shop_1790915031066",
+      "display_name": "Test Shop",
+      "email": "shop_1790915031066@hope.bet.local",
+      "phone": null,
+      "password_hash": "$2b$10$sxhYE6UlYQBRTV1ABsQ4xeOcbdqXbdPnsssWdmeAe.ObXccGMsVpO",
+      "role": "admin",
+      "status": "active",
+      "created_at": "2026-10-02T04:23:51.169Z",
+      "updated_at": "2026-10-02T04:23:51.169Z"
+    },
+    {
+      "id": 16,
+      "username": "player_1790914646338",
+      "phone": "0960397412",
+      "email": "0960397412@hopebet.local",
+      "first_name": "",
+      "last_name": "",
+      "display_name": "0960397412",
+      "password_hash": "$2b$10$jQ4ZROde.OTTgFmPGAu/xuDbXoRz6Hwvs5F6OXvv.Zu/h/0MCdske",
+      "role": "player",
+      "status": "active",
+      "created_by_admin_id": 15,
+      "created_by_admin_name": "shop_1790914645971",
+      "created_at": "2026-10-02T04:17:26.468Z"
+    },
+    {
+      "id": 15,
+      "username": "shop_1790914645971",
+      "display_name": "Test Shop",
+      "email": "shop_1790914645971@hope.bet.local",
+      "phone": null,
+      "password_hash": "$2b$10$up1iY0JfDrc4hdAtKnhJFO3f3MaSzN7vVKvb96zcU5kV6dSKa7EDa",
+      "role": "admin",
+      "status": "active",
+      "created_at": "2026-10-02T04:17:26.204Z",
+      "updated_at": "2026-10-02T04:17:26.204Z"
+    },
+    {
       "id": 2,
       "username": "super",
       "email": "super@hope.bet.local",
@@ -247,11 +328,242 @@
       "balance": 0,
       "currency": "ETB",
       "updated_at": "2026-10-02T03:58:17.121Z"
+    },
+    "15": {
+      "user_id": 15,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T04:17:26.204Z"
+    },
+    "16": {
+      "user_id": 16,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T04:17:26.468Z"
+    },
+    "17": {
+      "user_id": 17,
+      "balance": 900,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T04:23:51.468Z"
+    },
+    "18": {
+      "user_id": 18,
+      "balance": 60,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T04:23:51.779Z"
+    },
+    "19": {
+      "user_id": 19,
+      "balance": 900,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T05:43:44.899Z"
+    },
+    "20": {
+      "user_id": 20,
+      "balance": 60,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T05:43:45.124Z"
     }
   },
-  "bets": [],
+  "bets": [
+    {
+      "user_id": 20,
+      "cashier_id": 19,
+      "ticket_id": "H0006",
+      "cashier_code": "1005",
+      "stake": 20,
+      "total_odds": 1.85,
+      "potential_win": 37,
+      "status": "open",
+      "payout": 0,
+      "mode": "single",
+      "selections": "[{\"fixtureId\":9999992,\"marketKey\":\"1x2\",\"marketName\":\"Match Result\",\"selectionName\":\"Home\",\"value\":\"1\",\"odd\":1.85,\"homeName\":\"Team C\",\"awayName\":\"Team D\",\"fixtureName\":\"Team C vs Team D\",\"kickoff\":null,\"sport\":\"Football\",\"country\":\"\",\"leagueName\":\"\"}]",
+      "placed_at": "2026-10-02T05:43:45.125Z",
+      "settled_at": null,
+      "public_code": "505685122D04D2204AC6"
+    },
+    {
+      "user_id": 20,
+      "cashier_id": null,
+      "ticket_id": "H0005",
+      "cashier_code": "1004",
+      "stake": 20,
+      "total_odds": 2.1,
+      "potential_win": 42,
+      "status": "open",
+      "payout": 0,
+      "mode": "single",
+      "selections": "[{\"fixtureId\":9999991,\"marketKey\":\"1x2\",\"marketName\":\"Match Result\",\"selectionName\":\"Home\",\"value\":\"1\",\"odd\":2.1,\"homeName\":\"Team A\",\"awayName\":\"Team B\",\"fixtureName\":\"Team A vs Team B\",\"kickoff\":null,\"sport\":\"Football\",\"country\":\"\",\"leagueName\":\"\"}]",
+      "placed_at": "2026-10-02T05:43:45.050Z",
+      "settled_at": null,
+      "public_code": "50568534B401A8A9077E"
+    },
+    {
+      "user_id": 18,
+      "cashier_id": 17,
+      "ticket_id": "H0004",
+      "cashier_code": "1003",
+      "stake": 20,
+      "total_odds": 1.85,
+      "potential_win": 37,
+      "status": "open",
+      "payout": 0,
+      "mode": "single",
+      "selections": "[{\"fixtureId\":9999992,\"marketKey\":\"1x2\",\"marketName\":\"Match Result\",\"selectionName\":\"Home\",\"value\":\"1\",\"odd\":1.85,\"homeName\":\"Team C\",\"awayName\":\"Team D\",\"fixtureName\":\"Team C vs Team D\",\"kickoff\":null,\"sport\":\"Football\",\"country\":\"\",\"leagueName\":\"\"}]",
+      "placed_at": "2026-10-02T04:23:51.780Z",
+      "settled_at": null,
+      "public_code": "5056850BC5544DC03A80"
+    },
+    {
+      "user_id": 18,
+      "cashier_id": null,
+      "ticket_id": "H0003",
+      "cashier_code": "1002",
+      "stake": 20,
+      "total_odds": 2.1,
+      "potential_win": 42,
+      "status": "open",
+      "payout": 0,
+      "mode": "single",
+      "selections": "[{\"fixtureId\":9999991,\"marketKey\":\"1x2\",\"marketName\":\"Match Result\",\"selectionName\":\"Home\",\"value\":\"1\",\"odd\":2.1,\"homeName\":\"Team A\",\"awayName\":\"Team B\",\"fixtureName\":\"Team A vs Team B\",\"kickoff\":null,\"sport\":\"Football\",\"country\":\"\",\"leagueName\":\"\"}]",
+      "placed_at": "2026-10-02T04:23:51.673Z",
+      "settled_at": null,
+      "public_code": "505685A5DE7A113648FD"
+    }
+  ],
   "deposits": [],
   "transactions": [
+    {
+      "id": 15,
+      "user_id": 20,
+      "type": "bet_stake",
+      "amount": -20,
+      "balance_after": 60,
+      "reference": "H0006",
+      "meta": {
+        "mode": "single",
+        "selections": 1
+      },
+      "created_at": "2026-10-02T05:43:45.124Z"
+    },
+    {
+      "id": 14,
+      "user_id": 20,
+      "type": "bet_stake",
+      "amount": -20,
+      "balance_after": 80,
+      "reference": "H0005",
+      "meta": {
+        "mode": "single",
+        "selections": 1
+      },
+      "created_at": "2026-10-02T05:43:45.049Z"
+    },
+    {
+      "id": 13,
+      "user_id": 20,
+      "type": "admin_topup",
+      "amount": 100,
+      "balance_after": 100,
+      "reference": "ADMIN_TOPUP",
+      "meta": {
+        "note": "Balance top-up by Admin",
+        "adminId": 19
+      },
+      "created_at": "2026-10-02T05:43:44.908Z"
+    },
+    {
+      "id": 12,
+      "user_id": 19,
+      "type": "admin_transfer_out",
+      "amount": -100,
+      "balance_after": 900,
+      "reference": "CASHIER_FUNDING",
+      "meta": {
+        "note": "Funded cashier player_1790919824791",
+        "targetUserId": 20
+      },
+      "created_at": "2026-10-02T05:43:44.899Z"
+    },
+    {
+      "id": 11,
+      "user_id": 19,
+      "type": "super_grant",
+      "amount": 1000,
+      "balance_after": 1000,
+      "reference": "SUPER_GRANT",
+      "meta": {
+        "note": "Initial balance granted by Super Admin",
+        "actorId": 2
+      },
+      "created_at": "2026-10-02T05:43:44.671Z"
+    },
+    {
+      "id": 10,
+      "user_id": 18,
+      "type": "bet_stake",
+      "amount": -20,
+      "balance_after": 60,
+      "reference": "H0004",
+      "meta": {
+        "mode": "single",
+        "selections": 1
+      },
+      "created_at": "2026-10-02T04:23:51.780Z"
+    },
+    {
+      "id": 9,
+      "user_id": 18,
+      "type": "bet_stake",
+      "amount": -20,
+      "balance_after": 80,
+      "reference": "H0003",
+      "meta": {
+        "mode": "single",
+        "selections": 1
+      },
+      "created_at": "2026-10-02T04:23:51.672Z"
+    },
+    {
+      "id": 8,
+      "user_id": 18,
+      "type": "admin_topup",
+      "amount": 100,
+      "balance_after": 100,
+      "reference": "ADMIN_TOPUP",
+      "meta": {
+        "note": "Balance top-up by Admin",
+        "adminId": 17
+      },
+      "created_at": "2026-10-02T04:23:51.483Z"
+    },
+    {
+      "id": 7,
+      "user_id": 17,
+      "type": "admin_transfer_out",
+      "amount": -100,
+      "balance_after": 900,
+      "reference": "CASHIER_FUNDING",
+      "meta": {
+        "note": "Funded cashier player_1790915031321",
+        "targetUserId": 18
+      },
+      "created_at": "2026-10-02T04:23:51.468Z"
+    },
+    {
+      "id": 6,
+      "user_id": 17,
+      "type": "super_grant",
+      "amount": 1000,
+      "balance_after": 1000,
+      "reference": "SUPER_GRANT",
+      "meta": {
+        "note": "Initial balance granted by Super Admin",
+        "actorId": 2
+      },
+      "created_at": "2026-10-02T04:23:51.181Z"
+    },
     {
       "id": 5,
       "user_id": 10,
@@ -316,6 +628,81 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": 19,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "shop.float.initial_credit",
+      "target": {
+        "type": "admin",
+        "id": 19
+      },
+      "meta": {
+        "amount": 1000
+      },
+      "created_at": "2026-10-02T05:43:44.681Z"
+    },
+    {
+      "id": 18,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "shop.create",
+      "target": {
+        "type": "admin",
+        "id": 19
+      },
+      "meta": {
+        "username": "shop_1790919824551"
+      },
+      "created_at": "2026-10-02T05:43:44.663Z"
+    },
+    {
+      "id": 17,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "shop.float.initial_credit",
+      "target": {
+        "type": "admin",
+        "id": 17
+      },
+      "meta": {
+        "amount": 1000
+      },
+      "created_at": "2026-10-02T04:23:51.191Z"
+    },
+    {
+      "id": 16,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "shop.create",
+      "target": {
+        "type": "admin",
+        "id": 17
+      },
+      "meta": {
+        "username": "shop_1790915031066"
+      },
+      "created_at": "2026-10-02T04:23:51.169Z"
+    },
+    {
+      "id": 15,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "shop.create",
+      "target": {
+        "type": "admin",
+        "id": 15
+      },
+      "meta": {
+        "username": "shop_1790914645971"
+      },
+      "created_at": "2026-10-02T04:17:26.205Z"
+    },
     {
       "id": 14,
       "actor_id": 2,
@@ -2950,10 +3337,11 @@
     "referral_bonus_amount": 0
   },
   "counters": {
-    "user": 14,
-    "bet": 0,
-    "tx": 5,
+    "user": 20,
+    "bet": 6,
+    "tx": 15,
     "deposit": 0,
-    "audit": 14
+    "audit": 19,
+    "cashier": 1005
   }
 }

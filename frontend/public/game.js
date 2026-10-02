@@ -14892,22 +14892,15 @@ async function placeBet() {
         placedAt: result.ticket.placedAt || new Date().toISOString(),
       };
       if (isAdminBet && state.adminSelectedPlayer) {
-        state.adminSelectedPlayer.balance = result.balance;
-        onAdminBetPlayerChange();
-        const pInList = (state.adminPlayersList || []).find((p) => String(p.id) === String(state.adminSelectedPlayer.id));
-        if (pInList) {
-          pInList.balance = result.balance;
-          const select = $("admin-bet-player-select");
-          if (select) {
-            const opt = select.querySelector(`option[value="${pInList.id}"]`);
-            if (opt) {
-              const uname = pInList.username || pInList.phone || `Player #${pInList.id}`;
-              opt.textContent = `${uname} (${fmt(pInList.balance || 0)} ETB)`;
-            }
-          }
-        }
+        const nextBal = result.balance !== undefined ? Number(result.balance) : Math.max(0, Number(((state.adminSelectedPlayer.balance || 0) - state.stake).toFixed(2)));
+        syncPlayerBalanceEverywhere(state.adminSelectedPlayer.id, nextBal);
       } else {
-        state.balance = result.balance;
+        const nextBal = result.balance !== undefined ? Number(result.balance) : Math.max(0, Number(((state.balance || 0) - state.stake).toFixed(2)));
+        state.balance = nextBal;
+        if (state.sessionUser) {
+          state.sessionUser.balance = nextBal;
+          try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
+        }
       }
       state.history.unshift(ticket);
       state.betPlacedSuccessTicket = ticket;
@@ -14941,7 +14934,16 @@ async function placeBet() {
     placedAt: new Date().toISOString(),
   };
 
-  state.balance -= state.stake;
+  if (isAdminBet && state.adminSelectedPlayer) {
+    const nextBal = Math.max(0, Number(((state.adminSelectedPlayer.balance || 0) - state.stake).toFixed(2)));
+    syncPlayerBalanceEverywhere(state.adminSelectedPlayer.id, nextBal);
+  } else {
+    state.balance = Math.max(0, Number(((state.balance || 0) - state.stake).toFixed(2)));
+    if (state.sessionUser) {
+      state.sessionUser.balance = state.balance;
+      try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
+    }
+  }
   state.history.unshift(ticket);
   state.betPlacedSuccessTicket = ticket;
   state.slip = [];
@@ -20201,10 +20203,72 @@ async function loadAdminBetPlayers() {
   onAdminBetPlayerChange();
 }
 
+function syncPlayerBalanceEverywhere(playerId, newBalance) {
+  const pid = String(playerId);
+  const bal = Number(newBalance || 0);
+
+  // 1. Update in adminPlayersList
+  if (Array.isArray(state.adminPlayersList)) {
+    const p = state.adminPlayersList.find((x) => String(x.id) === pid);
+    if (p) p.balance = bal;
+  }
+
+  // 2. Update in adminTransferPlayers
+  if (Array.isArray(state.adminTransferPlayers)) {
+    const p = state.adminTransferPlayers.find((x) => String(x.id) === pid);
+    if (p) p.balance = bal;
+  }
+
+  // 3. Update in adminSelectedPlayer
+  if (state.adminSelectedPlayer && String(state.adminSelectedPlayer.id) === pid) {
+    state.adminSelectedPlayer.balance = bal;
+  }
+
+  // 4. Update admin-bet-player-select dropdown option
+  const select = $("admin-bet-player-select");
+  if (select) {
+    const opt = select.querySelector(`option[value="${pid}"]`);
+    if (opt) {
+      const p = (state.adminPlayersList || []).find((x) => String(x.id) === pid) || state.adminSelectedPlayer;
+      const uname = p?.username || p?.phone || `Player #${pid}`;
+      opt.textContent = `${uname} (${fmt(bal)} ETB)`;
+    }
+  }
+
+  // 5. Update admin-bet-player-balance if this player is selected
+  if (!select || select.value === pid) {
+    const balEl = $("admin-bet-player-balance");
+    if (balEl) balEl.textContent = `ETB ${fmt(bal)}`;
+  }
+
+  // 6. Update transfer select dropdown option if present
+  const transferSelect = $("admin-transfer-player-select");
+  if (transferSelect) {
+    const opt = transferSelect.querySelector(`option[value="${pid}"]`);
+    if (opt) {
+      const p = (state.adminTransferPlayers || []).find((x) => String(x.id) === pid);
+      if (p && typeof adminTransferPlayerLabel === "function") opt.textContent = adminTransferPlayerLabel(p);
+    }
+  }
+
+  // 7. If currently logged in sessionUser is this player, update sessionUser and state.balance
+  if (state.sessionUser && String(state.sessionUser.id) === pid) {
+    state.balance = bal;
+    state.sessionUser.balance = bal;
+    try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
+    renderBalance();
+  }
+}
+
 function onAdminBetPlayerChange() {
   const select = $("admin-bet-player-select");
   const playerId = select ? select.value : "";
   const player = (state.adminPlayersList || []).find((p) => String(p.id) === String(playerId));
+  if (player && state.adminSelectedPlayer && String(state.adminSelectedPlayer.id) === String(playerId)) {
+    if (state.adminSelectedPlayer.balance !== undefined && player.balance !== state.adminSelectedPlayer.balance) {
+      player.balance = state.adminSelectedPlayer.balance;
+    }
+  }
   state.adminSelectedPlayer = player || null;
 
   const balEl = $("admin-bet-player-balance");
@@ -20248,29 +20312,21 @@ async function handleAdminBetFastDeposit(amount) {
     if (useApi() && api().getToken()) {
       const res = await api().topUpPlayer(player.id, amount);
       if (res && res.ok) {
-        player.balance = res.newBalance;
+        const nextBal = res.newBalance !== undefined ? res.newBalance : (res.balance !== undefined ? res.balance : (player.balance || 0) + amount);
+        syncPlayerBalanceEverywhere(player.id, nextBal);
         if (res.adminBalance !== undefined) {
           updateAdminHeaderBalance(res.adminBalance);
-        }
-        onAdminBetPlayerChange();
-        const select = $("admin-bet-player-select");
-        if (select) {
-          const opt = select.querySelector(`option[value="${player.id}"]`);
-          if (opt) {
-            const uname = player.username || player.phone || `Player #${player.id}`;
-            opt.textContent = `${uname} (${fmt(player.balance || 0)} ETB)`;
-          }
         }
         toast(`Fast deposit ${amount} ETB to ${player.username || `#${player.id}`} complete!`, "ok");
       } else {
         toast(res?.error || "Deposit failed", "err");
       }
     } else {
-      player.balance = (player.balance || 0) + amount;
+      const nextBal = (player.balance || 0) + amount;
+      syncPlayerBalanceEverywhere(player.id, nextBal);
       if (state.adminStats && state.adminStats.balance !== undefined) {
         updateAdminHeaderBalance(Math.max(0, state.adminStats.balance - amount));
       }
-      onAdminBetPlayerChange();
       toast(`Fast deposit ${amount} ETB to ${player.username} (demo)!`, "ok");
     }
   } catch (err) {
@@ -20317,18 +20373,10 @@ async function handleAdminBetCustomTransfer() {
     if (useApi() && api().getToken()) {
       const res = await api().topUpPlayer(player.id, amount);
       if (res && res.ok) {
-        player.balance = res.newBalance;
+        const nextBal = res.newBalance !== undefined ? res.newBalance : (res.balance !== undefined ? res.balance : (player.balance || 0) + amount);
+        syncPlayerBalanceEverywhere(player.id, nextBal);
         if (res.adminBalance !== undefined) {
           updateAdminHeaderBalance(res.adminBalance);
-        }
-        onAdminBetPlayerChange();
-        const select = $("admin-bet-player-select");
-        if (select) {
-          const opt = select.querySelector(`option[value="${player.id}"]`);
-          if (opt) {
-            const uname = player.username || player.phone || `Player #${player.id}`;
-            opt.textContent = `${uname} (${fmt(player.balance || 0)} ETB)`;
-          }
         }
         toast(`Transferred ${fmt(amount)} ETB to ${player.username || `#${player.id}`}!`, "ok");
         if (amtInput) amtInput.value = "";
@@ -20336,11 +20384,11 @@ async function handleAdminBetCustomTransfer() {
         toast(res?.error || "Transfer failed", "err");
       }
     } else {
-      player.balance = (player.balance || 0) + amount;
+      const nextBal = (player.balance || 0) + amount;
+      syncPlayerBalanceEverywhere(player.id, nextBal);
       if (state.adminStats && state.adminStats.balance !== undefined) {
         updateAdminHeaderBalance(Math.max(0, state.adminStats.balance - amount));
       }
-      onAdminBetPlayerChange();
       toast(`Transferred ${fmt(amount)} ETB (demo)!`, "ok");
       if (amtInput) amtInput.value = "";
     }
@@ -20358,16 +20406,7 @@ async function refreshAdminBetPlayerBalance() {
     if (useApi() && api().getToken()) {
       const res = await api().fetchAdminPlayers({ id: player.id });
       if (res && res.ok && Array.isArray(res.players) && res.players[0]) {
-        player.balance = res.players[0].balance;
-        onAdminBetPlayerChange();
-        const select = $("admin-bet-player-select");
-        if (select) {
-          const opt = select.querySelector(`option[value="${player.id}"]`);
-          if (opt) {
-            const uname = player.username || player.phone || `Player #${player.id}`;
-            opt.textContent = `${uname} (${fmt(player.balance || 0)} ETB)`;
-          }
-        }
+        syncPlayerBalanceEverywhere(player.id, res.players[0].balance);
         toast("Player balance updated", "ok");
       }
     }
@@ -20537,8 +20576,9 @@ async function handleAdminTransferSubmit(e) {
 
       if (res && res.ok) {
         toast(res.message || `${opType === "withdraw" ? "Withdrawal" : "Deposit"} of ${amount} ETB completed`, "ok");
-        const player = (state.adminTransferPlayers || []).find((p) => String(p.id) === String(playerId));
-        if (player) player.balance = res.newBalance;
+        if (res.newBalance !== undefined) {
+          syncPlayerBalanceEverywhere(playerId, res.newBalance);
+        }
         if (res.adminBalance !== undefined) updateAdminHeaderBalance(res.adminBalance);
         onAdminTransferPlayerChange();
         if (amountInput) amountInput.value = "";
@@ -20559,7 +20599,8 @@ async function handleAdminTransferSubmit(e) {
         toast("Player has insufficient balance for withdrawal", "err");
         return;
       }
-      player.balance = opType === "withdraw" ? Number(player.balance || 0) - amount : Number(player.balance || 0) + amount;
+      const newBal = opType === "withdraw" ? Number(player.balance || 0) - amount : Number(player.balance || 0) + amount;
+      syncPlayerBalanceEverywhere(playerId, newBal);
       if (Number.isFinite(demoFloat)) updateAdminHeaderBalance(opType === "withdraw" ? demoFloat + amount : demoFloat - amount);
       onAdminTransferPlayerChange();
       toast(`${opType === "withdraw" ? "Withdrawal" : "Deposit"} of ${amount} ETB completed (demo)`, "ok");
@@ -21401,6 +21442,10 @@ function bindAdminEvents() {
         const res = await api().topUpPlayer(userId, amount);
         if (res && res.ok) {
           toast(`Deposited ${fmt(amount)} ETB successfully`, "ok");
+          const nextBal = res.newBalance !== undefined ? res.newBalance : res.balance;
+          if (nextBal !== undefined) {
+            syncPlayerBalanceEverywhere(userId, nextBal);
+          }
           // Update admin float in state and header
           if (res.adminBalance !== undefined && state.adminStats) {
             state.adminStats.balance = res.adminBalance;
