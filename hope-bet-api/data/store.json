@@ -17,6 +17,150 @@
       "display_name": "System",
       "role": "sys_core",
       "created_at": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "username": "0964193242",
+      "email": "251964193242@phone.hopebet.local",
+      "phone": "+251964193242",
+      "password_hash": "$2b$10$ig12yYw6mzrvG45iDwrWsOvF2sjj69TtMjLGB9dml8OpAHEbwaY7q",
+      "display_name": "+251964193242",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:56:50.438Z"
+    },
+    {
+      "id": 4,
+      "username": "0914377841",
+      "email": "251914377841@phone.hopebet.local",
+      "phone": "+251914377841",
+      "password_hash": "$2b$10$ZbejtWg/qu5EttqB.iBZDOWjSeODc0YIXKdSUi1NFPfujlrF3PW8K",
+      "display_name": "+251914377841",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:56:50.587Z"
+    },
+    {
+      "id": 5,
+      "username": "0987029033",
+      "email": "251987029033@phone.hopebet.local",
+      "phone": "+251987029033",
+      "password_hash": "$2b$10$p7AQyJOrZhXuUCo0HFAFwOhYLv/qqv6QQ7Mb0USpzda/.a.syjhm.",
+      "display_name": "+251987029033",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:56:50.730Z"
+    },
+    {
+      "id": 6,
+      "username": "0951016556",
+      "email": "251951016556@phone.hopebet.local",
+      "phone": "+251951016556",
+      "password_hash": "$2b$10$ZqezCg3bKCzCv6yWGxPSUOYyrDzlIZJmiEMDuoIwMWu5L6C83C.pu",
+      "display_name": "+251951016556",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:57:23.828Z"
+    },
+    {
+      "id": 7,
+      "username": "0941705150",
+      "email": "251941705150@phone.hopebet.local",
+      "phone": "+251941705150",
+      "password_hash": "$2b$10$YdOBdK7VuJu89Iy3XOcZvOxfyZvUpRPzzEjpUA6xgd0VEJa.HOEHK",
+      "display_name": "+251941705150",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:57:23.979Z"
+    },
+    {
+      "id": 8,
+      "username": "0927051780",
+      "email": "251927051780@phone.hopebet.local",
+      "phone": "+251927051780",
+      "password_hash": "$2b$10$FqIL4EwP6zIg8sFs9XKZce0A2ED711lz333TiOeXHzPzdw7o2xT5K",
+      "display_name": "+251927051780",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:57:24.117Z"
+    },
+    {
+      "id": 9,
+      "username": "0984381966",
+      "email": "251984381966@phone.hopebet.local",
+      "phone": "+251984381966",
+      "password_hash": "$2b$10$OPg9mEUuNCOx5mhcOwD0puZ.vMod.2PsxuGDvCYJutXxcqOK0mZlS",
+      "display_name": "+251984381966",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": 6,
+      "created_at": "2026-10-02T03:57:24.375Z"
+    },
+    {
+      "id": 10,
+      "username": "0954152149",
+      "email": "251954152149@phone.hopebet.local",
+      "phone": "+251954152149",
+      "password_hash": "$2b$10$FCd7JGiUTA4pdWS.sPRsjuYz3gyArWGacvsVQ4KBrWoTFTos35g3e",
+      "display_name": "+251954152149",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:58:16.209Z"
+    },
+    {
+      "id": 11,
+      "username": "0972693189",
+      "email": "251972693189@phone.hopebet.local",
+      "phone": "+251972693189",
+      "password_hash": "$2b$10$wOVeXJf93KdYzGVxcEjdoedG4jyPO8PyLdsc8tyAzZy7r0BA6XXd.",
+      "display_name": "+251972693189",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:58:16.344Z"
+    },
+    {
+      "id": 12,
+      "username": "0964980320",
+      "email": "251964980320@phone.hopebet.local",
+      "phone": "+251964980320",
+      "password_hash": "$2b$10$Bhp3RSXjnlHVQEcmKYSck.FfE5RWI1yFqKyo55LX466ukb6SOavMi",
+      "display_name": "+251964980320",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": null,
+      "created_at": "2026-10-02T03:58:16.491Z"
+    },
+    {
+      "id": 13,
+      "username": "0980622186",
+      "email": "251980622186@phone.hopebet.local",
+      "phone": "+251980622186",
+      "password_hash": "$2b$10$iA9a1/en3Okd7dyUJcr63OixOB4QCH5w.o04k7uEtbS70hX/9Qn0m",
+      "display_name": "+251980622186",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": 10,
+      "created_at": "2026-10-02T03:58:16.738Z"
+    },
+    {
+      "id": 14,
+      "username": "0994766405",
+      "email": "251994766405@phone.hopebet.local",
+      "phone": "+251994766405",
+      "password_hash": "$2b$10$xO5VUvXlsPoMtKwlpeXoWe7VO15wpQFsRenqiQOlpuCEHbhxLTXuW",
+      "display_name": "+251994766405",
+      "role": "player",
+      "created_by_admin_id": null,
+      "referred_by_id": 11,
+      "created_at": "2026-10-02T03:58:17.109Z"
     }
   ],
   "wallets": {
@@ -31,12 +175,2696 @@
       "balance": 0,
       "currency": "ETB",
       "updated_at": "2026-09-30T00:00:00.000Z"
+    },
+    "3": {
+      "user_id": 3,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:56:50.451Z"
+    },
+    "4": {
+      "user_id": 4,
+      "balance": 75,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:56:50.609Z"
+    },
+    "5": {
+      "user_id": 5,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:56:50.739Z"
+    },
+    "6": {
+      "user_id": 6,
+      "balance": 30,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:57:24.396Z"
+    },
+    "7": {
+      "user_id": 7,
+      "balance": 75,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:57:23.999Z"
+    },
+    "8": {
+      "user_id": 8,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:57:24.130Z"
+    },
+    "9": {
+      "user_id": 9,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:57:24.383Z"
+    },
+    "10": {
+      "user_id": 10,
+      "balance": 30,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:58:16.759Z"
+    },
+    "11": {
+      "user_id": 11,
+      "balance": 75,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:58:16.365Z"
+    },
+    "12": {
+      "user_id": 12,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:58:16.499Z"
+    },
+    "13": {
+      "user_id": 13,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:58:16.747Z"
+    },
+    "14": {
+      "user_id": 14,
+      "balance": 0,
+      "currency": "ETB",
+      "updated_at": "2026-10-02T03:58:17.121Z"
     }
   },
   "bets": [],
   "deposits": [],
-  "transactions": [],
-  "auditLogs": [],
+  "transactions": [
+    {
+      "id": 5,
+      "user_id": 10,
+      "type": "referral_bonus",
+      "amount": 30,
+      "balance_after": 30,
+      "reference": "REFERRAL_BONUS",
+      "meta": {
+        "note": "Referral bonus for inviting 0980622186",
+        "referredUserId": 13
+      },
+      "created_at": "2026-10-02T03:58:16.759Z"
+    },
+    {
+      "id": 4,
+      "user_id": 11,
+      "type": "registration_bonus",
+      "amount": 75,
+      "balance_after": 75,
+      "reference": "WELCOME_BONUS",
+      "meta": {
+        "note": "Welcome registration bonus granted by Super Admin settings"
+      },
+      "created_at": "2026-10-02T03:58:16.365Z"
+    },
+    {
+      "id": 3,
+      "user_id": 6,
+      "type": "referral_bonus",
+      "amount": 30,
+      "balance_after": 30,
+      "reference": "REFERRAL_BONUS",
+      "meta": {
+        "note": "Referral bonus for inviting 0984381966",
+        "referredUserId": 9
+      },
+      "created_at": "2026-10-02T03:57:24.396Z"
+    },
+    {
+      "id": 2,
+      "user_id": 7,
+      "type": "registration_bonus",
+      "amount": 75,
+      "balance_after": 75,
+      "reference": "WELCOME_BONUS",
+      "meta": {
+        "note": "Welcome registration bonus granted by Super Admin settings"
+      },
+      "created_at": "2026-10-02T03:57:23.999Z"
+    },
+    {
+      "id": 1,
+      "user_id": 4,
+      "type": "registration_bonus",
+      "amount": 75,
+      "balance_after": 75,
+      "reference": "WELCOME_BONUS",
+      "meta": {
+        "note": "Welcome registration bonus granted by Super Admin settings"
+      },
+      "created_at": "2026-10-02T03:56:50.610Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": 14,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 30
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:58:17.244Z"
+    },
+    {
+      "id": 13,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": true,
+          "referral_bonus_amount": 30
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 30
+        }
+      },
+      "created_at": "2026-10-02T03:58:16.882Z"
+    },
+    {
+      "id": 12,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": true,
+          "referral_bonus_amount": 30
+        }
+      },
+      "created_at": "2026-10-02T03:58:16.514Z"
+    },
+    {
+      "id": 11,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": true,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:58:16.378Z"
+    },
+    {
+      "id": 10,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": true,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:58:16.237Z"
+    },
+    {
+      "id": 9,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": true,
+          "referral_bonus_amount": 30
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:58:16.098Z"
+    },
+    {
+      "id": 8,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": true,
+          "referral_bonus_amount": 30
+        }
+      },
+      "created_at": "2026-10-02T03:57:24.145Z"
+    },
+    {
+      "id": 7,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": true,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:57:24.012Z"
+    },
+    {
+      "id": 6,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": true,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:57:23.852Z"
+    },
+    {
+      "id": 5,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": true,
+          "referral_bonus_amount": 30
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:57:23.718Z"
+    },
+    {
+      "id": 4,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": true,
+          "referral_bonus_amount": 30
+        }
+      },
+      "created_at": "2026-10-02T03:56:50.753Z"
+    },
+    {
+      "id": 3,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": true,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:56:50.620Z"
+    },
+    {
+      "id": 2,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": true,
+          "registration_bonus_amount": 75,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:56:50.480Z"
+    },
+    {
+      "id": 1,
+      "actor_id": 2,
+      "actor_username": "super",
+      "actor_role": "super_admin",
+      "action": "settings.update",
+      "target": {
+        "type": "settings",
+        "id": "platform"
+      },
+      "meta": {
+        "before": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        },
+        "after": {
+          "telebirr_receiver": "0937383800",
+          "cbe_receiver": "1000123456789",
+          "min_deposit": 100,
+          "max_deposit": 75000,
+          "bonus_enabled": true,
+          "bonus_min_odd_per_leg": 1.15,
+          "bonus_rules": [
+            {
+              "id": "rule_cut1_10",
+              "name": "10-14 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 10,
+              "maxTeams": 14,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_15",
+              "name": "15-19 Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut1_20",
+              "name": "20+ Teams (Cut 1)",
+              "failedCount": 1,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 10,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_15",
+              "name": "15-19 Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 15,
+              "maxTeams": 19,
+              "multiplier": 2,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut2_20",
+              "name": "20+ Teams (Cut 2)",
+              "failedCount": 2,
+              "minTeams": 20,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut3_25",
+              "name": "25+ Teams (Cut 3)",
+              "failedCount": 3,
+              "minTeams": 25,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            },
+            {
+              "id": "rule_cut4_30",
+              "name": "30+ Teams (Cut 4)",
+              "failedCount": 4,
+              "minTeams": 30,
+              "maxTeams": null,
+              "multiplier": 5,
+              "minOddPerLeg": 1.15,
+              "enabled": true
+            }
+          ],
+          "registration_bonus_enabled": false,
+          "registration_bonus_amount": 0,
+          "referral_bonus_enabled": false,
+          "referral_bonus_amount": 0
+        }
+      },
+      "created_at": "2026-10-02T03:56:50.330Z"
+    }
+  ],
   "settings": {
     "telebirr_receiver": "0937383800",
     "cbe_receiver": "1000123456789",
@@ -115,13 +2943,17 @@
         "minOddPerLeg": 1.15,
         "enabled": true
       }
-    ]
+    ],
+    "registration_bonus_enabled": false,
+    "registration_bonus_amount": 0,
+    "referral_bonus_enabled": false,
+    "referral_bonus_amount": 0
   },
   "counters": {
-    "user": 2,
+    "user": 14,
     "bet": 0,
-    "tx": 0,
+    "tx": 5,
     "deposit": 0,
-    "audit": 0
+    "audit": 14
   }
 }

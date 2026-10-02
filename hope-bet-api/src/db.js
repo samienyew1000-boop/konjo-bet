@@ -29,6 +29,10 @@ function defaultSettings() {
     bonus_enabled: true,
     bonus_min_odd_per_leg: 1.15,
     bonus_rules: defaultBonusRules(),
+    registration_bonus_enabled: false,
+    registration_bonus_amount: 0,
+    referral_bonus_enabled: false,
+    referral_bonus_amount: 0,
   };
 }
 

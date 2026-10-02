@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { withStore, ensureWallet, creditWallet, nextUserId } = require("../db");
+const { loadStore, withStore, ensureWallet, creditWallet, nextUserId } = require("../db");
 const { signToken } = require("../middleware/auth");
 
 const router = express.Router();
@@ -21,6 +21,7 @@ router.post("/register", (req, res) => {
     const password = String(req.body.password || "");
     const phone = String(req.body.phone || "").trim() || null;
     const displayName = String(req.body.displayName || "").trim();
+    const refCode = String(req.body.referralCode || req.body.promoterCode || req.body.promoter_code || req.body.ref || "").trim();
     const role = "player";
 
     const normPhone = normalizePhone(phone || identifier);
@@ -33,6 +34,7 @@ router.post("/register", (req, res) => {
     }
 
     let userRow;
+    let referrerUser = null;
     try {
       userRow = withStore((store) => {
         if (normPhone) {
@@ -60,6 +62,17 @@ router.post("/register", (req, res) => {
           }
         }
 
+        if (refCode) {
+          const normRef = refCode.toLowerCase();
+          referrerUser = store.users.find((u) =>
+            (u.username && u.username.toLowerCase() === normRef) ||
+            (u.phone && normalizePhone(u.phone) === normalizePhone(refCode)) ||
+            String(u.id) === refCode ||
+            (normRef.startsWith("hb") && String(u.id) === normRef.slice(2)) ||
+            (normRef.startsWith("kb") && String(u.id) === normRef.slice(2))
+          );
+        }
+
         const standardPhone = normPhone ? `+251${normPhone}` : (phone || null);
         const standardUsername = normPhone ? `0${normPhone}` : (identifier.split("@")[0] || displayName || "user");
         const standardEmail = email || (normPhone ? `251${normPhone}@phone.hopebet.local` : `${identifier}@hope.bet`);
@@ -73,6 +86,8 @@ router.post("/register", (req, res) => {
           password_hash: bcrypt.hashSync(password, 10),
           display_name: userDisplayName,
           role,
+          created_by_admin_id: referrerUser && referrerUser.role === "admin" ? referrerUser.id : null,
+          referred_by_id: referrerUser ? referrerUser.id : null,
           created_at: new Date().toISOString(),
         };
         store.users.push(row);
@@ -90,6 +105,28 @@ router.post("/register", (req, res) => {
 
     ensureWallet(userRow.id, process.env.CURRENCY || "ETB");
 
+    // Bonus controls under Super Admin
+    const currentStore = loadStore();
+    const settings = currentStore.settings || {};
+    let finalBalance = 0;
+
+    // 1. Registration / Welcome Bonus
+    if (settings.registration_bonus_enabled === true && Number(settings.registration_bonus_amount) > 0) {
+      const regAmount = Number(Number(settings.registration_bonus_amount).toFixed(2));
+      finalBalance = creditWallet(userRow.id, regAmount, "registration_bonus", "WELCOME_BONUS", {
+        note: "Welcome registration bonus granted by Super Admin settings",
+      });
+    }
+
+    // 2. Referral Bonus
+    if (referrerUser && settings.referral_bonus_enabled === true && Number(settings.referral_bonus_amount) > 0) {
+      const refAmount = Number(Number(settings.referral_bonus_amount).toFixed(2));
+      creditWallet(referrerUser.id, refAmount, "referral_bonus", "REFERRAL_BONUS", {
+        note: `Referral bonus for inviting ${userRow.username}`,
+        referredUserId: userRow.id,
+      });
+    }
+
     const user = {
       id: userRow.id,
       username: userRow.username,
@@ -97,6 +134,7 @@ router.post("/register", (req, res) => {
       email: userRow.email,
       displayName: userRow.display_name,
       role: userRow.role,
+      balance: finalBalance,
     };
     let token;
     try {
@@ -191,7 +229,7 @@ router.post("/login", (req, res) => {
       });
     }
 
-    ensureWallet(row.id, process.env.CURRENCY || "ETB");
+    const userWallet = ensureWallet(row.id, process.env.CURRENCY || "ETB");
     let token;
     try {
       token = signToken({ id: row.id, email: row.email, role: row.role });
@@ -212,6 +250,7 @@ router.post("/login", (req, res) => {
         email: row.email,
         displayName: row.display_name,
         role: row.role || "player",
+        balance: userWallet.balance || 0,
       },
     });
   } catch (err) {

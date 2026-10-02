@@ -1432,6 +1432,32 @@
                     <span class="sa-form-hint">Highest allowed single deposit transaction.</span>
                   </div>
 
+                  <div class="sa-form-group">
+                    <label class="sa-form-label">Registration / Sign-up Bonus (ETB)</label>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 6px;">
+                      <label class="sa-settings-toggle" style="margin: 0;">
+                        <input type="checkbox" id="sa-cfg-reg-bonus-enabled" />
+                        <span class="sa-toggle-track"></span>
+                        <span><strong>Enable sign-up bonus</strong></span>
+                      </label>
+                    </div>
+                    <input type="number" id="sa-cfg-reg-bonus-amount" class="sa-form-input" placeholder="0" min="0" step="1" />
+                    <span class="sa-form-hint">Bonus balance credited to new accounts upon registration.</span>
+                  </div>
+
+                  <div class="sa-form-group">
+                    <label class="sa-form-label">Referral / Promoter Bonus (ETB)</label>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 6px;">
+                      <label class="sa-settings-toggle" style="margin: 0;">
+                        <input type="checkbox" id="sa-cfg-ref-bonus-enabled" />
+                        <span class="sa-toggle-track"></span>
+                        <span><strong>Enable referral bonus</strong></span>
+                      </label>
+                    </div>
+                    <input type="number" id="sa-cfg-ref-bonus-amount" class="sa-form-input" placeholder="0" min="0" step="1" />
+                    <span class="sa-form-hint">Bonus balance credited to referrer when new account uses referral code.</span>
+                  </div>
+
                   <div class="sa-form-actions">
                     <button type="submit" class="sa-btn sa-btn--primary" id="sa-save-settings-btn" style="padding: 0.75rem 2rem;">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>

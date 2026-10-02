@@ -14629,6 +14629,18 @@ function openAuthModal(tab) {
     el.hidden = !isReg;
   });
   if ($("auth-confirm-wrap")) $("auth-confirm-wrap").hidden = !isReg;
+  if ($("auth-referral-wrap")) {
+    $("auth-referral-wrap").hidden = !isReg;
+    if (isReg && !$("auth-referral-code")?.value) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const refParam = urlParams.get("promoter_code") || urlParams.get("ref") || urlParams.get("promoter") || "";
+        if (refParam && $("auth-referral-code")) {
+          $("auth-referral-code").value = refParam;
+        }
+      } catch (_) {}
+    }
+  }
   if ($("auth-checks")) $("auth-checks").hidden = !isReg;
   if ($("auth-footer-login")) $("auth-footer-login").hidden = isReg;
   if ($("auth-footer-register")) $("auth-footer-register").hidden = !isReg;
@@ -17423,7 +17435,8 @@ document.addEventListener("click", (e) => {
       if (state.authTab === "register") {
         const role = "player";
         const email = identifier;
-        const data = await api().register({ identifier: cleanRaw, email, password, phone, role });
+        const referralCode = $("auth-referral-code")?.value?.trim() || "";
+        const data = await api().register({ identifier: cleanRaw, email, password, phone, role, referralCode });
         state.sessionUser = data.user;
         try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
         toast("Account registered successfully", "ok");
@@ -18620,6 +18633,16 @@ function populateSuperAdminSettingsForm() {
   if (oddEl) oddEl.value = cfg.bonus_min_odd_per_leg || 1.15;
   const enabledEl = $("sa-cfg-bonus-enabled");
   if (enabledEl) enabledEl.checked = cfg.bonus_enabled !== false && saState.bonusEnabled !== false;
+
+  const regBonusEnabledEl = $("sa-cfg-reg-bonus-enabled");
+  if (regBonusEnabledEl) regBonusEnabledEl.checked = Boolean(cfg.registration_bonus_enabled);
+  const regBonusAmountEl = $("sa-cfg-reg-bonus-amount");
+  if (regBonusAmountEl) regBonusAmountEl.value = Number(cfg.registration_bonus_amount ?? 0);
+
+  const refBonusEnabledEl = $("sa-cfg-ref-bonus-enabled");
+  if (refBonusEnabledEl) refBonusEnabledEl.checked = Boolean(cfg.referral_bonus_enabled);
+  const refBonusAmountEl = $("sa-cfg-ref-bonus-amount");
+  if (refBonusAmountEl) refBonusAmountEl.value = Number(cfg.referral_bonus_amount ?? 0);
 }
 
 window.openSuperAdminShopDetail = async function (adminId) {
@@ -19028,12 +19051,22 @@ async function handleSuperAdminSaveSettings(e) {
   const max_deposit = Number($("sa-cfg-max")?.value || 75000);
   const bonus_enabled = Boolean($("sa-cfg-bonus-enabled")?.checked);
   const bonus_min_odd_per_leg = Number($("sa-cfg-bonus-min-odd")?.value || 1.15);
+  const registration_bonus_enabled = Boolean($("sa-cfg-reg-bonus-enabled")?.checked);
+  const registration_bonus_amount = Math.max(0, Number($("sa-cfg-reg-bonus-amount")?.value || 0));
+  const referral_bonus_enabled = Boolean($("sa-cfg-ref-bonus-enabled")?.checked);
+  const referral_bonus_amount = Math.max(0, Number($("sa-cfg-ref-bonus-amount")?.value || 0));
 
   if (!Number.isFinite(min_deposit) || !Number.isFinite(max_deposit) || min_deposit <= 0 || max_deposit < min_deposit) {
     return toast("Deposit limits are invalid. Check the minimum and maximum values.", "err");
   }
   if (!Number.isFinite(bonus_min_odd_per_leg) || bonus_min_odd_per_leg < 1.01) {
     return toast("Minimum odd per selection must be at least 1.01.", "err");
+  }
+  if (!Number.isFinite(registration_bonus_amount) || registration_bonus_amount < 0) {
+    return toast("Registration bonus amount must be 0 or greater.", "err");
+  }
+  if (!Number.isFinite(referral_bonus_amount) || referral_bonus_amount < 0) {
+    return toast("Referral bonus amount must be 0 or greater.", "err");
   }
 
   const statusEl = $("sa-settings-status");
@@ -19050,6 +19083,10 @@ async function handleSuperAdminSaveSettings(e) {
       max_deposit,
       bonus_enabled,
       bonus_min_odd_per_leg,
+      registration_bonus_enabled,
+      registration_bonus_amount,
+      referral_bonus_enabled,
+      referral_bonus_amount,
     });
 
     saState.settings = {
@@ -19061,6 +19098,10 @@ async function handleSuperAdminSaveSettings(e) {
       max_deposit,
       bonus_enabled,
       bonus_min_odd_per_leg,
+      registration_bonus_enabled,
+      registration_bonus_amount,
+      referral_bonus_enabled,
+      referral_bonus_amount,
     };
     saState.bonusEnabled = bonus_enabled;
     state.bonusEnabled = bonus_enabled;

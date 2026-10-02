@@ -862,7 +862,19 @@ router.get("/settings", (_req, res) => {
 
 router.post("/settings", (req, res) => {
   try {
-    const { telebirr_receiver, cbe_receiver, min_deposit, max_deposit, bonus_enabled, bonus_min_odd_per_leg, bonus_rules } = req.body;
+    const {
+      telebirr_receiver,
+      cbe_receiver,
+      min_deposit,
+      max_deposit,
+      bonus_enabled,
+      bonus_min_odd_per_leg,
+      bonus_rules,
+      registration_bonus_enabled,
+      registration_bonus_amount,
+      referral_bonus_enabled,
+      referral_bonus_amount
+    } = req.body;
     const updated = withStore((store) => {
       if (!store.settings) store.settings = {};
       const before = { ...store.settings };
@@ -873,6 +885,10 @@ router.post("/settings", (req, res) => {
       if (bonus_enabled !== undefined) store.settings.bonus_enabled = Boolean(bonus_enabled);
       if (bonus_min_odd_per_leg !== undefined) store.settings.bonus_min_odd_per_leg = toNumber(bonus_min_odd_per_leg, 1.15);
       if (Array.isArray(bonus_rules)) store.settings.bonus_rules = bonus_rules;
+      if (registration_bonus_enabled !== undefined) store.settings.registration_bonus_enabled = Boolean(registration_bonus_enabled);
+      if (registration_bonus_amount !== undefined) store.settings.registration_bonus_amount = Math.max(0, toNumber(registration_bonus_amount, 0));
+      if (referral_bonus_enabled !== undefined) store.settings.referral_bonus_enabled = Boolean(referral_bonus_enabled);
+      if (referral_bonus_amount !== undefined) store.settings.referral_bonus_amount = Math.max(0, toNumber(referral_bonus_amount, 0));
       addAuditLog(store, req.user, "settings.update", { type: "settings", id: "platform" }, { before, after: store.settings });
       return store.settings;
     });

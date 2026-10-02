@@ -51,7 +51,11 @@
         max_bet: 50000,
         max_payout: 500000,
         bonus_enabled: true,
-        bonus_min_odd_per_leg: 1.15
+        bonus_min_odd_per_leg: 1.15,
+        registration_bonus_enabled: false,
+        registration_bonus_amount: 0,
+        referral_bonus_enabled: false,
+        referral_bonus_amount: 0
       },
       bonus_rules: [
         { id: "rule_1", name: "5+ Teams (Cut 1)", minTeams: 5, failedCount: 1, multiplier: 1, minOddPerLeg: 1.15, enabled: true },
@@ -517,6 +521,12 @@
       const isHtmlErr = String(err.message || "").toLowerCase().includes("invalid server response") || String(err.message || "").toLowerCase().includes("not found");
       if (isUnreachable || isHtmlErr) {
         const store = getStandaloneStore();
+        const storeSettings = store.settings || {};
+        let initialBalance = 0;
+        if (storeSettings.registration_bonus_enabled === true && Number(storeSettings.registration_bonus_amount) > 0) {
+          initialBalance = Number(Number(storeSettings.registration_bonus_amount).toFixed(2));
+        }
+
         const newId = Date.now();
         const username = String(payload.identifier || payload.phone || payload.email || "player_" + newId).trim();
         const newUser = {
@@ -528,11 +538,45 @@
           email: payload.email || `${username}@hopebet.local`,
           role: "player",
           status: "active",
-          balance: 500,
+          balance: initialBalance,
           currency: "ETB",
           createdAt: new Date().toISOString()
         };
         store.players.unshift(newUser);
+
+        if (initialBalance > 0) {
+          if (!Array.isArray(store.transactions)) store.transactions = [];
+          store.transactions.unshift({
+            id: Date.now() + 1,
+            type: "registration_bonus",
+            userId: newId,
+            amount: initialBalance,
+            balanceAfter: initialBalance,
+            note: "Welcome registration bonus",
+            createdAt: new Date().toISOString()
+          });
+        }
+
+        const refCode = String(payload.referralCode || payload.promoterCode || "").trim().toLowerCase();
+        if (refCode && storeSettings.referral_bonus_enabled === true && Number(storeSettings.referral_bonus_amount) > 0) {
+          const refAmount = Number(Number(storeSettings.referral_bonus_amount).toFixed(2));
+          const referrer = (store.admins || []).find(a => (a.username && a.username.toLowerCase() === refCode) || String(a.id) === refCode) ||
+                           (store.players || []).find(p => (p.username && p.username.toLowerCase() === refCode) || String(p.id) === refCode);
+          if (referrer) {
+            referrer.balance = Number(((Number(referrer.balance) || 0) + refAmount).toFixed(2));
+            if (!Array.isArray(store.transactions)) store.transactions = [];
+            store.transactions.unshift({
+              id: Date.now() + 2,
+              type: "referral_bonus",
+              userId: referrer.id,
+              amount: refAmount,
+              balanceAfter: referrer.balance,
+              note: `Referral bonus for inviting ${username}`,
+              createdAt: new Date().toISOString()
+            });
+          }
+        }
+
         saveStandaloneStore(store);
         const token = "konjo-offline-token-" + newId;
         setSession(token, newUser);
