@@ -4795,6 +4795,7 @@ button {
     align-items: center;
     justify-content: center;
     white-space: nowrap;
+    text-decoration: none;
     border-radius: 3px;
     transition: background 0.15s, color 0.15s;
   }
@@ -8662,6 +8663,7 @@ body.is-sports-home #view-sports .board-wrap {
   border-radius: 2px !important;
   cursor: pointer !important;
   white-space: nowrap !important;
+  text-decoration: none !important;
   text-transform: uppercase !important;
   transition: opacity 0.15s ease, background 0.15s ease !important;
   height: auto !important;

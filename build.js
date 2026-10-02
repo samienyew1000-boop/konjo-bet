@@ -54,9 +54,17 @@ if (fs.existsSync(srcAssets)) {
   fs.cpSync(srcAssets, path.join(publicDir, 'assets'), { recursive: true, force: true });
   fs.cpSync(srcAssets, path.join(frontendPublicDir, 'assets'), { recursive: true, force: true });
   fs.cpSync(srcAssets, path.join(apiPublicDir, 'assets'), { recursive: true, force: true });
-  if (srcAssets !== path.join(__dirname, 'assets')) {
+if (srcAssets !== path.join(__dirname, 'assets')) {
     fs.cpSync(srcAssets, path.join(__dirname, 'assets'), { recursive: true, force: true });
   }
+}
+
+// 4. Games directory (keep inside game/ and sync to distribution dirs)
+const srcGame = path.join(__dirname, 'game');
+if (fs.existsSync(srcGame)) {
+  fs.cpSync(srcGame, path.join(publicDir, 'game'), { recursive: true, force: true });
+  fs.cpSync(srcGame, path.join(frontendPublicDir, 'game'), { recursive: true, force: true });
+  fs.cpSync(srcGame, path.join(apiPublicDir, 'game'), { recursive: true, force: true });
 }
 
 console.log('Build completed: Root public directory and frontend subdirectories prepared.');

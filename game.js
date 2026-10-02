@@ -10977,6 +10977,10 @@ function renderBalance() {
     const val = Number(state.balance) || 0;
     mobileBal.textContent = hidden ? "••••" : `${fmt(val)} ETB`;
   }
+  try {
+    const curVal = Number(state.balance) || 0;
+    localStorage.setItem("habesha_balance", curVal.toFixed(2));
+  } catch (_) {}
 }
 
 function renderSportsSidebar() {
