@@ -4,6 +4,11 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
+const { verifyServerLock, domainGuardMiddleware } = require("./guard");
+
+// Enforce server IP and license lock
+verifyServerLock();
+
 const authRoutes = require("./routes/auth");
 const { seedSuperAdmin } = require("./db");
 seedSuperAdmin();
@@ -19,8 +24,10 @@ const app = express();
 const PORT = Number(process.env.PORT || 8787);
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change-this-to-a-long-random-string") {
-  console.error("[hope-bet-api] FATAL: Set a strong JWT_SECRET in Render environment variables");
+  console.error("[hope-bet-api] FATAL: Set a strong JWT_SECRET in environment variables");
 }
+
+app.use(domainGuardMiddleware);
 
 app.use(
   cors({

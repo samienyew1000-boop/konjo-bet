@@ -1,5 +1,14 @@
 "use strict";
 
+(function () {
+  const allowedHosts = ["konjobet.com", "www.konjobet.com", "13.140.146.163", "localhost", "127.0.0.1"];
+  const currentHost = (window.location.hostname || "").toLowerCase();
+  if (currentHost && !allowedHosts.includes(currentHost)) {
+    document.documentElement.innerHTML = '<div style="background:#070a10;color:#ef4444;height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:20px;font-weight:700;text-align:center;padding:24px;flex-direction:column;"><div style="font-size:48px;margin-bottom:16px;">&#128683;</div><div>UNAUTHORIZED INSTALLATION DETECTED</div><div style="color:#94a3b8;font-size:14px;font-weight:400;margin-top:12px;max-width:480px;">This software is cryptographically licensed exclusively for konjobet.com. Code execution and API operations have been permanently disabled.</div></div>';
+    throw new Error("License validation failed: Unauthorized domain.");
+  }
+})();
+
 const STORAGE = "sport-betting-v1";
 const API_BASE = "https://multi-shop-games-2.onrender.com/api/games/sportsbook";
 const BOOKMAKER = 8;
