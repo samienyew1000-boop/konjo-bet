@@ -113,6 +113,7 @@ const server = http.createServer((req, res) => {
   if (safePath.startsWith('/frontend') || safePath.startsWith('\\frontend')) {
     const rel = safePath.replace(/^[\\\/]frontend[\\\/]?/, '');
     candidates.push(path.join(FRONTEND_DIR, rel));
+    candidates.push(path.join(ROOT_DIR, rel));
     candidates.push(path.join(ROOT_DIR, safePath));
   } else {
     candidates.push(path.join(FRONTEND_DIR, safePath));
