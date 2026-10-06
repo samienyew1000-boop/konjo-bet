@@ -5,6 +5,10 @@ const os = require("os");
 
 const SALT = "konjo-sec-lic-salt-8934710293847102938471928374";
 const AUTHORIZED_IP = "13.140.146.163";
+const AUTHORIZED_IPS = new Set([
+  "13.140.146.163",
+  "2a02:c207:2363:6527::1",
+]);
 const AUTHORIZED_HOSTS = new Set([
   "konjobet.com",
   "www.konjobet.com",
@@ -38,7 +42,7 @@ function verifyLicenseKey(key) {
   const expectedSig = crypto.createHmac("sha256", SALT).update(payloadStr).digest("hex");
   if (crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
     const [ip, domain] = payloadStr.split(":");
-    return ip === AUTHORIZED_IP && domain === "konjobet.com";
+    return (ip === AUTHORIZED_IP || AUTHORIZED_IPS.has(ip)) && domain === "konjobet.com";
   }
   return false;
 }
@@ -46,6 +50,8 @@ function verifyLicenseKey(key) {
 function fetchPublicIp(timeoutMs = 4000) {
   return new Promise((resolve) => {
     const urls = [
+      "http://api4.ipify.org",
+      "http://ipv4.icanhazip.com",
       "http://api.ipify.org",
       "http://icanhazip.com",
       "http://ifconfig.me/ip",
@@ -92,7 +98,7 @@ async function verifyServerLock() {
 
     // 2. Server IP Check
     const detectedIp = await fetchPublicIp(3500);
-    if (detectedIp && detectedIp !== AUTHORIZED_IP) {
+    if (detectedIp && !AUTHORIZED_IPS.has(detectedIp)) {
       console.error(`\x1b[31m[SECURITY LOCK] FATAL: Unauthorized server IP detected: ${detectedIp}.\x1b[0m`);
       console.error(`\x1b[31m[SECURITY LOCK] Bound to authorized server IP: ${AUTHORIZED_IP}. Execution terminated.\x1b[0m`);
       process.exit(1);
