@@ -517,6 +517,47 @@
     }, true);
   }
 
+  function getAdminConfig() {
+    try {
+      const raw = localStorage.getItem(ADMIN_CONFIG_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return {
+      globalMargin: 15,
+      profitControlEnabled: true,
+      maxWinPayoutCap: 50000,
+      games: {
+        aviator: { enabled: true, targetMargin: 15, instantCrashRate: 6, maxMultiplier: 100 },
+        chicken: { enabled: true, targetMargin: 15, dangerLevel: 'medium' },
+        keno: { enabled: true, targetMargin: 12 },
+        fish: { enabled: true, targetMargin: 15 },
+        infinity: { enabled: true, targetMargin: 15 },
+        bingo: { enabled: true, targetMargin: 15 }
+      }
+    };
+  }
+
+  function updateAdminConfig(cfg) {
+    if (!cfg || typeof cfg !== 'object') return;
+    try {
+      localStorage.setItem(ADMIN_CONFIG_KEY, JSON.stringify(cfg));
+    } catch (_) {}
+  }
+
+  async function syncAdminConfigWithServer() {
+    try {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/api/wallet/game-config`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.ok && data.config) {
+        updateAdminConfig(data.config);
+      }
+    } catch (_) {}
+  }
+
   // Public Interface
   const HabeshaWallet = {
     KEY: STORAGE_KEY_REAL,
@@ -535,7 +576,10 @@
     showLoginModal: showLoginModal,
     hideLoginModal: hideLoginModal,
     syncBalanceWithServer: syncBalanceWithServer,
-    syncLegacyStorages: syncLegacyStorages
+    syncLegacyStorages: syncLegacyStorages,
+    getAdminConfig: getAdminConfig,
+    updateAdminConfig: updateAdminConfig,
+    syncAdminConfigWithServer: syncAdminConfigWithServer
   };
 
   global.HabeshaWallet = HabeshaWallet;
@@ -546,10 +590,12 @@
     document.addEventListener('DOMContentLoaded', () => {
       checkLoginRequirement();
       setupInteractionGuard();
+      syncAdminConfigWithServer();
     });
   } else {
     checkLoginRequirement();
     setupInteractionGuard();
+    syncAdminConfigWithServer();
   }
 
 })(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

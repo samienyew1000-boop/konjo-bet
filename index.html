@@ -1438,6 +1438,9 @@
                 <button type="button" class="sa-nav-item" data-sa-tab="bonus" id="sa-tab-bonus-btn">
                   <span class="sa-nav-icon">✦</span><span>Bonus rules</span><span class="sa-nav-count" id="sa-tab-bonus-count">0</span>
                 </button>
+                <button type="button" class="sa-nav-item" data-sa-tab="game-control" id="sa-tab-game-control-btn">
+                  <span class="sa-nav-icon">🎮</span><span>Game Profit Control</span>
+                </button>
                 <button type="button" class="sa-nav-item" data-sa-tab="settings" id="sa-tab-settings-btn">
                   <span class="sa-nav-icon">⚙</span><span>Platform settings</span>
                 </button>
@@ -1605,6 +1608,246 @@
                 <div class="sa-workspace" id="sa-content-settings" data-sa-workspace="settings" hidden>
                   <div class="sa-workspace-toolbar"><div><span class="sa-section-kicker">PLATFORM CONFIGURATION</span><h2 class="sa-workspace-title-large">Platform settings</h2><p class="sa-workspace-subtitle">Manage payment receivers, limits and global bonus eligibility.</p></div></div>
                   <form id="sa-settings-form" class="sa-settings-layout"><section class="sa-panel"><div class="sa-panel-head"><div><span class="sa-panel-kicker">PAYMENT RAILS</span><h2 class="sa-panel-title">Deposit receivers</h2><p class="sa-panel-desc">These details are shown to players during deposit requests.</p></div></div><div class="sa-settings-grid"><div class="sa-form-group"><label class="sa-form-label" for="sa-cfg-telebirr">Telebirr receiver number</label><input type="text" id="sa-cfg-telebirr" class="sa-form-input" placeholder="0937383800" required /><span class="sa-form-hint">The active mobile number displayed for Telebirr deposits.</span></div><div class="sa-form-group"><label class="sa-form-label" for="sa-cfg-cbe">CBE Birr receiver account</label><input type="text" id="sa-cfg-cbe" class="sa-form-input" placeholder="1000123456789" required /><span class="sa-form-hint">The settlement account displayed for CBE Birr transfers.</span></div><div class="sa-form-group"><label class="sa-form-label" for="sa-cfg-min">Minimum deposit (ETB)</label><input type="number" id="sa-cfg-min" class="sa-form-input" min="1" placeholder="100" required /></div><div class="sa-form-group"><label class="sa-form-label" for="sa-cfg-max">Maximum deposit (ETB)</label><input type="number" id="sa-cfg-max" class="sa-form-input" min="100" placeholder="75000" required /></div></div></section><section class="sa-panel"><div class="sa-panel-head"><div><span class="sa-panel-kicker">BONUS ELIGIBILITY</span><h2 class="sa-panel-title">Global rule defaults</h2><p class="sa-panel-desc">Rule-level values can still override these platform defaults.</p></div></div><div class="sa-settings-grid"><div class="sa-form-group"><label class="sa-form-label" for="sa-cfg-bonus-min-odd">Minimum odd per selection</label><input type="number" id="sa-cfg-bonus-min-odd" class="sa-form-input" min="1.01" step="0.01" placeholder="1.15" /></div><label class="sa-settings-toggle"><input type="checkbox" id="sa-cfg-bonus-enabled" /><span class="sa-toggle-track"></span><span><strong>Enable bonus system</strong><small>Allow eligible near-miss bonus awards.</small></span></label></div></section><section class="sa-panel"><div class="sa-panel-head"><div><span class="sa-panel-kicker">WELCOME PROMOTION</span><h2 class="sa-panel-title">Registration / Sign-up bonus</h2><p class="sa-panel-desc">Award a promotional balance to new players upon successful registration.</p></div></div><div class="sa-settings-grid"><label class="sa-settings-toggle"><input type="checkbox" id="sa-cfg-reg-bonus-enabled" /><span class="sa-toggle-track"></span><span><strong>Enable registration bonus</strong><small>Give new players instant free credit upon sign-up.</small></span></label><div class="sa-form-group"><label class="sa-form-label" for="sa-cfg-reg-bonus-amount">Bonus amount (ETB)</label><input type="number" id="sa-cfg-reg-bonus-amount" class="sa-form-input" min="0" step="1" placeholder="0" /><span class="sa-form-hint">Amount credited to player wallet when enabled (0 disables bonus).</span></div></div></section><section class="sa-panel"><div class="sa-panel-head"><div><span class="sa-panel-kicker">AFFILIATE & PROMOTERS</span><h2 class="sa-panel-title">Referral bonus</h2><p class="sa-panel-desc">Reward users when they invite new players who register with their referral code.</p></div></div><div class="sa-settings-grid"><label class="sa-settings-toggle"><input type="checkbox" id="sa-cfg-ref-bonus-enabled" /><span class="sa-toggle-track"></span><span><strong>Enable referral bonus</strong><small>Reward referrers when their code is used at registration.</small></span></label><div class="sa-form-group"><label class="sa-form-label" for="sa-cfg-ref-bonus-amount">Referral reward (ETB)</label><input type="number" id="sa-cfg-ref-bonus-amount" class="sa-form-input" min="0" step="1" placeholder="0" /><span class="sa-form-hint">Amount credited to the referrer's wallet per valid signup.</span></div></div></section><div class="sa-form-actions sa-settings-actions"><button type="submit" class="sa-btn sa-btn--primary" id="sa-save-settings-btn">Save live settings</button><span id="sa-settings-status" class="sa-status-indicator"></span></div></form>
+                </div>
+
+                <!-- GAME PROFIT CONTROL WORKSPACE -->
+                <div class="sa-workspace" id="sa-content-game-control" data-sa-workspace="game-control" hidden>
+                  <div class="sa-workspace-toolbar">
+                    <div>
+                      <span class="sa-section-kicker">CASINO & MINI-GAMES</span>
+                      <h2 class="sa-workspace-title-large">Game Profit & RTP Control</h2>
+                      <p class="sa-workspace-subtitle">Control operator profit margins, house edge, and difficulty curves for Aviator, Chicken Road, Fast Keno, and all mini-games.</p>
+                    </div>
+                    <div class="sa-toolbar-actions">
+                      <button type="button" class="sa-btn sa-btn--secondary" id="sa-game-control-refresh-btn">⟳ Refresh Stats</button>
+                    </div>
+                  </div>
+
+                  <!-- TOP METRICS STATS -->
+                  <div class="sa-stat-grid" style="margin-bottom: 24px;">
+                    <div class="sa-stat-card">
+                      <div class="sa-stat-card-head">
+                        <span class="sa-stat-card-title">Mini-Game Turnover</span>
+                        <span class="sa-stat-card-pill">Bets</span>
+                      </div>
+                      <div class="sa-stat-card-val" id="sa-gc-stat-turnover">0.00 ETB</div>
+                      <div class="sa-stat-card-foot" id="sa-gc-stat-bets-count">Total rounds: 0</div>
+                    </div>
+                    <div class="sa-stat-card">
+                      <div class="sa-stat-card-head">
+                        <span class="sa-stat-card-title">Total Player Payouts</span>
+                        <span class="sa-stat-card-pill">Winnings</span>
+                      </div>
+                      <div class="sa-stat-card-val" id="sa-gc-stat-payout">0.00 ETB</div>
+                      <div class="sa-stat-card-foot" id="sa-gc-stat-wins-count">Won rounds: 0</div>
+                    </div>
+                    <div class="sa-stat-card">
+                      <div class="sa-stat-card-head">
+                        <span class="sa-stat-card-title">Net House Profit</span>
+                        <span class="sa-stat-card-pill">Revenue</span>
+                      </div>
+                      <div class="sa-stat-card-val" style="color: #10b981;" id="sa-gc-stat-profit">0.00 ETB</div>
+                      <div class="sa-stat-card-foot">Total retainable margin</div>
+                    </div>
+                    <div class="sa-stat-card">
+                      <div class="sa-stat-card-head">
+                        <span class="sa-stat-card-title">Realized House Margin</span>
+                        <span class="sa-stat-card-pill">Edge</span>
+                      </div>
+                      <div class="sa-stat-card-val" style="color: #ef4444;" id="sa-gc-stat-margin">0.0%</div>
+                      <div class="sa-stat-card-foot">Historical win rate</div>
+                    </div>
+                  </div>
+
+                  <form id="sa-game-control-form" class="sa-settings-layout">
+                    <!-- PRESET SELECTOR -->
+                    <section class="sa-panel">
+                      <div class="sa-panel-head">
+                        <div>
+                          <span class="sa-panel-kicker">QUICK PRESETS</span>
+                          <h2 class="sa-panel-title">Master Margin Preset</h2>
+                          <p class="sa-panel-desc">Quickly configure all games simultaneously to match your profit target.</p>
+                        </div>
+                      </div>
+                      <div style="display: flex; gap: 12px; flex-wrap: wrap; padding: 16px;">
+                        <button type="button" class="sa-btn sa-btn--secondary sa-gc-preset-btn" data-preset="conservative" style="flex: 1; min-width: 140px; padding: 14px 10px; text-align: center;">
+                          <strong style="display: block; font-size: 14px; color: #10b981;">🛡️ Conservative</strong>
+                          <span style="font-size: 12px; color: #94a3b8;">5% Margin (95% RTP)</span>
+                        </button>
+                        <button type="button" class="sa-btn sa-btn--secondary sa-gc-preset-btn" data-preset="standard" style="flex: 1; min-width: 140px; padding: 14px 10px; text-align: center; border-color: #ef4444;">
+                          <strong style="display: block; font-size: 14px; color: #ef4444;">⚖️ Standard (Recommended)</strong>
+                          <span style="font-size: 12px; color: #94a3b8;">15% Margin (85% RTP)</span>
+                        </button>
+                        <button type="button" class="sa-btn sa-btn--secondary sa-gc-preset-btn" data-preset="aggressive" style="flex: 1; min-width: 140px; padding: 14px 10px; text-align: center;">
+                          <strong style="display: block; font-size: 14px; color: #f59e0b;">⚡ Aggressive</strong>
+                          <span style="font-size: 12px; color: #94a3b8;">25% Margin (75% RTP)</span>
+                        </button>
+                        <button type="button" class="sa-btn sa-btn--secondary sa-gc-preset-btn" data-preset="high" style="flex: 1; min-width: 140px; padding: 14px 10px; text-align: center;">
+                          <strong style="display: block; font-size: 14px; color: #ec4899;">💎 High House Edge</strong>
+                          <span style="font-size: 12px; color: #94a3b8;">35% Margin (65% RTP)</span>
+                        </button>
+                      </div>
+                    </section>
+
+                    <!-- GLOBAL MASTER CONTROLS -->
+                    <section class="sa-panel">
+                      <div class="sa-panel-head">
+                        <div>
+                          <span class="sa-panel-kicker">PLATFORM DEFAULTS</span>
+                          <h2 class="sa-panel-title">Global Operator Margin</h2>
+                          <p class="sa-panel-desc">Applies to all games unless individually customized below.</p>
+                        </div>
+                      </div>
+                      <div class="sa-settings-grid">
+                        <div class="sa-form-group">
+                          <label class="sa-form-label" for="sa-gc-global-margin">Global House Margin (%)</label>
+                          <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="sa-gc-global-margin-slider" min="1" max="50" step="0.5" value="15" style="flex: 1;" />
+                            <input type="number" id="sa-gc-global-margin" class="sa-form-input" min="1" max="99" step="0.5" value="15" style="width: 90px;" required />
+                            <span style="font-weight: 700; color: #9ca3af;">%</span>
+                          </div>
+                          <span class="sa-form-hint">Target operator net profit from total player turnover.</span>
+                        </div>
+                        <div class="sa-form-group">
+                          <label class="sa-form-label" for="sa-gc-max-win">Maximum Payout Cap per Round (ETB)</label>
+                          <input type="number" id="sa-gc-max-win" class="sa-form-input" min="100" step="500" value="50000" placeholder="50000" required />
+                          <span class="sa-form-hint">Prevents unexpected massive wins beyond this amount.</span>
+                        </div>
+                        <label class="sa-settings-toggle">
+                          <input type="checkbox" id="sa-gc-margin-enabled" checked />
+                          <span class="sa-toggle-track"></span>
+                          <span><strong>Enforce Profit Control Algorithm</strong><small>Actively tune probabilities to maintain target margin.</small></span>
+                        </label>
+                        <label class="sa-settings-toggle">
+                          <input type="checkbox" id="sa-gc-maintenance-mode" />
+                          <span class="sa-toggle-track"></span>
+                          <span><strong>Maintenance Mode (All Mini-Games)</strong><small>Temporarily pause all mini-games platform-wide.</small></span>
+                        </label>
+                      </div>
+                    </section>
+
+                    <!-- PER-GAME CUSTOMIZATION CARDS -->
+                    <section class="sa-panel">
+                      <div class="sa-panel-head">
+                        <div>
+                          <span class="sa-panel-kicker">INDIVIDUAL GAME TUNING</span>
+                          <h2 class="sa-panel-title">Specific Game Controls</h2>
+                          <p class="sa-panel-desc">Fine-tune each individual game's profit algorithm and behavior.</p>
+                        </div>
+                      </div>
+                      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; padding: 16px;">
+                        
+                        <!-- Aviator Card -->
+                        <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 18px;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong style="font-size: 16px; color: #ef4444;">✈️ Aviator</strong>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                              <input type="checkbox" id="sa-gc-game-aviator-enabled" checked /> Enabled
+                            </label>
+                          </div>
+                          <div class="sa-form-group" style="margin-bottom: 10px;">
+                            <label class="sa-form-label" style="font-size: 12px;">Target Margin (%)</label>
+                            <input type="number" id="sa-gc-game-aviator-margin" class="sa-form-input" min="1" max="90" step="0.5" value="15" />
+                          </div>
+                          <div class="sa-form-group" style="margin-bottom: 10px;">
+                            <label class="sa-form-label" style="font-size: 12px;">Instant Crash Rate (1.00x - 1.05x bust %)</label>
+                            <input type="number" id="sa-gc-game-aviator-crashrate" class="sa-form-input" min="0" max="30" step="1" value="6" />
+                          </div>
+                          <div class="sa-form-group">
+                            <label class="sa-form-label" style="font-size: 12px;">Max Multiplier Cap</label>
+                            <input type="number" id="sa-gc-game-aviator-maxmult" class="sa-form-input" min="5" max="1000" step="5" value="100" />
+                          </div>
+                        </div>
+
+                        <!-- Chicken Road Card -->
+                        <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 18px;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong style="font-size: 16px; color: #f59e0b;">🐔 Chicken Road</strong>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                              <input type="checkbox" id="sa-gc-game-chicken-enabled" checked /> Enabled
+                            </label>
+                          </div>
+                          <div class="sa-form-group" style="margin-bottom: 10px;">
+                            <label class="sa-form-label" style="font-size: 12px;">Target Margin (%)</label>
+                            <input type="number" id="sa-gc-game-chicken-margin" class="sa-form-input" min="1" max="90" step="0.5" value="15" />
+                          </div>
+                          <div class="sa-form-group">
+                            <label class="sa-form-label" style="font-size: 12px;">Vehicle Traffic & Danger Level</label>
+                            <select id="sa-gc-game-chicken-danger" class="sa-form-input">
+                              <option value="low">Low (Higher Player Survival)</option>
+                              <option value="medium" selected>Medium (Standard Profit)</option>
+                              <option value="high">High (High House Edge)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <!-- Fast Keno Card -->
+                        <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 18px;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong style="font-size: 16px; color: #3b82f6;">🎱 Fast Keno</strong>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                              <input type="checkbox" id="sa-gc-game-keno-enabled" checked /> Enabled
+                            </label>
+                          </div>
+                          <div class="sa-form-group">
+                            <label class="sa-form-label" style="font-size: 12px;">Target Margin (%)</label>
+                            <input type="number" id="sa-gc-game-keno-margin" class="sa-form-input" min="1" max="90" step="0.5" value="12" />
+                          </div>
+                        </div>
+
+                        <!-- Fish Card -->
+                        <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 18px;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong style="font-size: 16px; color: #10b981;">🐟 Fish Hunter</strong>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                              <input type="checkbox" id="sa-gc-game-fish-enabled" checked /> Enabled
+                            </label>
+                          </div>
+                          <div class="sa-form-group">
+                            <label class="sa-form-label" style="font-size: 12px;">Target Margin (%)</label>
+                            <input type="number" id="sa-gc-game-fish-margin" class="sa-form-input" min="1" max="90" step="0.5" value="15" />
+                          </div>
+                        </div>
+
+                        <!-- Infinity Card -->
+                        <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 18px;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong style="font-size: 16px; color: #8b5cf6;">♾️ Infinity</strong>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                              <input type="checkbox" id="sa-gc-game-infinity-enabled" checked /> Enabled
+                            </label>
+                          </div>
+                          <div class="sa-form-group">
+                            <label class="sa-form-label" style="font-size: 12px;">Target Margin (%)</label>
+                            <input type="number" id="sa-gc-game-infinity-margin" class="sa-form-input" min="1" max="90" step="0.5" value="15" />
+                          </div>
+                        </div>
+
+                        <!-- Bingo & Bingo Star Card -->
+                        <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 18px;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong style="font-size: 16px; color: #ec4899;">🎯 Lucky Bingo & Star</strong>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                              <input type="checkbox" id="sa-gc-game-bingo-enabled" checked /> Enabled
+                            </label>
+                          </div>
+                          <div class="sa-form-group">
+                            <label class="sa-form-label" style="font-size: 12px;">House Cut / Margin (%)</label>
+                            <input type="number" id="sa-gc-game-bingo-margin" class="sa-form-input" min="1" max="90" step="0.5" value="15" />
+                          </div>
+                        </div>
+
+                      </div>
+                    </section>
+
+                    <!-- SAVE ACTIONS -->
+                    <div class="sa-form-actions sa-settings-actions" style="display: flex; align-items: center; gap: 14px; margin-top: 20px;">
+                      <button type="submit" class="sa-btn sa-btn--primary" id="sa-save-game-control-btn" style="padding: 12px 24px; font-size: 14px; font-weight: 700;">
+                        Save & Apply Profit Margins Instantly
+                      </button>
+                      <span id="sa-game-control-status" class="sa-status-indicator" style="font-size: 13px; font-weight: 600;"></span>
+                    </div>
+                  </form>
                 </div>
               </main>
             </div>

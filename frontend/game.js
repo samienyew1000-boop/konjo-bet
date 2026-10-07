@@ -17973,6 +17973,11 @@ const SA_WORKSPACE_META = {
     title: "Platform settings",
     desc: "Manage payment receivers, limits and global bonus eligibility.",
   },
+  "game-control": {
+    eyebrow: "CASINO & MINI-GAMES",
+    title: "Game profit & RTP control",
+    desc: "Configure house edge, payout margins, and safety limits across Aviator and all mini-games.",
+  },
 };
 
 function saMoney(value) {
@@ -18230,6 +18235,22 @@ function bindSuperAdminPortalEvents() {
     saState.bonusFilter = chip.dataset.bonusFilter || "all";
     renderSuperAdminBonusTable(saState.bonusFilter);
   }));
+
+  bindSaOnce($("sa-game-control-form"), "submit", handleSuperAdminSaveGameControl);
+  bindSaOnce($("sa-game-control-refresh-btn"), "click", () => renderSuperAdminGameControl(true));
+  bindSaOnce($("sa-gc-global-margin-slider"), "input", (e) => {
+    const input = $("sa-gc-global-margin");
+    if (input) input.value = e.target.value;
+  });
+  bindSaOnce($("sa-gc-global-margin"), "input", (e) => {
+    const slider = $("sa-gc-global-margin-slider");
+    if (slider) slider.value = e.target.value;
+  });
+  document.querySelectorAll(".sa-gc-preset-btn").forEach((btn) => {
+    bindSaOnce(btn, "click", () => {
+      applySuperAdminGameControlPreset(btn.dataset.preset);
+    });
+  });
 }
 
 function switchSuperAdminTab(targetTab) {
@@ -18261,6 +18282,7 @@ function switchSuperAdminTab(targetTab) {
   if (tab === "finance") renderSuperAdminFinance();
   if (tab === "bonus") renderSuperAdminBonusTable(saState.bonusFilter || "all");
   if (tab === "settings") populateSuperAdminSettingsForm();
+  if (tab === "game-control") renderSuperAdminGameControl();
 }
 
 function saApiResultError(result, fallback) {
@@ -19144,6 +19166,241 @@ async function handleSuperAdminSaveSettings(e) {
       statusEl.textContent = "Failed to save settings.";
     }
     toast(err.message || "Failed to save settings", "err");
+  }
+}
+
+// ------------------------------------------------------------
+// SUPER ADMIN: GAME PROFIT & RTP CONTROL
+// ------------------------------------------------------------
+
+function applySuperAdminGameControlPreset(preset) {
+  const presets = {
+    conservative: { margin: 5, aviatorCrashRate: 3, aviatorMaxMult: 250, danger: "low" },
+    standard: { margin: 15, aviatorCrashRate: 6, aviatorMaxMult: 100, danger: "medium" },
+    aggressive: { margin: 25, aviatorCrashRate: 10, aviatorMaxMult: 50, danger: "high" },
+    high: { margin: 35, aviatorCrashRate: 15, aviatorMaxMult: 25, danger: "high" },
+  };
+  const cfg = presets[preset] || presets.standard;
+
+  const gm = $("sa-gc-global-margin");
+  const gms = $("sa-gc-global-margin-slider");
+  if (gm) gm.value = cfg.margin;
+  if (gms) gms.value = cfg.margin;
+
+  const avMargin = $("sa-gc-game-aviator-margin");
+  const avCrash = $("sa-gc-game-aviator-crashrate");
+  const avMult = $("sa-gc-game-aviator-maxmult");
+  if (avMargin) avMargin.value = cfg.margin;
+  if (avCrash) avCrash.value = cfg.aviatorCrashRate;
+  if (avMult) avMult.value = cfg.aviatorMaxMult;
+
+  const chMargin = $("sa-gc-game-chicken-margin");
+  const chDanger = $("sa-gc-game-chicken-danger");
+  if (chMargin) chMargin.value = cfg.margin;
+  if (chDanger) chDanger.value = cfg.danger;
+
+  ["keno", "fish", "infinity", "bingo"].forEach((game) => {
+    const el = $(`sa-gc-game-${game}-margin`);
+    if (el) el.value = cfg.margin;
+  });
+
+  document.querySelectorAll(".sa-gc-preset-btn").forEach((btn) => {
+    const isActive = btn.dataset.preset === preset;
+    btn.style.borderColor = isActive ? "#ef4444" : "rgba(255,255,255,0.1)";
+    btn.style.boxShadow = isActive ? "0 0 12px rgba(239, 68, 68, 0.4)" : "none";
+  });
+}
+
+async function renderSuperAdminGameControl(force = false) {
+  const statusEl = $("sa-game-control-status");
+  try {
+    if (statusEl) {
+      statusEl.style.color = "#94a3b8";
+      statusEl.textContent = "Loading live game stats & profit settings...";
+    }
+    const res = await api().superAdminGetGameProfitControl();
+    if (!res || !res.ok) throw new Error(res?.error || "Failed to load profit configuration");
+
+    // Populate Stats
+    const stats = res.stats || {};
+    const turnoverEl = $("sa-gc-stat-turnover");
+    const betsCountEl = $("sa-gc-stat-bets-count");
+    const payoutEl = $("sa-gc-stat-payout");
+    const winsCountEl = $("sa-gc-stat-wins-count");
+    const profitEl = $("sa-gc-stat-profit");
+    const marginEl = $("sa-gc-stat-margin");
+
+    if (turnoverEl) turnoverEl.textContent = saMoney(stats.totalTurnover || 0);
+    if (betsCountEl) betsCountEl.textContent = `Total rounds: ${fmt(stats.totalBets || 0)}`;
+    if (payoutEl) payoutEl.textContent = saMoney(stats.totalPayout || 0);
+    if (winsCountEl) winsCountEl.textContent = `Won rounds: ${fmt(stats.totalWins || 0)}`;
+    if (profitEl) {
+      const netProfit = Number(stats.netProfit) || 0;
+      profitEl.textContent = saMoney(netProfit);
+      profitEl.style.color = netProfit >= 0 ? "#10b981" : "#ef4444";
+    }
+    if (marginEl) {
+      const m = Number(stats.profitMargin) || 0;
+      marginEl.textContent = `${m.toFixed(1)}%`;
+      marginEl.style.color = m >= 15 ? "#10b981" : m >= 0 ? "#f59e0b" : "#ef4444";
+    }
+
+    // Populate Settings Form
+    const cfg = res.config || {};
+    const gm = $("sa-gc-global-margin");
+    const gms = $("sa-gc-global-margin-slider");
+    if (gm) gm.value = cfg.globalMargin ?? 15;
+    if (gms) gms.value = cfg.globalMargin ?? 15;
+
+    const maxWin = $("sa-gc-max-win");
+    if (maxWin) maxWin.value = cfg.maxWinPayoutCap ?? 50000;
+
+    const enforce = $("sa-gc-margin-enabled");
+    if (enforce) enforce.checked = cfg.profitControlEnabled !== false;
+
+    const maint = $("sa-gc-maintenance-mode");
+    if (maint) maint.checked = Boolean(cfg.maintenanceMode);
+
+    // Per-game configs
+    const games = cfg.games || {};
+
+    // Aviator
+    const av = games.aviator || {};
+    const avEn = $("sa-gc-game-aviator-enabled");
+    const avMg = $("sa-gc-game-aviator-margin");
+    const avCr = $("sa-gc-game-aviator-crashrate");
+    const avMx = $("sa-gc-game-aviator-maxmult");
+    if (avEn) avEn.checked = av.enabled !== false;
+    if (avMg) avMg.value = av.targetMargin ?? 15;
+    if (avCr) avCr.value = av.instantCrashRate ?? 6;
+    if (avMx) avMx.value = av.maxMultiplier ?? 100;
+
+    // Chicken
+    const ch = games.chicken || {};
+    const chEn = $("sa-gc-game-chicken-enabled");
+    const chMg = $("sa-gc-game-chicken-margin");
+    const chDg = $("sa-gc-game-chicken-danger");
+    if (chEn) chEn.checked = ch.enabled !== false;
+    if (chMg) chMg.value = ch.targetMargin ?? 15;
+    if (chDg) chDg.value = ch.dangerLevel || "medium";
+
+    // Fast Keno
+    const kn = games.keno || {};
+    const knEn = $("sa-gc-game-keno-enabled");
+    const knMg = $("sa-gc-game-keno-margin");
+    if (knEn) knEn.checked = kn.enabled !== false;
+    if (knMg) knMg.value = kn.targetMargin ?? 12;
+
+    // Fish
+    const fs = games.fish || {};
+    const fsEn = $("sa-gc-game-fish-enabled");
+    const fsMg = $("sa-gc-game-fish-margin");
+    if (fsEn) fsEn.checked = fs.enabled !== false;
+    if (fsMg) fsMg.value = fs.targetMargin ?? 15;
+
+    // Infinity
+    const inf = games.infinity || {};
+    const infEn = $("sa-gc-game-infinity-enabled");
+    const infMg = $("sa-gc-game-infinity-margin");
+    if (infEn) infEn.checked = inf.enabled !== false;
+    if (infMg) infMg.value = inf.targetMargin ?? 15;
+
+    // Bingo
+    const bg = games.bingo || {};
+    const bgEn = $("sa-gc-game-bingo-enabled");
+    const bgMg = $("sa-gc-game-bingo-margin");
+    if (bgEn) bgEn.checked = bg.enabled !== false;
+    if (bgMg) bgMg.value = bg.targetMargin ?? 15;
+
+    // Also update HabeshaWallet local cache if available
+    if (window.HabeshaWallet && typeof window.HabeshaWallet.updateAdminConfig === "function") {
+      window.HabeshaWallet.updateAdminConfig(cfg);
+    }
+
+    if (statusEl) {
+      statusEl.style.color = "#4ade80";
+      statusEl.textContent = force ? "✓ Stats refreshed!" : "";
+      if (force) setTimeout(() => { statusEl.textContent = ""; }, 3000);
+    }
+  } catch (err) {
+    console.error("renderSuperAdminGameControl error:", err);
+    if (statusEl) {
+      statusEl.style.color = "#f87171";
+      statusEl.textContent = `Error: ${err.message}`;
+    }
+  }
+}
+
+async function handleSuperAdminSaveGameControl(event) {
+  event.preventDefault();
+  const statusEl = $("sa-game-control-status");
+  const saveBtn = $("sa-save-game-control-btn");
+
+  const payload = {
+    globalMargin: Number($("sa-gc-global-margin")?.value || 15),
+    maxWinPayoutCap: Number($("sa-gc-max-win")?.value || 50000),
+    profitControlEnabled: Boolean($("sa-gc-margin-enabled")?.checked),
+    maintenanceMode: Boolean($("sa-gc-maintenance-mode")?.checked),
+    games: {
+      aviator: {
+        enabled: Boolean($("sa-gc-game-aviator-enabled")?.checked),
+        targetMargin: Number($("sa-gc-game-aviator-margin")?.value || 15),
+        instantCrashRate: Number($("sa-gc-game-aviator-crashrate")?.value || 6),
+        maxMultiplier: Number($("sa-gc-game-aviator-maxmult")?.value || 100),
+      },
+      chicken: {
+        enabled: Boolean($("sa-gc-game-chicken-enabled")?.checked),
+        targetMargin: Number($("sa-gc-game-chicken-margin")?.value || 15),
+        dangerLevel: $("sa-gc-game-chicken-danger")?.value || "medium",
+      },
+      keno: {
+        enabled: Boolean($("sa-gc-game-keno-enabled")?.checked),
+        targetMargin: Number($("sa-gc-game-keno-margin")?.value || 12),
+      },
+      fish: {
+        enabled: Boolean($("sa-gc-game-fish-enabled")?.checked),
+        targetMargin: Number($("sa-gc-game-fish-margin")?.value || 15),
+      },
+      infinity: {
+        enabled: Boolean($("sa-gc-game-infinity-enabled")?.checked),
+        targetMargin: Number($("sa-gc-game-infinity-margin")?.value || 15),
+      },
+      bingo: {
+        enabled: Boolean($("sa-gc-game-bingo-enabled")?.checked),
+        targetMargin: Number($("sa-gc-game-bingo-margin")?.value || 15),
+      },
+    },
+  };
+
+  try {
+    if (saveBtn) saveBtn.disabled = true;
+    if (statusEl) {
+      statusEl.style.color = "#94a3b8";
+      statusEl.textContent = "Saving profit controls to network...";
+    }
+    const res = await api().superAdminSaveGameProfitControl(payload);
+    if (!res || !res.ok) throw new Error(res?.error || "Failed to save profit controls");
+
+    // Also update HabeshaWallet local cache
+    if (window.HabeshaWallet && typeof window.HabeshaWallet.updateAdminConfig === "function") {
+      window.HabeshaWallet.updateAdminConfig(res.config || payload);
+    }
+
+    if (statusEl) {
+      statusEl.style.color = "#4ade80";
+      statusEl.textContent = "✓ Saved! New margins & RTP applied platform-wide across all games.";
+      setTimeout(() => { statusEl.textContent = ""; }, 5000);
+    }
+    toast("Game profit control settings applied successfully!", "ok");
+  } catch (err) {
+    console.error("handleSuperAdminSaveGameControl error:", err);
+    if (statusEl) {
+      statusEl.style.color = "#f87171";
+      statusEl.textContent = `Error: ${err.message}`;
+    }
+    toast(err.message || "Failed to save profit control settings", "err");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
 

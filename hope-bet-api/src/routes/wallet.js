@@ -1,5 +1,5 @@
 const express = require("express");
-const { ensureWallet, debitWallet, creditWallet } = require("../db");
+const { ensureWallet, debitWallet, creditWallet, loadStore } = require("../db");
 const { authRequired } = require("../middleware/auth");
 
 const router = express.Router();
@@ -11,6 +11,39 @@ router.get("/balance", authRequired, (req, res) => {
     balance: wallet.balance,
     currency: wallet.currency || process.env.CURRENCY || "ETB",
   });
+});
+
+// Fast configuration endpoint for games to read current house margin & max win
+router.get("/game-config", (_req, res) => {
+  try {
+    const store = loadStore();
+    const cfg = store.gameProfitControl || {
+      globalProfitMargin: 15.0,
+      globalMarginEnabled: true,
+      maxWinPerRound: 50000.0,
+      maintenanceMode: false,
+      games: {
+        aviator: { margin: 15.0, instantCrashRate: 6.0, maxMultiplier: 100.0, enabled: true },
+        chickenRoad: { margin: 15.0, dangerLevel: "medium", enabled: true },
+        fastKeno: { margin: 12.0, enabled: true },
+        fish: { margin: 15.0, enabled: true },
+        infinity: { margin: 15.0, enabled: true },
+        bingo: { margin: 15.0, enabled: true },
+        bingoStar: { margin: 15.0, enabled: true },
+      },
+    };
+    res.json({ ok: true, config: cfg });
+  } catch (_) {
+    res.json({
+      ok: true,
+      config: {
+        globalProfitMargin: 15.0,
+        globalMarginEnabled: true,
+        maxWinPerRound: 50000.0,
+        maintenanceMode: false,
+      },
+    });
+  }
 });
 
 // Deduct bet amount for mini-games (Aviator, Keno, Chicken Road, Fish, etc.)

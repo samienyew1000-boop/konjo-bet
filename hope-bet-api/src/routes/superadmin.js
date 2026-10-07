@@ -1086,4 +1086,102 @@ router.post("/users/:id/topup", (req, res) => {
   }
 });
 
+// ============================================================
+// GAME PROFIT & RTP CONTROL ENDPOINTS
+// ============================================================
+
+const DEFAULT_GAME_PROFIT_CONFIG = {
+  globalMargin: 15,
+  profitControlEnabled: true,
+  maxWinPayoutCap: 50000,
+  maintenanceMode: false,
+  games: {
+    aviator: { enabled: true, targetMargin: 15, instantCrashRate: 6, maxMultiplier: 100 },
+    chicken: { enabled: true, targetMargin: 15, dangerLevel: "medium" },
+    keno: { enabled: true, targetMargin: 12 },
+    fish: { enabled: true, targetMargin: 15 },
+    infinity: { enabled: true, targetMargin: 15 },
+    bingo: { enabled: true, targetMargin: 15 },
+  },
+};
+
+router.get("/games/profit-control", (req, res) => {
+  try {
+    const store = loadStore();
+    const config = Object.assign({}, DEFAULT_GAME_PROFIT_CONFIG, store.gameProfitControl || {});
+
+    // Compute live turnover, payouts, profit from transactions
+    const transactions = Array.isArray(store.transactions) ? store.transactions : [];
+    let totalTurnover = 0;
+    let totalBets = 0;
+    let totalPayout = 0;
+    let totalWins = 0;
+
+    transactions.forEach((tx) => {
+      const type = String(tx.type || "").toLowerCase();
+      const amount = Number(tx.amount) || 0;
+      if (type === "game_bet") {
+        totalTurnover += Math.abs(amount);
+        totalBets += 1;
+      } else if (type === "game_win") {
+        totalPayout += Math.abs(amount);
+        if (amount > 0) totalWins += 1;
+      }
+    });
+
+    const netProfit = Math.round((totalTurnover - totalPayout) * 100) / 100;
+    const profitMargin = totalTurnover > 0 ? Math.round(((netProfit / totalTurnover) * 100) * 10) / 10 : 0;
+
+    res.json({
+      ok: true,
+      config,
+      stats: {
+        totalTurnover: Math.round(totalTurnover * 100) / 100,
+        totalBets,
+        totalPayout: Math.round(totalPayout * 100) / 100,
+        totalWins,
+        netProfit,
+        profitMargin,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/games/profit-control", (req, res) => {
+  try {
+    const incoming = req.body || {};
+    let savedConfig = null;
+
+    withStore((store) => {
+      const current = Object.assign({}, DEFAULT_GAME_PROFIT_CONFIG, store.gameProfitControl || {});
+      const updated = {
+        globalMargin: Number(incoming.globalMargin !== undefined ? incoming.globalMargin : current.globalMargin),
+        profitControlEnabled: incoming.profitControlEnabled !== undefined ? Boolean(incoming.profitControlEnabled) : current.profitControlEnabled,
+        maxWinPayoutCap: Number(incoming.maxWinPayoutCap !== undefined ? incoming.maxWinPayoutCap : current.maxWinPayoutCap),
+        maintenanceMode: incoming.maintenanceMode !== undefined ? Boolean(incoming.maintenanceMode) : current.maintenanceMode,
+        games: Object.assign({}, current.games, incoming.games || {}),
+        updatedAt: nowIso(),
+        updatedBy: req.user.username || req.user.id,
+      };
+
+      store.gameProfitControl = updated;
+      savedConfig = updated;
+      addAuditLog(store, req.user, "game.profit_control.update", { type: "system", id: "game_control" }, {
+        globalMargin: updated.globalMargin,
+        profitControlEnabled: updated.profitControlEnabled,
+      });
+    });
+
+    res.json({
+      ok: true,
+      config: savedConfig,
+      message: "Game profit controls updated successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;

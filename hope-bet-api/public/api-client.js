@@ -1103,6 +1103,48 @@
     }
   }
 
+  async function superAdminGetGameProfitControl() {
+    try {
+      return await request("/api/super/games/profit-control");
+    } catch (_) {
+      const local = JSON.parse(localStorage.getItem("habesha_admin_config_v1") || "{}");
+      return {
+        ok: true,
+        control: {
+          globalProfitMargin: local.globalMargin || 15,
+          globalMarginEnabled: local.globalMarginEnabled !== false,
+          maxWinPerRound: 50000,
+          preset: "standard",
+          games: local.games || {},
+        },
+        stats: {
+          turnover: "0.00",
+          payout: "0.00",
+          netProfit: "0.00",
+          realizedMargin: "0.0%",
+          totalBetsCount: 0,
+          totalWinsCount: 0,
+        },
+      };
+    }
+  }
+
+  async function superAdminSaveGameProfitControl(payload) {
+    try {
+      const res = await request("/api/super/games/profit-control", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (res && res.ok && res.control) {
+        localStorage.setItem("habesha_admin_config_v1", JSON.stringify(res.control));
+      }
+      return res;
+    } catch (_) {
+      localStorage.setItem("habesha_admin_config_v1", JSON.stringify(payload));
+      return { ok: true, control: payload, message: "Saved locally" };
+    }
+  }
+
   async function superAdminGetBonusRules() {
     try {
       return await request("/api/super/bonus-rules");
@@ -1453,6 +1495,8 @@
     superAdminSetPlayerStatus,
     superAdminGetSettings,
     superAdminSaveSettings,
+    superAdminGetGameProfitControl,
+    superAdminSaveGameProfitControl,
     superAdminGetBonusRules,
     superAdminSaveBonusRule,
     superAdminUpdateBonusRule,

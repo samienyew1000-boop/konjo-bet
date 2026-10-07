@@ -345,12 +345,42 @@
 
   // --- Game Loop Engine ---
   function generateCrashPoint() {
+    let cfg = null;
+    try {
+      if (window.HabeshaWallet && typeof window.HabeshaWallet.getAdminConfig === 'function') {
+        cfg = window.HabeshaWallet.getAdminConfig();
+      }
+    } catch (_) {}
+
+    const avCfg = (cfg && cfg.games && cfg.games.aviator) || {};
+    const globalMargin = Number(cfg?.globalMargin ?? 15);
+    const targetMargin = Number(avCfg.targetMargin ?? globalMargin);
+    const instantCrashRate = Number(avCfg.instantCrashRate ?? (targetMargin >= 25 ? 10 : targetMargin >= 15 ? 6 : 3));
+    const maxMultiplier = Number(avCfg.maxMultiplier ?? 100);
+
     const rand = Math.random();
-    if (rand < 0.05) return 1.00; // Immediate bust
-    if (rand < 0.45) return 1.10 + Math.random() * 1.5; // Low 1.10 - 2.60x
-    if (rand < 0.80) return 2.60 + Math.random() * 3.5; // Mid 2.60 - 6.10x
-    if (rand < 0.95) return 6.00 + Math.random() * 14.0; // High 6.00 - 20.0x
-    return 20.0 + Math.random() * 80.0; // Mega 20x - 100x
+    const bustThreshold = Math.max(0.01, Math.min(0.35, instantCrashRate / 100));
+    if (rand < bustThreshold) return 1.00;
+
+    // Scale remaining probability based on target margin
+    const marginRatio = Math.max(0.01, Math.min(0.50, targetMargin / 100));
+    const lowWeight = Math.min(0.70, bustThreshold + 0.35 + marginRatio * 0.5);
+    const midWeight = Math.min(0.90, lowWeight + 0.30);
+    const highWeight = Math.min(0.98, midWeight + 0.15);
+
+    let crash = 1.00;
+    if (rand < lowWeight) {
+      crash = 1.10 + Math.random() * 1.4; // 1.10 - 2.50x
+    } else if (rand < midWeight) {
+      crash = 2.50 + Math.random() * 3.0; // 2.50 - 5.50x
+    } else if (rand < highWeight) {
+      crash = 5.50 + Math.random() * 10.0; // 5.50 - 15.50x
+    } else {
+      const topCap = Math.max(20, maxMultiplier);
+      crash = 15.0 + Math.random() * (topCap - 15);
+    }
+
+    return Math.min(maxMultiplier, Math.max(1.00, Number(crash.toFixed(2))));
   }
 
   function startWaiting() {
