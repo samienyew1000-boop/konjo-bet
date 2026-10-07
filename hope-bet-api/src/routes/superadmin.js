@@ -190,6 +190,22 @@ function enrichDeposit(store, deposit, map = usersById(store)) {
   };
 }
 
+function enrichWithdrawal(store, w, map = usersById(store)) {
+  const user = map.get(String(w.user_id));
+  const shop = user && user.created_by_admin_id ? map.get(String(user.created_by_admin_id)) : null;
+  const wallet = walletOf(store, w.user_id);
+  return {
+    ...w,
+    username: user ? (user.username || userDisplayName(user)) : `User #${w.user_id}`,
+    userDisplayName: user ? userDisplayName(user) : `User #${w.user_id}`,
+    userPhone: user ? (user.phone || user.username || "—") : "—",
+    userRole: user ? (user.role || "player") : "player",
+    currentBalance: money(wallet.balance),
+    shopAdminId: shop ? shop.id : (user ? user.created_by_admin_id || null : null),
+    shopAdminName: shop ? userDisplayName(shop) : (user ? user.created_by_admin_name || "Direct / Online" : "Direct / Online"),
+  };
+}
+
 function enrichTransaction(store, tx, map = usersById(store)) {
   const user = map.get(String(tx.user_id));
   const meta = tx.meta || {};
@@ -293,6 +309,10 @@ function buildDashboard(store) {
     .filter((t) => String(t.type || "").toLowerCase().includes("bonus"))
     .reduce((sum, t) => sum + Math.abs(toNumber(t.amount)), 0);
 
+  const withdrawals = store.withdrawals || [];
+  const pendingWithdrawalsAmount = withdrawals.filter((w) => w.status === "pending").reduce((sum, w) => sum + toNumber(w.amount), 0);
+  const approvedWithdrawalsAmount = withdrawals.filter((w) => w.status === "approved").reduce((sum, w) => sum + toNumber(w.amount), 0);
+
   const dailyMap = new Map();
   for (let i = 13; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400000);
@@ -322,6 +342,7 @@ function buildDashboard(store) {
   const recentTickets = tickets.map((t) => enrichTicket(store, t, userMap)).sort((a, b) => new Date(b.placedAt) - new Date(a.placedAt)).slice(0, 8);
   const recentTransactions = txs.map((t) => enrichTransaction(store, t, userMap)).slice(0, 8);
   const pendingDeposits = deposits.filter((d) => d.status === "pending").map((d) => enrichDeposit(store, d, userMap)).slice(0, 8);
+  const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending").map((w) => enrichWithdrawal(store, w, userMap)).slice(0, 8);
 
   return {
     summary: {
@@ -346,6 +367,9 @@ function buildDashboard(store) {
       pendingDeposits: deposits.filter((d) => d.status === "pending").length,
       pendingDepositAmount: money(pendingDepositAmount),
       approvedDepositAmount: money(approvedDepositAmount),
+      pendingWithdrawals: withdrawals.filter((w) => w.status === "pending").length,
+      pendingWithdrawalsAmount: money(pendingWithdrawalsAmount),
+      approvedWithdrawalsAmount: money(approvedWithdrawalsAmount),
       bonusPaid: money(bonusPaid),
     },
     charts: {
@@ -361,6 +385,7 @@ function buildDashboard(store) {
     recentTickets,
     recentTransactions,
     pendingDeposits,
+    pendingWithdrawals,
   };
 }
 
@@ -755,6 +780,192 @@ router.get("/deposits", (req, res) => {
 
     const { items, pagination } = paginate(rows, req, 100, 500);
     res.json({ ok: true, deposits: items, total: rows.length, pagination });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/deposits/:id/approve", (req, res) => {
+  try {
+    const id = req.params.id;
+    const store = loadStore();
+    const deposit = (store.deposits || []).find((d) => d.id === id && d.status === "pending");
+    if (!deposit) return res.status(404).json({ ok: false, error: "Pending deposit not found" });
+
+    const note = String(req.body.note || "").trim() || "Approved by Super Admin";
+    withStore((s) => {
+      const dep = s.deposits.find((d) => d.id === id);
+      if (!dep) return;
+      dep.status = "approved";
+      dep.reviewed_at = new Date().toISOString();
+      dep.note = note;
+    });
+
+    const newBalance = creditWallet(deposit.user_id, deposit.amount, "deposit", id, {
+      method: deposit.method,
+      reference: deposit.reference,
+      note: "Deposit approved by Super Admin",
+    });
+
+    withStore((s) =>
+      addAuditLog(s, req.user, "deposit.approve", { type: "deposit", id }, {
+        amount: deposit.amount,
+        userId: deposit.user_id,
+        method: deposit.method,
+        reference: deposit.reference,
+        approver: req.user.username,
+      })
+    );
+
+    res.json({ ok: true, depositId: id, status: "approved", amount: deposit.amount, newBalance });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/deposits/:id/reject", (req, res) => {
+  try {
+    const id = req.params.id;
+    const store = loadStore();
+    const deposit = (store.deposits || []).find((d) => d.id === id && d.status === "pending");
+    if (!deposit) return res.status(404).json({ ok: false, error: "Pending deposit not found" });
+
+    const note = String(req.body.note || "").trim() || "Rejected by Super Admin";
+    withStore((s) => {
+      const dep = s.deposits.find((d) => d.id === id);
+      if (!dep) return;
+      dep.status = "rejected";
+      dep.reviewed_at = new Date().toISOString();
+      dep.note = note;
+    });
+
+    withStore((s) =>
+      addAuditLog(s, req.user, "deposit.reject", { type: "deposit", id }, {
+        amount: deposit.amount,
+        userId: deposit.user_id,
+        note,
+      })
+    );
+
+    res.json({ ok: true, depositId: id, status: "rejected" });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get("/withdrawals", (req, res) => {
+  try {
+    const store = loadStore();
+    const { status, method, adminId, from, to, search } = req.query;
+    const map = usersById(store);
+    let rows = (store.withdrawals || []).map((w) => enrichWithdrawal(store, w, map));
+
+    if (status && status !== "all") rows = rows.filter((w) => String(w.status) === String(status).toLowerCase());
+    if (method && method !== "all") rows = rows.filter((w) => String(w.method).toLowerCase() === String(method).toLowerCase());
+    if (adminId) rows = rows.filter((w) => String(w.shopAdminId) === String(adminId));
+    if (from || to) rows = rows.filter((w) => inDateRange(w.created_at, from, to));
+    rows = filterSearch(rows, search, ["id", "username", "userDisplayName", "userPhone", "account", "method", "shopAdminName", "status"]);
+    rows.sort((a, b) => new Date(b.created_at || b.reviewed_at || 0) - new Date(a.created_at || a.reviewed_at || 0));
+
+    const { items, pagination } = paginate(rows, req, 100, 500);
+    res.json({ ok: true, withdrawals: items, total: rows.length, pagination });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/withdrawals/:id/approve", (req, res) => {
+  try {
+    const id = req.params.id;
+    const store = loadStore();
+    const withdrawal = (store.withdrawals || []).find((w) => w.id === id && w.status === "pending");
+    if (!withdrawal) return res.status(404).json({ ok: false, error: "Pending withdrawal not found" });
+
+    const note = String(req.body.note || "").trim() || "Approved & paid by Super Admin";
+    withStore((s) => {
+      const w = s.withdrawals.find((row) => row.id === id);
+      if (!w) return;
+      w.status = "approved";
+      w.reviewed_at = new Date().toISOString();
+      w.note = note;
+    });
+
+    withStore((s) =>
+      addAuditLog(s, req.user, "withdrawal.approve", { type: "withdrawal", id }, {
+        amount: withdrawal.amount,
+        userId: withdrawal.user_id,
+        method: withdrawal.method,
+        account: withdrawal.account,
+        approver: req.user.username,
+        note,
+      })
+    );
+
+    res.json({ ok: true, withdrawalId: id, status: "approved", amount: withdrawal.amount });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/withdrawals/:id/reject", (req, res) => {
+  try {
+    const id = req.params.id;
+    const store = loadStore();
+    const withdrawal = (store.withdrawals || []).find((w) => w.id === id && w.status === "pending");
+    if (!withdrawal) return res.status(404).json({ ok: false, error: "Pending withdrawal not found" });
+
+    const note = String(req.body.note || "").trim() || "Rejected by Super Admin — funds refunded";
+    withStore((s) => {
+      const w = s.withdrawals.find((row) => row.id === id);
+      if (!w) return;
+      w.status = "rejected";
+      w.reviewed_at = new Date().toISOString();
+      w.note = note;
+    });
+
+    // Refund the debited amount back to player wallet!
+    const newBalance = creditWallet(withdrawal.user_id, withdrawal.amount, "withdraw_refund", id, {
+      method: withdrawal.method,
+      account: withdrawal.account,
+      note: `Refund for rejected withdrawal ${id}: ${note}`,
+    });
+
+    withStore((s) =>
+      addAuditLog(s, req.user, "withdrawal.reject", { type: "withdrawal", id }, {
+        amount: withdrawal.amount,
+        userId: withdrawal.user_id,
+        refunded: true,
+        note,
+      })
+    );
+
+    res.json({ ok: true, withdrawalId: id, status: "rejected", refunded: true, newBalance });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get("/online-requests", (req, res) => {
+  try {
+    const store = loadStore();
+    const map = usersById(store);
+    const deposits = (store.deposits || []).map((d) => enrichDeposit(store, d, map));
+    const withdrawals = (store.withdrawals || []).map((w) => enrichWithdrawal(store, w, map));
+
+    const pendingDeposits = deposits.filter((d) => d.status === "pending");
+    const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
+
+    res.json({
+      ok: true,
+      pendingDepositsCount: pendingDeposits.length,
+      pendingDepositsAmount: money(pendingDeposits.reduce((s, d) => s + toNumber(d.amount), 0)),
+      pendingWithdrawalsCount: pendingWithdrawals.length,
+      pendingWithdrawalsAmount: money(pendingWithdrawals.reduce((s, w) => s + toNumber(w.amount), 0)),
+      pendingDeposits,
+      pendingWithdrawals,
+      recentDeposits: deposits.slice(0, 30),
+      recentWithdrawals: withdrawals.slice(0, 30),
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

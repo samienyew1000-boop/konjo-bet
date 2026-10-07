@@ -19,6 +19,7 @@ const superAdminRoutes = require("./routes/superadmin");
 const systemRoutes = require("./routes/system");
 const adminRoutes = require("./routes/admin");
 const { router: depositRoutes, adminRouter: depositAdminRoutes } = require("./routes/deposits");
+const withdrawalRoutes = require("./routes/withdrawals");
 
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
@@ -57,6 +58,7 @@ app.use("/api/odds", oddsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/deposits", depositRoutes);
 app.use("/api/admin/deposits", depositAdminRoutes);
+app.use("/api/withdrawals", withdrawalRoutes);
 
 // Serve static frontend files if present (for unified single-service deployments)
 const frontendDirs = [

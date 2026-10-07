@@ -42,10 +42,11 @@ function defaultStore() {
     wallets: {},
     bets: [],
     deposits: [],
+    withdrawals: [],
     transactions: [],
     auditLogs: [],
     settings: defaultSettings(),
-    counters: { user: 0, bet: 0, tx: 0, deposit: 0, audit: 0 },
+    counters: { user: 0, bet: 0, tx: 0, deposit: 0, withdraw: 0, audit: 0 },
   };
 }
 
@@ -69,11 +70,13 @@ function loadStore() {
     const parsed = JSON.parse(fs.readFileSync(storePath, "utf8"));
     const store = { ...base, ...parsed };
     store.counters = { ...base.counters, ...(parsed.counters || {}) };
+    if (!store.counters.withdraw) store.counters.withdraw = 0;
     store.settings = { ...defaultSettings(), ...(parsed.settings || {}) };
     if (!Array.isArray(store.settings.bonus_rules)) {
       store.settings.bonus_rules = defaultBonusRules();
     }
     if (!Array.isArray(store.deposits)) store.deposits = [];
+    if (!Array.isArray(store.withdrawals)) store.withdrawals = [];
     if (!Array.isArray(store.transactions)) store.transactions = [];
     if (!Array.isArray(store.auditLogs)) store.auditLogs = Array.isArray(store.audit_logs) ? store.audit_logs : [];
     if (!Array.isArray(store.bets)) store.bets = [];
