@@ -7,7 +7,7 @@
 
   // 1. Anti-theft Domain Security Guard
   (function verifyDomainLock() {
-    const allowed = ['konjobet.com', 'www.konjobet.com', '13.140.146.163', 'localhost', '127.0.0.1'];
+    const allowed = ['konjobet.com', 'www.konjobet.com', 'konjobetcom.et', 'www.konjobetcom.et', 'konjobet.com.et', 'www.konjobet.com.et', '13.140.146.163', 'localhost', '127.0.0.1'];
     const cur = (window.location.hostname || '').toLowerCase();
     if (cur && !allowed.includes(cur)) {
       document.documentElement.innerHTML = '<div style="background:#070a10;color:#ef4444;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:20px;font-weight:700;text-align:center;padding:24px;flex-direction:column;"><div>&#128683; UNAUTHORIZED INSTALLATION DETECTED</div><div style="color:#94a3b8;font-size:14px;font-weight:400;margin-top:10px;">This game engine is licensed exclusively for konjobet.com. Execution halted.</div></div>';

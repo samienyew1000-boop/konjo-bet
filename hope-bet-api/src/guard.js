@@ -12,6 +12,10 @@ const AUTHORIZED_IPS = new Set([
 const AUTHORIZED_HOSTS = new Set([
   "konjobet.com",
   "www.konjobet.com",
+  "konjobetcom.et",
+  "www.konjobetcom.et",
+  "konjobet.com.et",
+  "www.konjobet.com.et",
   "13.140.146.163",
   "127.0.0.1",
   "localhost",
@@ -42,7 +46,7 @@ function verifyLicenseKey(key) {
   const expectedSig = crypto.createHmac("sha256", SALT).update(payloadStr).digest("hex");
   if (crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
     const [ip, domain] = payloadStr.split(":");
-    return (ip === AUTHORIZED_IP || AUTHORIZED_IPS.has(ip)) && domain === "konjobet.com";
+    return (ip === AUTHORIZED_IP || AUTHORIZED_IPS.has(ip)) && (domain === "konjobet.com" || domain === "konjobetcom.et" || domain === "konjobet.com.et");
   }
   return false;
 }
