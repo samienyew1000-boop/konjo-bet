@@ -571,16 +571,23 @@
   // --- Trade Execution & Resolution ---
   function placeTrade() {
     if (activeTrade) return;
-
-    const stake = currentBet;
-    if (stake > balance) {
-      alert("Insufficient balance to place bet!");
+    if (window.HabeshaWallet && !window.HabeshaWallet.isLoggedIn()) {
+      window.HabeshaWallet.showLoginModal();
       return;
     }
 
-    // Deduct stake
-    balance -= stake;
-    save();
+    const stake = currentBet;
+    if (window.HabeshaWallet) {
+      if (!window.HabeshaWallet.has(stake)) return;
+      balance = window.HabeshaWallet.modify(-stake, 'Infinity');
+    } else {
+      if (stake > balance) {
+        alert("Insufficient balance to place bet!");
+        return;
+      }
+      balance -= stake;
+      save();
+    }
     updateBalanceDisplay();
 
     const now = performance.now();
@@ -622,7 +629,12 @@
       // Standard binary payout: 1.95x stake (stake + 95% profit)
       const payout = Math.round(trade.stake * 1.95 * 100) / 100;
       const profit = Math.round((payout - trade.stake) * 100) / 100;
-      balance += payout;
+      if (window.HabeshaWallet) {
+        balance = window.HabeshaWallet.modify(payout, 'Infinity');
+      } else {
+        balance += payout;
+        save();
+      }
       trade.status = "won";
       trade.payout = payout;
       trade.profit = profit;
@@ -632,7 +644,7 @@
       trade.profit = -trade.stake;
     }
 
-    save();
+    updateBalanceDisplay();
     updateBalanceDisplay();
 
     // Push to recent trades to keep visual path on screen

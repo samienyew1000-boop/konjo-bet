@@ -380,15 +380,28 @@
   }
 
   function startRoundAndHop() {
+    const w = getWallet();
+    if (w && !w.isLoggedIn()) {
+      if (typeof w.showLoginModal === 'function') w.showLoginModal();
+      return;
+    }
     state.bet = clampBet(el.betInput.value);
     const bal = getBalance();
     if (bal < state.bet) {
       showToast('Insufficient balance for bet', 'lose');
       sfx('bust');
+      if (w && typeof w.showInsufficientBalanceNotice === 'function') {
+        w.showInsufficientBalanceNotice(state.bet);
+      }
       return;
     }
 
-    modifyBalance(-state.bet, 'stake');
+    const prevBal = bal;
+    const newBal = modifyBalance(-state.bet, 'stake');
+    if (newBal === prevBal && state.bet > 0) {
+      return;
+    }
+
     resetChicken();
     spawnCars();
     sfx('click');
@@ -1200,5 +1213,8 @@
     spawnCars();
     syncUi();
     requestAnimationFrame(loop);
+    if (window.hideGameLoader) {
+      window.hideGameLoader(300);
+    }
   });
 })();

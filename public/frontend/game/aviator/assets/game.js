@@ -108,8 +108,13 @@
 
   function deductBalance(amt) {
     if (window.HabeshaWallet) {
+      if (!window.HabeshaWallet.isLoggedIn()) {
+        window.HabeshaWallet.showLoginModal();
+        return false;
+      }
       if (window.HabeshaWallet.has(amt)) {
-        state.balance = window.HabeshaWallet.modify(-amt);
+        state.balance = window.HabeshaWallet.modify(-amt, 'Aviator');
+        updateBalanceUI();
         return true;
       }
       return false;
@@ -125,7 +130,8 @@
 
   function creditBalance(amt) {
     if (window.HabeshaWallet) {
-      state.balance = window.HabeshaWallet.modify(amt);
+      state.balance = window.HabeshaWallet.modify(amt, 'Aviator');
+      updateBalanceUI();
     } else {
       state.balance += amt;
       localStorage.setItem('habesha_balance', state.balance.toString());

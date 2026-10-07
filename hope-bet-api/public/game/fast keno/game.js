@@ -246,9 +246,20 @@
   function placeBet() {
     const { phase, id } = roundMeta();
     if (phase !== "betting" || !picks.length || (myTicket && myTicket.roundId === id)) return;
+    if (window.HabeshaWallet && !window.HabeshaWallet.isLoggedIn()) {
+      window.HabeshaWallet.showLoginModal();
+      return;
+    }
     const amt = clampBet();
-    if (amt > balance) return;
-    balance -= amt;
+    if (window.HabeshaWallet) {
+      if (!window.HabeshaWallet.has(amt)) {
+        return;
+      }
+      balance = window.HabeshaWallet.modify(-amt, 'Fast Keno');
+    } else {
+      if (amt > balance) return;
+      balance -= amt;
+    }
     myTicket = { roundId: id, numbers: [...picks], amount: amt };
     liveTickets.unshift({
       user: "You",
@@ -269,7 +280,11 @@
     const mult = odds(myTicket.numbers.length, hits);
     const win = myTicket.amount * mult;
     if (win > 0) {
-      balance += win;
+      if (window.HabeshaWallet) {
+        balance = window.HabeshaWallet.modify(win, 'Fast Keno');
+      } else {
+        balance += win;
+      }
       leaders.unshift({ user: "You", win, hits, spots: myTicket.numbers.length });
       if (leaders.length > 20) leaders.pop();
     }

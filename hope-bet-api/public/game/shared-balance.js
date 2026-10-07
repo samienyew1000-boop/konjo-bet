@@ -128,6 +128,57 @@
     return safeAmount;
   }
 
+  function showInsufficientBalanceNotice(requiredAmount) {
+    let modal = document.getElementById('konjoInsufficientBalanceModal');
+    const cur = get();
+    const req = Number(requiredAmount) || 0;
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'konjoInsufficientBalanceModal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(3, 7, 18, 0.88);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 10000001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      `;
+      modal.innerHTML = `
+        <div style="background: #111827; border: 1px solid #374151; border-radius: 16px; width: 100%; max-width: 360px; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); box-sizing: border-box; color: #f9fafb; text-align: center;">
+          <div style="font-size: 38px; margin-bottom: 8px;">⚠️</div>
+          <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #ef4444;">Insufficient Balance</h3>
+          <p id="kgLowBalDesc" style="margin: 0 0 20px; font-size: 13.5px; color: #9ca3af; line-height: 1.5;"></p>
+          <div style="display: flex; gap: 10px;">
+            <a href="/frontend/#deposit" target="_top" style="flex: 1; background: #10b981; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px; border-radius: 8px; text-align: center;">
+              Deposit ETB
+            </a>
+            <button type="button" id="kgCloseLowBalBtn" style="background: #374151; color: #d1d5db; border: none; font-weight: 600; font-size: 14px; padding: 12px 18px; border-radius: 8px; cursor: pointer;">
+              Cancel
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.querySelector('#kgCloseLowBalBtn').addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+    }
+    const desc = modal.querySelector('#kgLowBalDesc');
+    if (desc) {
+      desc.innerHTML = `You have <strong style="color: #ffffff;">${cur.toFixed(2)} ETB</strong>, but this round requires <strong style="color: #ef4444;">${req.toFixed(2)} ETB</strong>.<br/>Please deposit funds to continue playing.`;
+    }
+    modal.style.display = 'flex';
+  }
+
   function modify(delta, gameName, method) {
     const num = round2(delta);
     if (num === 0) return get();
@@ -143,16 +194,16 @@
       // Placing a bet / Stake deduction
       const stake = Math.abs(num);
       if (current < stake) {
-        alert('Insufficient balance. Please deposit ETB to continue playing.');
+        showInsufficientBalanceNotice(stake);
         return current;
       }
       const newBal = set(current - stake, true);
-      apiDebit(stake, gameName);
+      apiDebit(stake, gameName || getDetectedGameName());
       return newBal;
     } else {
       // Winning payout
       const newBal = set(current + num, true);
-      apiCredit(num, gameName);
+      apiCredit(num, gameName || getDetectedGameName());
       return newBal;
     }
   }
@@ -162,7 +213,13 @@
       showLoginModal();
       return false;
     }
-    return get() >= round2(amount);
+    const needed = round2(amount);
+    const available = get();
+    if (available < needed) {
+      showInsufficientBalanceNotice(needed);
+      return false;
+    }
+    return true;
   }
 
   // --- Backend API Integration ---
@@ -348,7 +405,7 @@
     });
   }
 
-  // --- Login Modal Implementation ---
+  // --- In-Game Authentication Modal (Sign In & Register) ---
   let loginModalEl = null;
 
   function createLoginModal() {
@@ -362,9 +419,9 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(3, 7, 18, 0.88);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(3, 7, 18, 0.90);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       z-index: 10000000;
       display: flex;
       align-items: center;
@@ -375,21 +432,35 @@
     `;
 
     overlay.innerHTML = `
-      <div style="background: #111827; border: 1px solid #374151; border-radius: 16px; width: 100%; max-width: 380px; padding: 28px 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); box-sizing: border-box; color: #f9fafb; position: relative;">
-        <div style="text-align: center; margin-bottom: 22px;">
-          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
-            <span style="font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: #ef4444;">KONJO</span>
-            <span style="font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff;">BET</span>
+      <div style="background: #111827; border: 1px solid #374151; border-radius: 18px; width: 100%; max-width: 400px; padding: 26px 22px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); box-sizing: border-box; color: #f9fafb; position: relative;">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 18px;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;">
+            <span style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #ef4444;">KONJO</span>
+            <span style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff;">BET</span>
           </div>
-          <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: #f3f4f6;">Sign In to Play</h2>
-          <p style="margin: 6px 0 0; font-size: 13px; color: #9ca3af;">Please log in with your account to play with real ETB balance</p>
+          <h2 id="kgModalTitle" style="margin: 0; font-size: 18px; font-weight: 800; color: #f3f4f6;">Sign In to Play</h2>
+          <p id="kgModalSubtitle" style="margin: 4px 0 0; font-size: 13px; color: #9ca3af;">Please log in with your account to play with real ETB balance</p>
         </div>
 
-        <div id="kgAuthError" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 12.5px; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; line-height: 1.4;"></div>
+        <!-- Auth Mode Tabs -->
+        <div style="display: flex; background: #1f2937; border-radius: 10px; padding: 4px; margin-bottom: 16px;">
+          <button type="button" id="kgTabLogin" style="flex: 1; background: #ef4444; color: #ffffff; border: none; border-radius: 7px; padding: 9px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+            Log In (ግባ)
+          </button>
+          <button type="button" id="kgTabRegister" style="flex: 1; background: transparent; color: #9ca3af; border: none; border-radius: 7px; padding: 9px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+            Register (ተመዝገብ)
+          </button>
+        </div>
 
-        <form id="kgAuthForm" style="display: flex; flex-direction: column; gap: 14px; margin: 0;">
+        <!-- Feedback Messages -->
+        <div id="kgAuthError" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 12.5px; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; line-height: 1.4;"></div>
+        <div id="kgAuthSuccess" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #6ee7b7; font-size: 12.5px; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; line-height: 1.4;"></div>
+
+        <!-- Form -->
+        <form id="kgAuthForm" style="display: flex; flex-direction: column; gap: 13px; margin: 0;">
           <div>
-            <label style="display: block; font-size: 12px; font-weight: 600; color: #d1d5db; margin-bottom: 6px;">Phone Number / Username</label>
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #d1d5db; margin-bottom: 5px;">Phone Number (ስልክ ቁጥር)</label>
             <div style="display: flex; background: #1f2937; border: 1px solid #4b5563; border-radius: 8px; overflow: hidden; align-items: center;">
               <span style="padding: 10px 10px 10px 12px; color: #9ca3af; font-size: 13px; font-weight: 600; border-right: 1px solid #374151; background: #182234;">+251</span>
               <input type="text" id="kgAuthPhone" placeholder="969060459" required autocomplete="username" style="flex: 1; background: transparent; border: none; padding: 10px 12px; color: #ffffff; font-size: 14px; outline: none; width: 100%; box-sizing: border-box;" />
@@ -397,22 +468,23 @@
           </div>
 
           <div>
-            <label style="display: block; font-size: 12px; font-weight: 600; color: #d1d5db; margin-bottom: 6px;">Password</label>
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #d1d5db; margin-bottom: 5px;">Password (የይለፍ ቃል)</label>
             <input type="password" id="kgAuthPass" placeholder="••••••••" required autocomplete="current-password" style="background: #1f2937; border: 1px solid #4b5563; border-radius: 8px; padding: 10px 12px; color: #ffffff; font-size: 14px; outline: none; width: 100%; box-sizing: border-box;" />
           </div>
 
-          <button type="submit" id="kgAuthSubmitBtn" style="background: #ef4444; hover: background: #dc2626; color: #ffffff; border: none; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; margin-top: 4px;">
+          <div id="kgAuthPassConfirmWrap" style="display: none;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #d1d5db; margin-bottom: 5px;">Confirm Password (ድጋሚ ያረጋግጡ)</label>
+            <input type="password" id="kgAuthPassConfirm" placeholder="••••••••" autocomplete="new-password" style="background: #1f2937; border: 1px solid #4b5563; border-radius: 8px; padding: 10px 12px; color: #ffffff; font-size: 14px; outline: none; width: 100%; box-sizing: border-box;" />
+          </div>
+
+          <button type="submit" id="kgAuthSubmitBtn" style="background: #ef4444; color: #ffffff; border: none; border-radius: 8px; padding: 12px; font-size: 14.5px; font-weight: 800; cursor: pointer; transition: background 0.2s; margin-top: 4px;">
             LOG IN
           </button>
         </form>
 
-        <div style="margin-top: 18px; text-align: center; font-size: 13px; color: #9ca3af; display: flex; flex-direction: column; gap: 10px;">
+        <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #9ca3af; display: flex; flex-direction: column; gap: 8px;">
           <div>
-            Don't have an account? 
-            <a href="/frontend/#register" style="color: #ef4444; font-weight: 600; text-decoration: none; margin-left: 4px;">Register</a>
-          </div>
-          <div>
-            <a href="/frontend/" style="color: #6b7280; font-size: 12px; text-decoration: none;">&larr; Back to Sports Betting</a>
+            <a href="/frontend/" style="color: #6b7280; font-size: 12px; text-decoration: none;">← Back to Sportsbook Lobby</a>
           </div>
         </div>
       </div>
@@ -421,18 +493,58 @@
     document.body.appendChild(overlay);
     loginModalEl = overlay;
 
+    let authMode = 'login';
     const form = overlay.querySelector('#kgAuthForm');
     const errEl = overlay.querySelector('#kgAuthError');
+    const successEl = overlay.querySelector('#kgAuthSuccess');
     const phoneInput = overlay.querySelector('#kgAuthPhone');
     const passInput = overlay.querySelector('#kgAuthPass');
+    const passConfirmWrap = overlay.querySelector('#kgAuthPassConfirmWrap');
+    const passConfirmInput = overlay.querySelector('#kgAuthPassConfirm');
     const submitBtn = overlay.querySelector('#kgAuthSubmitBtn');
+    const tabLogin = overlay.querySelector('#kgTabLogin');
+    const tabRegister = overlay.querySelector('#kgTabRegister');
+    const modalTitle = overlay.querySelector('#kgModalTitle');
+    const modalSubtitle = overlay.querySelector('#kgModalSubtitle');
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      errEl.style.display = 'none';
+      successEl.style.display = 'none';
+      if (mode === 'register') {
+        tabRegister.style.background = '#ef4444';
+        tabRegister.style.color = '#ffffff';
+        tabLogin.style.background = 'transparent';
+        tabLogin.style.color = '#9ca3af';
+        passConfirmWrap.style.display = 'block';
+        passConfirmInput.required = true;
+        submitBtn.textContent = 'REGISTER & PLAY NOW';
+        modalTitle.textContent = 'Create Free Account';
+        modalSubtitle.textContent = 'Register instantly to play with real money';
+      } else {
+        tabLogin.style.background = '#ef4444';
+        tabLogin.style.color = '#ffffff';
+        tabRegister.style.background = 'transparent';
+        tabRegister.style.color = '#9ca3af';
+        passConfirmWrap.style.display = 'none';
+        passConfirmInput.required = false;
+        submitBtn.textContent = 'LOG IN';
+        modalTitle.textContent = 'Sign In to Play';
+        modalSubtitle.textContent = 'Please log in with your account to play with real ETB balance';
+      }
+    }
+
+    tabLogin.addEventListener('click', () => setAuthMode('login'));
+    tabRegister.addEventListener('click', () => setAuthMode('register'));
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       errEl.style.display = 'none';
+      successEl.style.display = 'none';
 
       const phoneRaw = (phoneInput.value || '').trim();
       const password = (passInput.value || '').trim();
+      const passConfirm = (passConfirmInput.value || '').trim();
 
       if (!phoneRaw || !password) {
         errEl.textContent = 'Please enter your phone number and password.';
@@ -440,18 +552,33 @@
         return;
       }
 
+      if (password.length < 6) {
+        errEl.textContent = 'Password must be at least 6 characters.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (authMode === 'register') {
+        if (password !== passConfirm) {
+          errEl.textContent = 'Passwords do not match.';
+          errEl.style.display = 'block';
+          return;
+        }
+      }
+
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Logging in...';
+      submitBtn.textContent = authMode === 'register' ? 'Creating account...' : 'Logging in...';
 
       try {
-        const res = await fetch(`${getApiBaseUrl()}/api/auth/login`, {
+        const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+        const payload = authMode === 'register'
+          ? { identifier: phoneRaw, phone: phoneRaw, password: password, role: 'player' }
+          : { identifier: phoneRaw, phone: phoneRaw, password: password };
+
+        const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            identifier: phoneRaw,
-            phone: phoneRaw,
-            password: password
-          })
+          body: JSON.stringify(payload)
         });
 
         const data = await res.json();
@@ -459,13 +586,23 @@
           localStorage.setItem(TOKEN_KEY, data.token);
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
+          if (typeof data.user.balance === 'number') {
+            set(data.user.balance, true);
+          }
+
+          successEl.textContent = authMode === 'register'
+            ? '✓ Account created successfully! Launching game...'
+            : '✓ Logged in! Loading balance...';
+          successEl.style.display = 'block';
+
           // Sync balance from server
           await syncBalanceWithServer();
 
-          // Hide modal
-          hideLoginModal();
+          setTimeout(() => {
+            hideLoginModal();
+          }, 400);
         } else {
-          errEl.textContent = data.error || 'Invalid credentials. Please check your phone number and password.';
+          errEl.textContent = data.error || (authMode === 'register' ? 'Registration failed.' : 'Invalid credentials.');
           errEl.style.display = 'block';
         }
       } catch (err) {
@@ -473,7 +610,7 @@
         errEl.style.display = 'block';
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'LOG IN';
+        submitBtn.textContent = authMode === 'register' ? 'REGISTER & PLAY NOW' : 'LOG IN';
       }
     });
 
@@ -575,6 +712,7 @@
     isLoggedIn: isLoggedIn,
     showLoginModal: showLoginModal,
     hideLoginModal: hideLoginModal,
+    showInsufficientBalanceNotice: showInsufficientBalanceNotice,
     syncBalanceWithServer: syncBalanceWithServer,
     syncLegacyStorages: syncLegacyStorages,
     getAdminConfig: getAdminConfig,
@@ -584,6 +722,19 @@
 
   global.HabeshaWallet = HabeshaWallet;
   global.FriendesWallet = HabeshaWallet;
+
+  // Background Balance Synchronization (Every 10 seconds + on tab focus)
+  setInterval(() => {
+    if (isLoggedIn()) {
+      syncBalanceWithServer();
+    }
+  }, 10000);
+
+  window.addEventListener('focus', () => {
+    if (isLoggedIn()) {
+      syncBalanceWithServer();
+    }
+  });
 
   // Run on start
   if (document.readyState === 'loading') {

@@ -219,11 +219,19 @@ function recordMyBet(betAmount, odd, win) {
 
 function throwRings(button) {
   if (bonusOpen || button.disabled) return;
+  if (window.HabeshaWallet && !window.HabeshaWallet.isLoggedIn()) {
+    window.HabeshaWallet.showLoginModal();
+    return;
+  }
   const stake = bet;
-  if (stake < MIN_BET || stake > balance) return;
-
-  balance -= stake;
-  saveBalance();
+  if (window.HabeshaWallet) {
+    if (!window.HabeshaWallet.has(stake)) return;
+    balance = window.HabeshaWallet.modify(-stake, 'Fish');
+  } else {
+    if (stake < MIN_BET || stake > balance) return;
+    balance -= stake;
+    saveBalance();
+  }
   renderBalance();
   button.disabled = true;
 
@@ -250,8 +258,12 @@ function throwRings(button) {
       }
 
       const win = Math.round(stake * odd * 100) / 100;
-      balance += win;
-      saveBalance();
+      if (window.HabeshaWallet) {
+        balance = window.HabeshaWallet.modify(win, 'Fish');
+      } else {
+        balance += win;
+        saveBalance();
+      }
       renderBalance();
       renderPoles();
       showWin(win);
