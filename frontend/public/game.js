@@ -5421,6 +5421,7 @@ function applySubNav(id) {
   state.leaguePageIds = [];
   state.detailFixtureId = null;
   state.upcomingActiveDropdown = null;
+  state.upcomingMatchLimit = 40;
   updateSubNavHighlight();
 
   if (id === "my-bets") {
@@ -10899,13 +10900,34 @@ function addToSlip(fixture, marketKey, selection, odd, marketLabel, pickLabel) {
   });
 }
 
-function refreshMatchViews() {
-  const leaguesView = document.querySelector('[data-view="leagues"]');
-  if (leaguesView && !leaguesView.hidden) {
-    renderLeaguePage();
-    return;
+function updateSelectedOddsUI() {
+  const activeKeys = new Set((state.slip || []).map((b) => b.key));
+
+  // 1. Regular odds buttons across match board, upcoming, daily, league, and home tables
+  const buttons = document.querySelectorAll(".odd-btn[data-fixture]");
+  for (let i = 0; i < buttons.length; i++) {
+    const btn = buttons[i];
+    const key = slipKey(btn.dataset.fixture, btn.dataset.market, btn.dataset.selection);
+    const shouldBe = activeKeys.has(key);
+    if (btn.classList.contains("is-selected") !== shouldBe) {
+      btn.classList.toggle("is-selected", shouldBe);
+    }
   }
-  refreshHomeAndBoard();
+
+  // 2. Odds buttons inside match detail modal / view
+  const detailBtns = document.querySelectorAll("[data-detail-odd]");
+  for (let i = 0; i < detailBtns.length; i++) {
+    const btn = detailBtns[i];
+    const key = slipKey(btn.dataset.fixture, `m${btn.dataset.marketId}`, btn.dataset.value);
+    const shouldBe = activeKeys.has(key);
+    if (btn.classList.contains("is-selected") !== shouldBe) {
+      btn.classList.toggle("is-selected", shouldBe);
+    }
+  }
+}
+
+function refreshMatchViews() {
+  updateSelectedOddsUI();
 }
 
 function toggleSelection(fixture, market, selection) {
@@ -10923,8 +10945,7 @@ function toggleSelection(fixture, market, selection) {
   addToSlip(fixture, market, selection, odd, marketNameFor(market), selectionLabel(market, selection, fixture));
   save();
   renderSlip();
-  refreshMatchViews();
-  if (state.detailFixtureId) renderMatchDetail();
+  updateSelectedOddsUI();
 }
 
 function toggleDetailSelection(fixture, market, value) {
@@ -10942,8 +10963,7 @@ function toggleDetailSelection(fixture, market, value) {
   addToSlip(fixture, marketKey, value.value, value.odd, market.name, value.value);
   save();
   renderSlip();
-  renderMatchDetail();
-  refreshMatchViews();
+  updateSelectedOddsUI();
 }
 
 function totalOdds() {
@@ -12737,7 +12757,13 @@ function ensureUpcomingEventsAttached() {
         });
         return;
       }
+      if (action === "load-more-matches") {
+        state.upcomingMatchLimit = (state.upcomingMatchLimit || 40) + 40;
+        renderBoard();
+        return;
+      }
       if (action === "apply-calendar") {
+        state.upcomingMatchLimit = 40;
         state.upcomingDateFilter = state.upcomingTempDateFilter || "all";
         if (state.subNav === "daily") {
           state.dailyDateFilter = state.upcomingDateFilter;
@@ -12755,6 +12781,7 @@ function ensureUpcomingEventsAttached() {
         return;
       }
       if (action === "apply-leagues") {
+        state.upcomingMatchLimit = 40;
         const allLeagues = getUpcomingAvailableLeagues();
         if (state.upcomingTempCheckedLeagues.size >= allLeagues.length) {
           state.upcomingCheckedLeagues = new Set();
@@ -12799,6 +12826,7 @@ function ensureUpcomingEventsAttached() {
     if (marketItem) {
       e.preventDefault();
       e.stopPropagation();
+      state.upcomingMatchLimit = 40;
       state.upcomingMarket = marketItem.dataset.ufMarket;
       state.upcomingActiveDropdown = null;
       renderBoard();
@@ -12810,6 +12838,7 @@ function ensureUpcomingEventsAttached() {
     if (sportItem) {
       e.preventDefault();
       e.stopPropagation();
+      state.upcomingMatchLimit = 40;
       state.upcomingSport = sportItem.dataset.ufSport;
       state.upcomingActiveDropdown = null;
       renderBoard();
@@ -12821,6 +12850,7 @@ function ensureUpcomingEventsAttached() {
     if (dayChip) {
       e.preventDefault();
       e.stopPropagation();
+      state.upcomingMatchLimit = 40;
       const dayId = dayChip.dataset.ufDayChip;
       state.dailyDateFilter = dayId;
       state.upcomingDateFilter = dayId;
@@ -13039,8 +13069,11 @@ function renderUpcomingFeature(board) {
     const emptyText = isDaily ? "No daily events available for this filter" : "No upcoming matches available for this filter";
     matchesHtml = `<div class="uf-empty">${emptyText}</div>`;
   } else {
+    const matchLimit = state.upcomingMatchLimit || 40;
+    const visibleFixtures = fixtures.slice(0, matchLimit);
+
     const bannerGroups = new Map();
-    for (const f of fixtures) {
+    for (const f of visibleFixtures) {
       const bKey = isDaily ? formatDailyEventsBanner(f.date) : formatUpcomingDateBanner(f.date);
       if (!bannerGroups.has(bKey)) bannerGroups.set(bKey, []);
       bannerGroups.get(bKey).push(f);
@@ -13102,6 +13135,17 @@ function renderUpcomingFeature(board) {
         ${rows}
       `;
     }).join("");
+
+    if (fixtures.length > matchLimit) {
+      const remaining = fixtures.length - matchLimit;
+      matchesHtml += `
+        <div class="uf-load-more-wrap" style="text-align:center; padding:18px 12px 28px;">
+          <button type="button" class="uf-btn-load-more" data-uf-action="load-more-matches" style="background:#ffd200; color:#111; font-weight:700; border:none; padding:10px 24px; border-radius:6px; cursor:pointer; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            Load More Matches (+${Math.min(40, remaining)}) · ${remaining} remaining
+          </button>
+        </div>
+      `;
+    }
   }
 
   const isDropdownOpen = Boolean(activeDropdown);
@@ -14920,7 +14964,7 @@ async function placeBet() {
       state.slip = [];
       renderBalance();
       renderSlip();
-      refreshHomeAndBoard();
+      updateSelectedOddsUI();
       if (state.detailFixtureId) renderMatchDetail();
       toast(`Bet placed — ${ticket.id}`, "ok");
       refreshMyBetsIfVisible();
@@ -14964,7 +15008,7 @@ async function placeBet() {
 
   renderBalance();
   renderSlip();
-  refreshHomeAndBoard();
+  updateSelectedOddsUI();
   if (state.detailFixtureId) renderMatchDetail();
   toast(`Bet placed — ${id}`, "ok");
   refreshMyBetsIfVisible();
@@ -16825,7 +16869,7 @@ document.addEventListener("click", (e) => {
       state.slip = state.slip.filter((b) => b.key !== btn.dataset.remove);
       save();
       renderSlip();
-      refreshHomeAndBoard();
+      updateSelectedOddsUI();
       if (state.detailFixtureId) renderMatchDetail();
       return;
     }
@@ -16856,7 +16900,7 @@ document.addEventListener("click", (e) => {
         state.slip = [state.slip[state.slip.length - 1]];
         save();
         renderSlip();
-        refreshHomeAndBoard();
+        updateSelectedOddsUI();
       }
     });
   });
@@ -17298,7 +17342,7 @@ document.addEventListener("click", (e) => {
     state.slip = [];
     save();
     renderSlip();
-    refreshHomeAndBoard();
+    updateSelectedOddsUI();
     if (isMobileLayout()) closeMobileDrawers();
   });
 
@@ -17567,6 +17611,75 @@ document.addEventListener("click", (e) => {
       } catch (_) {}
     } catch (err) {
       toast(err.message || "Deposit request failed", "err");
+    } finally {
+      if (submitBtn) submitBtn.textContent = prevLabel;
+    }
+  });
+
+  // Withdraw form back button
+  on($("withdraw-form-back"), "click", closeWithdrawFormPanel);
+  // Withdraw form submit
+  on($("withdraw-form"), "submit", async (e) => {
+    e.preventDefault();
+    const amount = Number($("withdraw-amount")?.value);
+    const method = $("withdraw-method")?.value || "cbe";
+    const account = $("withdraw-account-number")?.value.trim();
+
+    if (!amount || amount < 500) {
+      toast("Minimum withdrawal is 500 ETB", "err");
+      return;
+    }
+    if (!account || account.length < 5) {
+      toast("Please enter a valid account or mobile number", "err");
+      return;
+    }
+
+    const currentBalance = Number(state.sessionUser?.balance !== undefined ? state.sessionUser.balance : (state.balance || 0));
+    if (currentBalance < amount) {
+      toast(`Insufficient balance (${currentBalance.toFixed(2)} ETB available)`, "err");
+      return;
+    }
+
+    const submitBtn = $("withdraw-submit");
+    const prevLabel = submitBtn?.textContent;
+    if (submitBtn) submitBtn.textContent = "Submitting…";
+
+    try {
+      if (useApi() && api().getToken()) {
+        const res = await api().requestWithdraw({ amount, method, account });
+        toast(res.message || "Withdrawal request submitted — pending review", "ok");
+        if (res.newBalance !== undefined) {
+          updateBalanceDisplay(res.newBalance);
+        }
+      } else {
+        const hist = JSON.parse(localStorage.getItem("hope-bet-withdraw-history") || "[]");
+        hist.unshift({
+          id: `WTH-${Date.now()}`,
+          amount,
+          method,
+          account,
+          status: "pending",
+          created_at: new Date().toISOString(),
+        });
+        localStorage.setItem("hope-bet-withdraw-history", JSON.stringify(hist));
+        toast("Withdrawal request submitted — pending review", "ok");
+      }
+
+      if ($("withdraw-account-number")) $("withdraw-account-number").value = "";
+      if ($("withdraw-amount")) $("withdraw-amount").value = "";
+      closeWithdrawFormPanel();
+
+      try {
+        if (useApi() && api().getToken()) {
+          const hist = await api().fetchWithdrawHistory();
+          renderWithdrawHistory(hist.withdrawals || []);
+        } else {
+          const hist = JSON.parse(localStorage.getItem("hope-bet-withdraw-history") || "[]");
+          renderWithdrawHistory(hist);
+        }
+      } catch (_) {}
+    } catch (err) {
+      toast(err.message || "Withdrawal request failed", "err");
     } finally {
       if (submitBtn) submitBtn.textContent = prevLabel;
     }
@@ -17978,6 +18091,11 @@ const SA_WORKSPACE_META = {
     title: "Game profit & RTP control",
     desc: "Configure house edge, payout margins, and safety limits across Aviator and all mini-games.",
   },
+  "online-requests": {
+    eyebrow: "ONLINE PLAYERS CASHIER",
+    title: "Online Player Requests (Deposit & Withdraw)",
+    desc: "Live control command center for online registered players: instantly approve or reject deposits & withdrawal payouts.",
+  },
 };
 
 function saMoney(value) {
@@ -18251,6 +18369,50 @@ function bindSuperAdminPortalEvents() {
       applySuperAdminGameControlPreset(btn.dataset.preset);
     });
   });
+
+  bindSaOnce($("sa-online-requests-refresh-btn"), "click", () => renderSuperAdminOnlineRequests(true));
+  bindSaOnce($("sa-or-tab-deposits-btn"), "click", () => {
+    $("sa-or-tab-deposits-btn")?.classList.remove("sa-btn--secondary");
+    $("sa-or-tab-deposits-btn")?.classList.add("sa-btn--primary");
+    $("sa-or-tab-withdrawals-btn")?.classList.remove("sa-btn--primary");
+    $("sa-or-tab-withdrawals-btn")?.classList.add("sa-btn--secondary");
+    const depPanel = $("sa-or-panel-deposits");
+    const wthPanel = $("sa-or-panel-withdrawals");
+    if (depPanel) depPanel.hidden = false;
+    if (wthPanel) wthPanel.hidden = true;
+  });
+  bindSaOnce($("sa-or-tab-withdrawals-btn"), "click", () => {
+    $("sa-or-tab-withdrawals-btn")?.classList.remove("sa-btn--secondary");
+    $("sa-or-tab-withdrawals-btn")?.classList.add("sa-btn--primary");
+    $("sa-or-tab-deposits-btn")?.classList.remove("sa-btn--primary");
+    $("sa-or-tab-deposits-btn")?.classList.add("sa-btn--secondary");
+    const depPanel = $("sa-or-panel-deposits");
+    const wthPanel = $("sa-or-panel-withdrawals");
+    if (depPanel) depPanel.hidden = true;
+    if (wthPanel) wthPanel.hidden = false;
+  });
+  bindSaOnce($("sa-or-dep-search"), "input", (e) => {
+    saOnlineRequestsState.depSearch = e.target.value;
+    renderOnlineDepositsTable();
+  });
+  bindSaOnce($("sa-or-dep-status-filter"), "change", (e) => {
+    saOnlineRequestsState.depFilter = e.target.value;
+    renderOnlineDepositsTable();
+  });
+  bindSaOnce($("sa-or-wth-search"), "input", (e) => {
+    saOnlineRequestsState.wthSearch = e.target.value;
+    renderOnlineWithdrawalsTable();
+  });
+  bindSaOnce($("sa-or-wth-status-filter"), "change", (e) => {
+    saOnlineRequestsState.wthFilter = e.target.value;
+    renderOnlineWithdrawalsTable();
+  });
+
+  setInterval(() => {
+    if (saState && saState.initialized && saState.currentTab === "online-requests") {
+      renderSuperAdminOnlineRequests();
+    }
+  }, 15000);
 }
 
 function switchSuperAdminTab(targetTab) {
@@ -18283,6 +18445,7 @@ function switchSuperAdminTab(targetTab) {
   if (tab === "bonus") renderSuperAdminBonusTable(saState.bonusFilter || "all");
   if (tab === "settings") populateSuperAdminSettingsForm();
   if (tab === "game-control") renderSuperAdminGameControl();
+  if (tab === "online-requests") renderSuperAdminOnlineRequests(true);
 }
 
 function saApiResultError(result, fallback) {
@@ -18338,6 +18501,9 @@ async function loadSuperAdminPortalData(force = false) {
   if (saState.currentTab && ["transactions", "deposits", "tickets", "reports", "audit"].includes(saState.currentTab)) {
     await loadSuperAdminWorkspaceData(saState.currentTab, true, saState.pages[saState.currentTab] || 1);
   }
+  if (saState.currentTab === "online-requests") {
+    await renderSuperAdminOnlineRequests(true);
+  }
   if (failures) {
     saSetGlobalStatus(`${failures} control center service${failures === 1 ? "" : "s"} could not be reached. Review the affected workspace.`, "warning");
   } else {
@@ -18353,6 +18519,7 @@ function saUpdateHeaderCounters() {
     ["sa-tab-admins-count", saState.admins.length],
     ["sa-tab-players-count", saState.players.length],
     ["sa-tab-deposits-count", summary.pendingDeposits || 0],
+    ["sa-tab-online-requests-count", (summary.pendingDeposits || 0) + (summary.pendingWithdrawals || 0)],
     ["sa-tab-bonus-count", saState.bonusRules.filter((rule) => rule.enabled !== false).length],
   ];
   pairs.forEach(([id, value]) => { const el = $(id); if (el) el.textContent = String(value); });
@@ -18616,10 +18783,243 @@ function renderSuperAdminDeposits() {
   const rows = saState.deposits || [];
   const summary = $("sa-deposits-summary");
   const pending = rows.filter((row) => row.status === "pending");
-  if (summary) summary.innerHTML = `<div><span>Showing</span><strong>${Number(saState.pagination.deposits?.total || rows.length).toLocaleString()}</strong><small>deposit requests</small></div><div><span>Pending on this page</span><strong>${pending.length}</strong><small>Read-only review queue</small></div>`;
-  tbody.innerHTML = rows.length ? rows.map((deposit) => `<tr><td><div class="sa-entity-cell"><span class="sa-entity-avatar sa-entity-avatar--player">♙</span><div><strong>${saText(deposit.username || deposit.userDisplayName)}</strong><small>#${Number(deposit.user_id || 0)} · ${saText(deposit.reference || "No reference")}</small></div></div></td><td>${saText(deposit.shopAdminName || "Direct registration")}</td><td><span class="sa-source-chip">${saText(deposit.method || "Unknown")}</span></td><td><strong class="sa-amount">${saMoney(deposit.amount)}</strong></td><td>${saText(deposit.reference)}</td><td>${saStatus(deposit.status)}</td><td>${saDate(deposit.created_at || deposit.reviewed_at)}</td></tr>`).join("") : `<tr><td colspan="7" class="sa-table-empty">No deposits found.</td></tr>`;
+  if (summary) summary.innerHTML = `<div><span>Showing</span><strong>${Number(saState.pagination.deposits?.total || rows.length).toLocaleString()}</strong><small>deposit requests</small></div><div><span>Pending on this page</span><strong>${pending.length}</strong><small>Actionable queue</small></div>`;
+  tbody.innerHTML = rows.length ? rows.map((deposit) => {
+    let actionHtml = `<span style="color:#9ca3af;font-size:11px;">—</span>`;
+    if (deposit.status === "pending") {
+      actionHtml = `
+        <div style="display:flex;gap:6px;justify-content:flex-end;">
+          <button type="button" class="sa-btn sa-btn--primary" style="padding:4px 10px;font-size:11px;background:#10b981;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saApproveDeposit('${deposit.id}')">✓ Approve</button>
+          <button type="button" class="sa-btn sa-btn--danger" style="padding:4px 10px;font-size:11px;background:#ef4444;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saRejectDeposit('${deposit.id}')">✕ Reject</button>
+        </div>`;
+    } else if (deposit.status === "approved") {
+      actionHtml = `<span style="color:#10b981;font-weight:700;font-size:11px;">✓ APPROVED</span>`;
+    } else if (deposit.status === "rejected") {
+      actionHtml = `<span style="color:#ef4444;font-weight:700;font-size:11px;">✕ REJECTED</span>`;
+    }
+    return `<tr><td><div class="sa-entity-cell"><span class="sa-entity-avatar sa-entity-avatar--player">♙</span><div><strong>${saText(deposit.username || deposit.userDisplayName)}</strong><small>#${Number(deposit.user_id || 0)} · ${saText(deposit.reference || "No reference")}</small></div></div></td><td>${saText(deposit.shopAdminName || "Direct registration")}</td><td><span class="sa-source-chip">${saText(deposit.method || "Unknown")}</span></td><td><strong class="sa-amount">${saMoney(deposit.amount)}</strong></td><td>${saText(deposit.reference)}</td><td>${saStatus(deposit.status)}</td><td>${saDate(deposit.created_at || deposit.reviewed_at)}</td><td style="text-align:right;">${actionHtml}</td></tr>`;
+  }).join("") : `<tr><td colspan="8" class="sa-table-empty">No deposits found.</td></tr>`;
   saRenderPagination("sa-deposits-pagination", saState.pagination.deposits, "deposits");
 }
+
+let saOnlineRequestsState = {
+  data: null,
+  depFilter: "pending",
+  wthFilter: "pending",
+  depSearch: "",
+  wthSearch: "",
+};
+
+async function renderSuperAdminOnlineRequests(force = false) {
+  try {
+    const res = await api().superAdminGetOnlineRequests();
+    if (!res || res.ok === false) return;
+    saOnlineRequestsState.data = res;
+
+    // Update KPI summary values
+    const depCnt = $("sa-online-pending-deposits-cnt");
+    if (depCnt) depCnt.textContent = String(res.pendingDepositsCount || 0);
+    const depAmt = $("sa-online-pending-deposits-amt");
+    if (depAmt) depAmt.textContent = `${saMoney(res.pendingDepositsAmount || 0)} waiting credit`;
+
+    const wthCnt = $("sa-online-pending-withdrawals-cnt");
+    if (wthCnt) wthCnt.textContent = String(res.pendingWithdrawalsCount || 0);
+    const wthAmt = $("sa-online-pending-withdrawals-amt");
+    if (wthAmt) wthAmt.textContent = `${saMoney(res.pendingWithdrawalsAmount || 0)} waiting payout`;
+
+    const badgeDep = $("sa-or-badge-dep");
+    if (badgeDep) badgeDep.textContent = String(res.pendingDepositsCount || 0);
+    const badgeWth = $("sa-or-badge-wth");
+    if (badgeWth) badgeWth.textContent = String(res.pendingWithdrawalsCount || 0);
+
+    const navBadge = $("sa-tab-online-requests-count");
+    if (navBadge) navBadge.textContent = String((res.pendingDepositsCount || 0) + (res.pendingWithdrawalsCount || 0));
+
+    renderOnlineDepositsTable();
+    renderOnlineWithdrawalsTable();
+  } catch (err) {
+    console.error("[online-requests] Error loading requests:", err);
+  }
+}
+
+function renderOnlineDepositsTable() {
+  const tbody = $("sa-or-deposits-tbody");
+  if (!tbody || !saOnlineRequestsState.data) return;
+
+  let list = saOnlineRequestsState.data.recentDeposits || [];
+  const statusFilter = saOnlineRequestsState.depFilter || "pending";
+  if (statusFilter !== "all") {
+    list = list.filter((d) => String(d.status).toLowerCase() === statusFilter);
+  }
+
+  const query = (saOnlineRequestsState.depSearch || "").toLowerCase();
+  if (query) {
+    list = list.filter((d) =>
+      (d.username || "").toLowerCase().includes(query) ||
+      (d.userDisplayName || "").toLowerCase().includes(query) ||
+      (d.reference || "").toLowerCase().includes(query) ||
+      (d.method || "").toLowerCase().includes(query) ||
+      String(d.user_id || "").includes(query)
+    );
+  }
+
+  const countEl = $("sa-or-dep-result-count");
+  if (countEl) countEl.textContent = `${list.length} deposit${list.length === 1 ? "" : "s"}`;
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="sa-table-empty">No ${statusFilter === "all" ? "" : statusFilter} deposit requests found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map((d) => {
+    let actionHtml = `<span style="color:#9ca3af;font-size:11px;">—</span>`;
+    if (d.status === "pending") {
+      actionHtml = `
+        <div style="display:flex;gap:6px;justify-content:flex-end;">
+          <button type="button" class="sa-btn sa-btn--primary" style="padding:5px 12px;font-size:11px;background:#10b981;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saApproveDeposit('${d.id}')">✓ Approve & Credit</button>
+          <button type="button" class="sa-btn sa-btn--danger" style="padding:5px 12px;font-size:11px;background:#ef4444;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saRejectDeposit('${d.id}')">✕ Reject</button>
+        </div>`;
+    } else if (d.status === "approved") {
+      actionHtml = `<span style="color:#10b981;font-weight:700;font-size:11px;">✓ APPROVED</span>`;
+    } else if (d.status === "rejected") {
+      actionHtml = `<span style="color:#ef4444;font-weight:700;font-size:11px;">✕ REJECTED</span>`;
+    }
+
+    return `<tr>
+      <td>
+        <div class="sa-entity-cell">
+          <span class="sa-entity-avatar sa-entity-avatar--player" style="background:#059669;color:#fff;">♙</span>
+          <div>
+            <strong>${saText(d.username || d.userDisplayName)}</strong>
+            <small>Player #${Number(d.user_id || 0)}</small>
+          </div>
+        </div>
+      </td>
+      <td><span class="sa-source-chip" style="background:#374151;color:#e5e7eb;">${saText(d.shopAdminName || "Direct / Online")}</span></td>
+      <td><strong style="text-transform:uppercase;color:#60a5fa;">${saText(d.method || "—")}</strong></td>
+      <td><strong class="sa-amount" style="color:#10b981;font-size:14px;">${saMoney(d.amount)}</strong></td>
+      <td><code style="background:#111827;padding:3px 6px;border-radius:4px;color:#f3f4f6;font-size:12px;">${saText(d.reference || "—")}</code></td>
+      <td>${saStatus(d.status)}</td>
+      <td><small style="color:#9ca3af;">${saDate(d.created_at || d.reviewed_at)}</small></td>
+      <td style="text-align:right;">${actionHtml}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderOnlineWithdrawalsTable() {
+  const tbody = $("sa-or-withdrawals-tbody");
+  if (!tbody || !saOnlineRequestsState.data) return;
+
+  let list = saOnlineRequestsState.data.recentWithdrawals || [];
+  const statusFilter = saOnlineRequestsState.wthFilter || "pending";
+  if (statusFilter !== "all") {
+    list = list.filter((w) => String(w.status).toLowerCase() === statusFilter);
+  }
+
+  const query = (saOnlineRequestsState.wthSearch || "").toLowerCase();
+  if (query) {
+    list = list.filter((w) =>
+      (w.username || "").toLowerCase().includes(query) ||
+      (w.userDisplayName || "").toLowerCase().includes(query) ||
+      (w.userPhone || "").toLowerCase().includes(query) ||
+      (w.account || "").toLowerCase().includes(query) ||
+      (w.method || "").toLowerCase().includes(query) ||
+      String(w.user_id || "").includes(query)
+    );
+  }
+
+  const countEl = $("sa-or-wth-result-count");
+  if (countEl) countEl.textContent = `${list.length} withdrawal${list.length === 1 ? "" : "s"}`;
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="sa-table-empty">No ${statusFilter === "all" ? "" : statusFilter} withdrawal requests found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map((w) => {
+    let actionHtml = `<span style="color:#9ca3af;font-size:11px;">—</span>`;
+    if (w.status === "pending") {
+      actionHtml = `
+        <div style="display:flex;gap:6px;justify-content:flex-end;">
+          <button type="button" class="sa-btn sa-btn--primary" style="padding:5px 12px;font-size:11px;background:#10b981;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saApproveWithdrawal('${w.id}')">✓ Approve & Mark Paid</button>
+          <button type="button" class="sa-btn sa-btn--danger" style="padding:5px 12px;font-size:11px;background:#ef4444;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saRejectWithdrawal('${w.id}')">✕ Reject & Refund</button>
+        </div>`;
+    } else if (w.status === "approved") {
+      actionHtml = `<span style="color:#10b981;font-weight:700;font-size:11px;">✓ PAID / COMPLETED</span>`;
+    } else if (w.status === "rejected") {
+      actionHtml = `<span style="color:#ef4444;font-weight:700;font-size:11px;">✕ REJECTED & REFUNDED</span>`;
+    }
+
+    return `<tr>
+      <td>
+        <div class="sa-entity-cell">
+          <span class="sa-entity-avatar sa-entity-avatar--player" style="background:#d97706;color:#fff;">♙</span>
+          <div>
+            <strong>${saText(w.username || w.userDisplayName)}</strong>
+            <small>Player #${Number(w.user_id || 0)} · ${saText(w.userPhone || "—")}</small>
+          </div>
+        </div>
+      </td>
+      <td><span class="sa-source-chip" style="background:#374151;color:#e5e7eb;">${saText(w.shopAdminName || "Direct / Online")}</span></td>
+      <td><strong style="text-transform:uppercase;color:#ec4899;">${saText(w.method || "—")}</strong></td>
+      <td><strong class="sa-amount" style="color:#f59e0b;font-size:14px;">${saMoney(w.amount)}</strong></td>
+      <td><code style="background:#111827;padding:3px 6px;border-radius:4px;color:#f3f4f6;font-size:12px;font-weight:700;">${saText(w.account || "—")}</code></td>
+      <td><span style="color:#9ca3af;font-size:12px;">${saMoney(w.currentBalance || 0)}</span></td>
+      <td>${saStatus(w.status)}</td>
+      <td><small style="color:#9ca3af;">${saDate(w.created_at || w.reviewed_at)}</small></td>
+      <td style="text-align:right;">${actionHtml}</td>
+    </tr>`;
+  }).join("");
+}
+
+// Global action handlers accessible to inline button onclicks
+window.saApproveDeposit = async function (id) {
+  if (!confirm(`Are you sure you want to APPROVE deposit ${id} and credit the player wallet?`)) return;
+  try {
+    const res = await api().superAdminApproveDeposit(id);
+    toast(`Deposit ${id} approved! Player balance credited.`, "ok");
+    await renderSuperAdminOnlineRequests(true);
+    if (saState.currentTab === "deposits") loadSuperAdminWorkspaceData("deposits", true);
+  } catch (err) {
+    toast(err.message || "Failed to approve deposit", "err");
+  }
+};
+
+window.saRejectDeposit = async function (id) {
+  const note = prompt(`Enter rejection reason for deposit ${id}:`, "Invalid transaction reference");
+  if (note === null) return;
+  try {
+    await api().superAdminRejectDeposit(id, note);
+    toast(`Deposit ${id} rejected.`, "info");
+    await renderSuperAdminOnlineRequests(true);
+    if (saState.currentTab === "deposits") loadSuperAdminWorkspaceData("deposits", true);
+  } catch (err) {
+    toast(err.message || "Failed to reject deposit", "err");
+  }
+};
+
+window.saApproveWithdrawal = async function (id) {
+  if (!confirm(`Confirm that payment for withdrawal ${id} has been transferred to player's bank or Telebirr account?`)) return;
+  try {
+    await api().superAdminApproveWithdrawal(id);
+    toast(`Withdrawal ${id} approved & marked paid!`, "ok");
+    await renderSuperAdminOnlineRequests(true);
+  } catch (err) {
+    toast(err.message || "Failed to approve withdrawal", "err");
+  }
+};
+
+window.saRejectWithdrawal = async function (id) {
+  const note = prompt(`Enter rejection reason for withdrawal ${id} (funds will be immediately refunded to player's wallet):`, "Incorrect account details");
+  if (note === null) return;
+  try {
+    await api().superAdminRejectWithdrawal(id, note);
+    toast(`Withdrawal ${id} rejected and funds refunded to player wallet!`, "info");
+    await renderSuperAdminOnlineRequests(true);
+  } catch (err) {
+    toast(err.message || "Failed to reject withdrawal", "err");
+  }
+};
 
 function renderSuperAdminTickets() {
   const tbody = $("sa-tickets-tbody");

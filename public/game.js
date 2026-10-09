@@ -5421,6 +5421,7 @@ function applySubNav(id) {
   state.leaguePageIds = [];
   state.detailFixtureId = null;
   state.upcomingActiveDropdown = null;
+  state.upcomingMatchLimit = 40;
   updateSubNavHighlight();
 
   if (id === "my-bets") {
@@ -10899,13 +10900,34 @@ function addToSlip(fixture, marketKey, selection, odd, marketLabel, pickLabel) {
   });
 }
 
-function refreshMatchViews() {
-  const leaguesView = document.querySelector('[data-view="leagues"]');
-  if (leaguesView && !leaguesView.hidden) {
-    renderLeaguePage();
-    return;
+function updateSelectedOddsUI() {
+  const activeKeys = new Set((state.slip || []).map((b) => b.key));
+
+  // 1. Regular odds buttons across match board, upcoming, daily, league, and home tables
+  const buttons = document.querySelectorAll(".odd-btn[data-fixture]");
+  for (let i = 0; i < buttons.length; i++) {
+    const btn = buttons[i];
+    const key = slipKey(btn.dataset.fixture, btn.dataset.market, btn.dataset.selection);
+    const shouldBe = activeKeys.has(key);
+    if (btn.classList.contains("is-selected") !== shouldBe) {
+      btn.classList.toggle("is-selected", shouldBe);
+    }
   }
-  refreshHomeAndBoard();
+
+  // 2. Odds buttons inside match detail modal / view
+  const detailBtns = document.querySelectorAll("[data-detail-odd]");
+  for (let i = 0; i < detailBtns.length; i++) {
+    const btn = detailBtns[i];
+    const key = slipKey(btn.dataset.fixture, `m${btn.dataset.marketId}`, btn.dataset.value);
+    const shouldBe = activeKeys.has(key);
+    if (btn.classList.contains("is-selected") !== shouldBe) {
+      btn.classList.toggle("is-selected", shouldBe);
+    }
+  }
+}
+
+function refreshMatchViews() {
+  updateSelectedOddsUI();
 }
 
 function toggleSelection(fixture, market, selection) {
@@ -10923,8 +10945,7 @@ function toggleSelection(fixture, market, selection) {
   addToSlip(fixture, market, selection, odd, marketNameFor(market), selectionLabel(market, selection, fixture));
   save();
   renderSlip();
-  refreshMatchViews();
-  if (state.detailFixtureId) renderMatchDetail();
+  updateSelectedOddsUI();
 }
 
 function toggleDetailSelection(fixture, market, value) {
@@ -10942,8 +10963,7 @@ function toggleDetailSelection(fixture, market, value) {
   addToSlip(fixture, marketKey, value.value, value.odd, market.name, value.value);
   save();
   renderSlip();
-  renderMatchDetail();
-  refreshMatchViews();
+  updateSelectedOddsUI();
 }
 
 function totalOdds() {
@@ -12737,7 +12757,13 @@ function ensureUpcomingEventsAttached() {
         });
         return;
       }
+      if (action === "load-more-matches") {
+        state.upcomingMatchLimit = (state.upcomingMatchLimit || 40) + 40;
+        renderBoard();
+        return;
+      }
       if (action === "apply-calendar") {
+        state.upcomingMatchLimit = 40;
         state.upcomingDateFilter = state.upcomingTempDateFilter || "all";
         if (state.subNav === "daily") {
           state.dailyDateFilter = state.upcomingDateFilter;
@@ -12755,6 +12781,7 @@ function ensureUpcomingEventsAttached() {
         return;
       }
       if (action === "apply-leagues") {
+        state.upcomingMatchLimit = 40;
         const allLeagues = getUpcomingAvailableLeagues();
         if (state.upcomingTempCheckedLeagues.size >= allLeagues.length) {
           state.upcomingCheckedLeagues = new Set();
@@ -12799,6 +12826,7 @@ function ensureUpcomingEventsAttached() {
     if (marketItem) {
       e.preventDefault();
       e.stopPropagation();
+      state.upcomingMatchLimit = 40;
       state.upcomingMarket = marketItem.dataset.ufMarket;
       state.upcomingActiveDropdown = null;
       renderBoard();
@@ -12810,6 +12838,7 @@ function ensureUpcomingEventsAttached() {
     if (sportItem) {
       e.preventDefault();
       e.stopPropagation();
+      state.upcomingMatchLimit = 40;
       state.upcomingSport = sportItem.dataset.ufSport;
       state.upcomingActiveDropdown = null;
       renderBoard();
@@ -12821,6 +12850,7 @@ function ensureUpcomingEventsAttached() {
     if (dayChip) {
       e.preventDefault();
       e.stopPropagation();
+      state.upcomingMatchLimit = 40;
       const dayId = dayChip.dataset.ufDayChip;
       state.dailyDateFilter = dayId;
       state.upcomingDateFilter = dayId;
@@ -13039,8 +13069,11 @@ function renderUpcomingFeature(board) {
     const emptyText = isDaily ? "No daily events available for this filter" : "No upcoming matches available for this filter";
     matchesHtml = `<div class="uf-empty">${emptyText}</div>`;
   } else {
+    const matchLimit = state.upcomingMatchLimit || 40;
+    const visibleFixtures = fixtures.slice(0, matchLimit);
+
     const bannerGroups = new Map();
-    for (const f of fixtures) {
+    for (const f of visibleFixtures) {
       const bKey = isDaily ? formatDailyEventsBanner(f.date) : formatUpcomingDateBanner(f.date);
       if (!bannerGroups.has(bKey)) bannerGroups.set(bKey, []);
       bannerGroups.get(bKey).push(f);
@@ -13102,6 +13135,17 @@ function renderUpcomingFeature(board) {
         ${rows}
       `;
     }).join("");
+
+    if (fixtures.length > matchLimit) {
+      const remaining = fixtures.length - matchLimit;
+      matchesHtml += `
+        <div class="uf-load-more-wrap" style="text-align:center; padding:18px 12px 28px;">
+          <button type="button" class="uf-btn-load-more" data-uf-action="load-more-matches" style="background:#ffd200; color:#111; font-weight:700; border:none; padding:10px 24px; border-radius:6px; cursor:pointer; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            Load More Matches (+${Math.min(40, remaining)}) · ${remaining} remaining
+          </button>
+        </div>
+      `;
+    }
   }
 
   const isDropdownOpen = Boolean(activeDropdown);
@@ -14920,7 +14964,7 @@ async function placeBet() {
       state.slip = [];
       renderBalance();
       renderSlip();
-      refreshHomeAndBoard();
+      updateSelectedOddsUI();
       if (state.detailFixtureId) renderMatchDetail();
       toast(`Bet placed — ${ticket.id}`, "ok");
       refreshMyBetsIfVisible();
@@ -14964,7 +15008,7 @@ async function placeBet() {
 
   renderBalance();
   renderSlip();
-  refreshHomeAndBoard();
+  updateSelectedOddsUI();
   if (state.detailFixtureId) renderMatchDetail();
   toast(`Bet placed — ${id}`, "ok");
   refreshMyBetsIfVisible();
@@ -16825,7 +16869,7 @@ document.addEventListener("click", (e) => {
       state.slip = state.slip.filter((b) => b.key !== btn.dataset.remove);
       save();
       renderSlip();
-      refreshHomeAndBoard();
+      updateSelectedOddsUI();
       if (state.detailFixtureId) renderMatchDetail();
       return;
     }
@@ -16856,7 +16900,7 @@ document.addEventListener("click", (e) => {
         state.slip = [state.slip[state.slip.length - 1]];
         save();
         renderSlip();
-        refreshHomeAndBoard();
+        updateSelectedOddsUI();
       }
     });
   });
@@ -17298,7 +17342,7 @@ document.addEventListener("click", (e) => {
     state.slip = [];
     save();
     renderSlip();
-    refreshHomeAndBoard();
+    updateSelectedOddsUI();
     if (isMobileLayout()) closeMobileDrawers();
   });
 
