@@ -493,21 +493,26 @@ function repairMistakenlyLostTickets() {
           }
         }
 
-        if (changed) {
-          const allWon = selections.every((s) => s.status === "won");
-          if (allWon) {
-            bet.status = "won";
-            bet.payout = Number(bet.potential_win || 0);
-            bet.selections = JSON.stringify(selections);
-            if (bet.payout > 0) {
-              creditWallet(bet.user_id, bet.payout, "bet_win_correction", bet.ticket_id, {
-                ticketId: bet.ticket_id,
-                note: "Result settlement correction for Over/Under",
-              });
-            }
-          } else {
-            bet.selections = JSON.stringify(selections);
+        const anyLost = selections.some((s) => s.status === "lost");
+        const allWon = selections.length > 0 && selections.every((s) => s.status === "won");
+
+        if (allWon) {
+          bet.status = "won";
+          bet.payout = Number(bet.potential_win || 0);
+          bet.selections = JSON.stringify(selections);
+          if (bet.payout > 0) {
+            creditWallet(bet.user_id, bet.payout, "bet_win_correction", bet.ticket_id, {
+              ticketId: bet.ticket_id,
+              note: "Result settlement correction for Over/Under",
+            });
           }
+        } else if (!anyLost) {
+          bet.status = "open";
+          bet.payout = 0;
+          bet.settled_at = null;
+          bet.selections = JSON.stringify(selections);
+        } else if (changed) {
+          bet.selections = JSON.stringify(selections);
         }
       }
     });
