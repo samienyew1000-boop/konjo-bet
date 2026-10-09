@@ -559,8 +559,8 @@ const state = {
   leaguePageIds: [],
   footballFiltersOpen: false,
   subNav: "sports",
-  myBetsStatus: "in-course",
-  myBetsTime: "today",
+  myBetsStatus: "all",
+  myBetsTime: "all",
   myBetsSearch: "",
   expandedMyBetsTickets: new Set(),
   cashoutLocked: false,
@@ -6086,63 +6086,102 @@ function evaluateFixtureBetResult(fixture, b) {
   if (!fixture) return null;
   const gh = Number(fixture.goals?.home ?? fixture.score?.fulltime?.home ?? fixture.score?.home ?? 0);
   const ga = Number(fixture.goals?.away ?? fixture.score?.fulltime?.away ?? fixture.score?.away ?? 0);
-  const market = String(b.market || b.marketKey || "").toLowerCase();
-  const sel = String(b.selection || b.value || b.selectionName || "").toLowerCase();
+  const mKey = String(b.market || b.marketKey || "").toLowerCase();
+  const mName = String(b.marketName || "").toLowerCase();
+  const sVal = String(b.selection || b.value || "").toLowerCase();
+  const sName = String(b.selectionName || "").toLowerCase();
+  const mCombined = `${mKey} ${mName}`.toLowerCase();
+  const sCombined = `${sVal} ${sName}`.toLowerCase();
   const hName = String(b.homeName || fixture.home?.name || "").toLowerCase();
   const aName = String(b.awayName || fixture.away?.name || "").toLowerCase();
 
-  // 1. Match Result / 1X2 / Winner
-  if (market === "1x2" || market.includes("match") || market.includes("winner") || String(b.marketName || "").toLowerCase().includes("match result") || !market) {
-    if (gh > ga) {
-      return (sel === "home" || sel === "1" || sel === "w1" || (hName && (sel === hName || hName.includes(sel)))) ? "won" : "lost";
-    } else if (ga > gh) {
-      return (sel === "away" || sel === "2" || sel === "w2" || (aName && (sel === aName || aName.includes(sel)))) ? "won" : "lost";
-    } else {
-      return (sel === "draw" || sel === "x") ? "won" : "lost";
+  // 1. Over / Under (Total Goals) - evaluate FIRST
+  const isOuMarket = (
+    mKey.startsWith("ou") ||
+    mKey === "ou" ||
+    mCombined.includes("over/under") ||
+    mCombined.includes("over / under") ||
+    mCombined.includes("total goals") ||
+    mCombined.includes("goals over") ||
+    mCombined.includes("totals") ||
+    sCombined.includes("over") ||
+    sCombined.includes("under") ||
+    /^[ou]\d/.test(mKey) ||
+    /^[ou]\s*\d/i.test(sCombined)
+  );
+
+  if (isOuMarket && !mCombined.includes("1st half") && !mKey.includes("half1")) {
+    const total = gh + ga;
+    let line = 2.5;
+    if (mKey === "ou15") line = 1.5;
+    else if (mKey === "ou" || mKey === "ou25") line = 2.5;
+    else if (mKey === "ou35") line = 3.5;
+    else if (mKey === "ou45") line = 4.5;
+    else if (mKey === "ou05") line = 0.5;
+    else {
+      const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
+      if (numMatch) line = parseFloat(numMatch[1]);
     }
+
+    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o") || sCombined.includes(">");
+    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u") || sCombined.includes("<");
+
+    if (isOver) return total > line ? "won" : "lost";
+    if (isUnder) return total < line ? "won" : "lost";
   }
 
-  // 2. Over / Under
-  if (market.includes("over") || market.includes("under") || String(b.marketName || "").toLowerCase().includes("over/under") || market.includes("total")) {
-    const total = gh + ga;
-    const isOver = sel.includes("over") || sel.startsWith("o");
-    const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || String(b.marketName || "").match(/(\d+(?:\.\d+)?)/);
-    const line = numMatch ? parseFloat(numMatch[1]) : 2.5;
-    if (isOver) return total > line ? "won" : "lost";
-    return total < line ? "won" : "lost";
+  // 2. 1st Half Over / Under
+  if (isOuMarket && (mCombined.includes("1st half") || mKey.includes("half1") || mKey === "half1_ou15")) {
+    const hth = Number(fixture.score?.halftime?.home ?? fixture.score?.htHome ?? (gh === 0 ? 0 : Math.floor(gh / 2)));
+    const hta = Number(fixture.score?.halftime?.away ?? fixture.score?.htAway ?? (ga === 0 ? 0 : Math.floor(ga / 2)));
+    const htTotal = hth + hta;
+    let line = 1.5;
+    const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
+    if (numMatch) line = parseFloat(numMatch[1]);
+    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o");
+    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u");
+    if (isOver) return htTotal > line ? "won" : "lost";
+    if (isUnder) return htTotal < line ? "won" : "lost";
   }
 
   // 3. Both Teams to Score (GG/NG)
-  if (market.includes("btts") || market.includes("gg") || String(b.marketName || "").toLowerCase().includes("both teams")) {
+  if (mKey === "btts" || mCombined.includes("btts") || mCombined.includes("both") || mCombined.includes("gg")) {
     const bothScored = gh > 0 && ga > 0;
-    const wantsYes = sel === "yes" || sel === "gg";
+    const wantsYes = sCombined.includes("yes") || sCombined.includes("gg");
     return (wantsYes && bothScored) || (!wantsYes && !bothScored) ? "won" : "lost";
   }
 
-  // 4. Double Chance
-  if (market.includes("double") || String(b.marketName || "").toLowerCase().includes("double chance") || market.includes("dc")) {
-    if (sel === "1x" || sel === "1/x") return gh >= ga ? "won" : "lost";
-    if (sel === "x2" || sel === "x/2") return ga >= gh ? "won" : "lost";
-    if (sel === "12" || sel === "1/2") return gh !== ga ? "won" : "lost";
+  // 4. Double Chance (1X, 12, X2)
+  if (mKey === "dc" || mCombined.includes("double") || mCombined.includes("dc")) {
+    if (sCombined.includes("1x") || sCombined.includes("1/x")) return gh >= ga ? "won" : "lost";
+    if (sCombined.includes("x2") || sCombined.includes("x/2")) return ga >= gh ? "won" : "lost";
+    if (sCombined.includes("12") || sCombined.includes("1/2")) return gh !== ga ? "won" : "lost";
   }
 
-  // 5. Half Time 1X2
-  if (market.includes("half") || market.includes("ht")) {
+  // 5. Draw No Bet (DNB)
+  if (mKey === "dnb" || mCombined.includes("dnb") || mCombined.includes("draw no bet")) {
+    if (gh === ga) return "won"; // push
+    if (gh > ga) return (sCombined.includes("home") || sCombined === "1" || (hName && sCombined.includes(hName))) ? "won" : "lost";
+    return (sCombined.includes("away") || sCombined === "2" || (aName && sCombined.includes(aName))) ? "won" : "lost";
+  }
+
+  // 6. Half Time 1X2
+  if (mKey === "half1_1x2" || (mCombined.includes("1st half") || mCombined.includes("half")) && (mCombined.includes("1x2") || mCombined.includes("winner") || mCombined.includes("result"))) {
     const hth = Number(fixture.score?.halftime?.home ?? fixture.score?.htHome ?? (gh === 0 ? 0 : Math.floor(gh / 2)));
     const hta = Number(fixture.score?.halftime?.away ?? fixture.score?.htAway ?? (ga === 0 ? 0 : Math.floor(ga / 2)));
-    if (hth > hta) return (sel === "home" || sel === "1" || sel === "w1") ? "won" : "lost";
-    if (hta > hth) return (sel === "away" || sel === "2" || sel === "w2") ? "won" : "lost";
-    return (sel === "draw" || sel === "x") ? "won" : "lost";
+    if (hth > hta) return (sCombined.includes("home") || sCombined === "1" || sCombined === "w1") ? "won" : "lost";
+    if (hta > hth) return (sCombined.includes("away") || sCombined === "2" || sCombined === "w2") ? "won" : "lost";
+    return (sCombined.includes("draw") || sCombined === "x") ? "won" : "lost";
   }
 
-  // 6. Draw No Bet (DNB)
-  if (market.includes("dnb") || market.includes("draw no bet")) {
-    if (gh === ga) return "won";
-    if (gh > ga) return (sel === "home" || sel === "1" || sel === "w1") ? "won" : "lost";
-    return (sel === "away" || sel === "2" || sel === "w2") ? "won" : "lost";
+  // 7. Match Result / 1X2 / Winner (Default)
+  if (gh > ga) {
+    return (sCombined.includes("home") || sCombined === "1" || sCombined === "w1" || (hName && (sCombined === hName || hName.includes(sCombined)))) ? "won" : "lost";
+  } else if (ga > gh) {
+    return (sCombined.includes("away") || sCombined === "2" || sCombined === "w2" || (aName && (sCombined === aName || aName.includes(sCombined)))) ? "won" : "lost";
+  } else {
+    return (sCombined.includes("draw") || sCombined === "x") ? "won" : "lost";
   }
-
-  return null;
 }
 
 function resolveMatchFinishedResult(b) {

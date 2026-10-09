@@ -166,53 +166,96 @@ function evaluateSelection(sel, fixtureData) {
   if (homeGoals > awayGoals) outcome1x2 = "home";
   else if (awayGoals > homeGoals) outcome1x2 = "away";
 
-  const s = String(sel.value || sel.selectionName || sel.selection || "").trim().toLowerCase();
-  const m = String(sel.marketKey || sel.marketName || "").trim().toLowerCase();
+  const mKey = String(sel.marketKey || sel.market || "").trim().toLowerCase();
+  const mName = String(sel.marketName || "").trim().toLowerCase();
+  const sVal = String(sel.value || sel.selection || "").trim().toLowerCase();
+  const sName = String(sel.selectionName || "").trim().toLowerCase();
+  const mCombined = `${mKey} ${mName}`.toLowerCase();
+  const sCombined = `${sVal} ${sName}`.toLowerCase();
   const h = String(sel.homeName || "").trim().toLowerCase();
   const a = String(sel.awayName || "").trim().toLowerCase();
 
   let won = false;
 
-  // 1. Match Result / 1X2 / Winner
-  if (m.includes("1x2") || m.includes("match") || m.includes("winner") || m.includes("result") || !m) {
-    if (outcome1x2 === "home" && (s === "home" || s === "1" || s === "w1" || (h && s === h) || (h && h.includes(s)))) won = true;
-    if (outcome1x2 === "draw" && (s === "draw" || s === "x")) won = true;
-    if (outcome1x2 === "away" && (s === "away" || s === "2" || s === "w2" || (a && s === a) || (a && a.includes(s)))) won = true;
-  }
-  // 2. Double Chance
-  else if (m.includes("dc") || m.includes("double")) {
-    if ((s.includes("1x") || s.includes("1/x")) && (outcome1x2 === "home" || outcome1x2 === "draw")) won = true;
-    if ((s.includes("12") || s.includes("1/2")) && (outcome1x2 === "home" || outcome1x2 === "away")) won = true;
-    if ((s.includes("x2") || s.includes("x/2")) && (outcome1x2 === "draw" || outcome1x2 === "away")) won = true;
-  }
-  // 3. Over / Under
-  else if (m.includes("total") || m.includes("over") || m.includes("under")) {
+  // 1. Over / Under (Total Goals) - evaluate FIRST so "Match Goals Over/Under" is never caught by 1X2!
+  const isOuMarket = (
+    mKey.startsWith("ou") ||
+    mKey === "ou" ||
+    mCombined.includes("over/under") ||
+    mCombined.includes("over / under") ||
+    mCombined.includes("total goals") ||
+    mCombined.includes("goals over") ||
+    mCombined.includes("totals") ||
+    sCombined.includes("over") ||
+    sCombined.includes("under") ||
+    /^[ou]\d/.test(mKey) ||
+    /^[ou]\s*\d/i.test(sCombined)
+  );
+
+  if (isOuMarket && !mCombined.includes("1st half") && !mKey.includes("half1")) {
     const totalGoals = homeGoals + awayGoals;
-    const numMatch = s.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
-    const line = numMatch ? parseFloat(numMatch[1]) : 2.5;
-    if ((s.includes("over") || s.startsWith("o")) && totalGoals > line) won = true;
-    if ((s.includes("under") || s.startsWith("u")) && totalGoals < line) won = true;
+    let line = 2.5;
+    if (mKey === "ou15") line = 1.5;
+    else if (mKey === "ou" || mKey === "ou25") line = 2.5;
+    else if (mKey === "ou35") line = 3.5;
+    else if (mKey === "ou45") line = 4.5;
+    else if (mKey === "ou05") line = 0.5;
+    else {
+      const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
+      if (numMatch) line = parseFloat(numMatch[1]);
+    }
+
+    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o") || sCombined.includes(">");
+    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u") || sCombined.includes("<");
+
+    if (isOver && totalGoals > line) won = true;
+    else if (isUnder && totalGoals < line) won = true;
   }
-  // 4. Both Teams to Score (BTTS)
-  else if (m.includes("btts") || m.includes("both") || m.includes("gg")) {
+  // 2. 1st Half Over / Under
+  else if (isOuMarket && (mCombined.includes("1st half") || mKey.includes("half1") || mKey === "half1_ou15")) {
+    const htTotal = htHome + htAway;
+    let line = 1.5;
+    const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
+    if (numMatch) line = parseFloat(numMatch[1]);
+
+    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o");
+    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u");
+
+    if (isOver && htTotal > line) won = true;
+    else if (isUnder && htTotal < line) won = true;
+  }
+  // 3. Double Chance
+  else if (mKey === "dc" || mCombined.includes("double") || mCombined.includes("dc")) {
+    if ((sCombined.includes("1x") || sCombined.includes("1/x")) && (outcome1x2 === "home" || outcome1x2 === "draw")) won = true;
+    if ((sCombined.includes("12") || sCombined.includes("1/2")) && (outcome1x2 === "home" || outcome1x2 === "away")) won = true;
+    if ((sCombined.includes("x2") || sCombined.includes("x/2")) && (outcome1x2 === "draw" || outcome1x2 === "away")) won = true;
+  }
+  // 4. Both Teams to Score (BTTS / GG / NG)
+  else if (mKey === "btts" || mCombined.includes("btts") || mCombined.includes("both") || mCombined.includes("gg")) {
     const btts = homeGoals > 0 && awayGoals > 0;
-    if ((s === "yes" || s === "gg") && btts) won = true;
-    if ((s === "no" || s === "ng") && !btts) won = true;
+    if ((sCombined.includes("yes") || sCombined.includes("gg")) && btts) won = true;
+    if ((sCombined.includes("no") || sCombined.includes("ng")) && !btts) won = true;
   }
-  // 5. Half Time 1X2
-  else if (m.includes("half") || m.includes("ht")) {
+  // 5. Draw No Bet (DNB)
+  else if (mKey === "dnb" || mCombined.includes("dnb") || mCombined.includes("draw no bet")) {
+    if (homeGoals > awayGoals && (sCombined.includes("home") || sCombined === "1" || (h && sCombined.includes(h)))) won = true;
+    if (awayGoals > homeGoals && (sCombined.includes("away") || sCombined === "2" || (a && sCombined.includes(a)))) won = true;
+    if (homeGoals === awayGoals) won = true; // push
+  }
+  // 6. Half Time 1X2
+  else if (mKey === "half1_1x2" || (mCombined.includes("1st half") || mCombined.includes("half")) && (mCombined.includes("1x2") || mCombined.includes("winner") || mCombined.includes("result"))) {
     let htOutcome = "draw";
     if (htHome > htAway) htOutcome = "home";
     else if (htAway > htHome) htOutcome = "away";
-    if (htOutcome === "home" && (s === "home" || s === "1" || s === "w1")) won = true;
-    if (htOutcome === "draw" && (s === "draw" || s === "x")) won = true;
-    if (htOutcome === "away" && (s === "away" || s === "2" || s === "w2")) won = true;
+    if (htOutcome === "home" && (sCombined.includes("home") || sCombined === "1" || sCombined === "w1")) won = true;
+    if (htOutcome === "draw" && (sCombined.includes("draw") || sCombined === "x")) won = true;
+    if (htOutcome === "away" && (sCombined.includes("away") || sCombined === "2" || sCombined === "w2")) won = true;
   }
-  // 6. Draw No Bet (DNB)
-  else if (m.includes("dnb") || m.includes("draw no bet")) {
-    if (homeGoals > awayGoals && (s === "home" || s === "1" || s === "w1")) won = true;
-    if (awayGoals > homeGoals && (s === "away" || s === "2" || s === "w2")) won = true;
-    if (homeGoals === awayGoals) won = true; // push
+  // 7. Match Result / 1X2 / Winner (Default)
+  else {
+    if (outcome1x2 === "home" && (sCombined.includes("home") || sCombined === "1" || sCombined === "w1" || (h && (sCombined === h || h.includes(sCombined))))) won = true;
+    if (outcome1x2 === "draw" && (sCombined.includes("draw") || sCombined === "x")) won = true;
+    if (outcome1x2 === "away" && (sCombined.includes("away") || sCombined === "2" || sCombined === "w2" || (a && (sCombined === a || a.includes(sCombined))))) won = true;
   }
 
   return {
@@ -419,15 +462,74 @@ async function autoSettleOpenTickets(userId) {
   }
 }
 
+function repairMistakenlyLostTickets() {
+  try {
+    withStore((store) => {
+      for (const bet of store.bets) {
+        if (bet.status !== "lost") continue;
+        let selections = [];
+        try { selections = JSON.parse(bet.selections); } catch (_) { continue; }
+        if (!selections.length) continue;
+
+        let changed = false;
+        for (const sel of selections) {
+          const scoreStr = sel.ftScore || sel.score;
+          if (!scoreStr) continue;
+          const parts = String(scoreStr).replace(":", "-").split("-");
+          if (parts.length !== 2) continue;
+          const gh = Number(parts[0]);
+          const ga = Number(parts[1]);
+          if (isNaN(gh) || isNaN(ga)) continue;
+
+          const fixtureObj = {
+            fixture: { status: { short: "FT" } },
+            goals: { home: gh, away: ga },
+            score: { fulltime: { home: gh, away: ga } }
+          };
+          const evalRes = evaluateSelection(sel, fixtureObj);
+          if (evalRes.finished && evalRes.won && sel.status !== "won") {
+            sel.status = "won";
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          const allWon = selections.every((s) => s.status === "won");
+          if (allWon) {
+            bet.status = "won";
+            bet.payout = Number(bet.potential_win || 0);
+            bet.selections = JSON.stringify(selections);
+            if (bet.payout > 0) {
+              creditWallet(bet.user_id, bet.payout, "bet_win_correction", bet.ticket_id, {
+                ticketId: bet.ticket_id,
+                note: "Result settlement correction for Over/Under",
+              });
+            }
+          } else {
+            bet.selections = JSON.stringify(selections);
+          }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("[repairMistakenlyLostTickets] Error:", err.message);
+  }
+}
+
+// Run repair on startup
+setTimeout(repairMistakenlyLostTickets, 2000);
+
 // Background poller to auto-settle any finished matches every 2 minutes
 setInterval(() => {
   autoSettleOpenTickets().catch(() => {});
+  repairMistakenlyLostTickets();
 }, 120000);
 
 router.get("/history", authRequired, async (req, res) => {
   await autoSettleOpenTickets(req.user.id);
+  repairMistakenlyLostTickets();
 
-  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 30));
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
   const isCashierOrAdmin = req.user.role === "admin" || req.user.role === "super_admin";
   const rows = withStore((store) =>
     store.bets.filter((b) => {
