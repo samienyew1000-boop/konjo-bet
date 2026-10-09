@@ -50,63 +50,135 @@ function defaultStore() {
   };
 }
 
-function loadStore() {
-  if (!fs.existsSync(storePath)) {
-    if (fs.existsSync(initialStorePath)) {
-      try {
-        fs.copyFileSync(initialStorePath, storePath);
-      } catch (e) {
-        console.error("[db] Could not copy initial_store.json:", e);
+const backupDir = path.join(dataDir, "backups");
+const shadowBackupPath = path.join(dataDir, "store.backup.json");
+if (!fs.existsSync(backupDir)) {
+  try { fs.mkdirSync(backupDir, { recursive: true }); } catch (_) {}
+}
+
+let lastHourlyBackupTime = 0;
+
+function createHourlySnapshot(data) {
+  const now = Date.now();
+  if (now - lastHourlyBackupTime > 30 * 60 * 1000) {
+    lastHourlyBackupTime = now;
+    try {
+      const d = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}`;
+      const snapPath = path.join(backupDir, `store_${stamp}.json`);
+      if (!fs.existsSync(snapPath)) {
+        fs.writeFileSync(snapPath, data, "utf8");
       }
+      // Prune snapshots older than 30 days
+      const files = fs.readdirSync(backupDir);
+      for (const f of files) {
+        if (f.startsWith("store_") && f.endsWith(".json")) {
+          const fPath = path.join(backupDir, f);
+          const stat = fs.statSync(fPath);
+          if (now - stat.mtimeMs > 30 * 24 * 60 * 60 * 1000) {
+            fs.unlinkSync(fPath);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[db] Snapshot warning:", e.message);
     }
   }
-  if (!fs.existsSync(storePath)) {
-    const store = defaultStore();
-    fs.writeFileSync(storePath, JSON.stringify(store, null, 2));
-    return store;
-  }
+}
+
+function tryParseFile(filePath) {
+  if (!fs.existsSync(filePath)) return null;
   try {
-    const base = defaultStore();
-    const parsed = JSON.parse(fs.readFileSync(storePath, "utf8"));
-    const store = { ...base, ...parsed };
-    store.counters = { ...base.counters, ...(parsed.counters || {}) };
-    if (!store.counters.withdraw) store.counters.withdraw = 0;
-    store.settings = { ...defaultSettings(), ...(parsed.settings || {}) };
-    if (!Array.isArray(store.settings.bonus_rules)) {
-      store.settings.bonus_rules = defaultBonusRules();
-    }
-    if (!Array.isArray(store.deposits)) store.deposits = [];
-    if (!Array.isArray(store.withdrawals)) store.withdrawals = [];
-    if (!Array.isArray(store.transactions)) store.transactions = [];
-    if (!Array.isArray(store.auditLogs)) store.auditLogs = Array.isArray(store.audit_logs) ? store.audit_logs : [];
-    if (!Array.isArray(store.bets)) store.bets = [];
-    if (!Array.isArray(store.users)) store.users = [];
-    if (!store.wallets || typeof store.wallets !== "object") store.wallets = {};
-    return store;
-  } catch {
-    if (fs.existsSync(initialStorePath)) {
+    const content = fs.readFileSync(filePath, "utf8").trim();
+    if (!content) return null;
+    return JSON.parse(content);
+  } catch (_) {
+    return null;
+  }
+}
+
+function loadStore() {
+  let parsed = tryParseFile(storePath);
+
+  // If primary store.json is missing or corrupted, recover from shadow backup or snapshot
+  if (!parsed) {
+    console.warn("[db] Primary store.json missing or invalid, checking shadow backup...");
+    parsed = tryParseFile(shadowBackupPath);
+    if (parsed) {
+      console.log("[db] Recovered database from shadow backup:", shadowBackupPath);
+      try { fs.writeFileSync(storePath, JSON.stringify(parsed, null, 2), "utf8"); } catch (_) {}
+    } else {
+      // Check latest snapshot in backups directory
       try {
-        const parsed = JSON.parse(fs.readFileSync(initialStorePath, "utf8"));
-        fs.writeFileSync(storePath, JSON.stringify(parsed, null, 2));
-        return parsed;
+        if (fs.existsSync(backupDir)) {
+          const snaps = fs.readdirSync(backupDir).filter(f => f.startsWith("store_") && f.endsWith(".json")).sort().reverse();
+          for (const s of snaps) {
+            const snapData = tryParseFile(path.join(backupDir, s));
+            if (snapData && Array.isArray(snapData.users)) {
+              console.log("[db] Recovered database from snapshot:", s);
+              parsed = snapData;
+              try { fs.writeFileSync(storePath, JSON.stringify(parsed, null, 2), "utf8"); } catch (_) {}
+              break;
+            }
+          }
+        }
       } catch (_) {}
     }
-    const store = defaultStore();
-    fs.writeFileSync(storePath, JSON.stringify(store, null, 2));
-    return store;
   }
+
+  // If still nothing, check initialStorePath
+  if (!parsed && fs.existsSync(initialStorePath)) {
+    parsed = tryParseFile(initialStorePath);
+    if (parsed) {
+      try { fs.writeFileSync(storePath, JSON.stringify(parsed, null, 2), "utf8"); } catch (_) {}
+    }
+  }
+
+  const base = defaultStore();
+  const store = { ...base, ...(parsed || {}) };
+  store.counters = { ...base.counters, ...((parsed && parsed.counters) || {}) };
+  if (!store.counters.withdraw) store.counters.withdraw = 0;
+  store.settings = { ...defaultSettings(), ...((parsed && parsed.settings) || {}) };
+  if (!Array.isArray(store.settings.bonus_rules)) {
+    store.settings.bonus_rules = defaultBonusRules();
+  }
+  if (!Array.isArray(store.deposits)) store.deposits = [];
+  if (!Array.isArray(store.withdrawals)) store.withdrawals = [];
+  if (!Array.isArray(store.transactions)) store.transactions = [];
+  if (!Array.isArray(store.auditLogs)) store.auditLogs = Array.isArray(store.audit_logs) ? store.audit_logs : [];
+  if (!Array.isArray(store.bets)) store.bets = [];
+  if (!Array.isArray(store.users)) store.users = [];
+  if (!store.wallets || typeof store.wallets !== "object") store.wallets = {};
+
+  return store;
 }
 
 function saveStore(store) {
   const data = JSON.stringify(store, null, 2);
+  const tempPath = path.join(dataDir, `store.tmp.${process.pid}.${Date.now()}`);
   let attempts = 0;
   while (attempts < 5) {
     try {
-      fs.writeFileSync(storePath, data);
+      // 1. Atomic write to temp file then rename
+      fs.writeFileSync(tempPath, data, "utf8");
+      fs.renameSync(tempPath, storePath);
+
+      // 2. Update shadow backup immediately
+      try {
+        fs.writeFileSync(shadowBackupPath, data, "utf8");
+      } catch (_) {}
+
+      // 3. Periodic snapshot
+      createHourlySnapshot(data);
       return;
     } catch (err) {
+      try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (_) {}
       attempts++;
-      if (attempts >= 5) throw err;
+      if (attempts >= 5) {
+        console.error("[db] CRITICAL: Failed to save store after 5 attempts:", err);
+        throw err;
+      }
       const end = Date.now() + 60 * attempts;
       while (Date.now() < end) {}
     }
