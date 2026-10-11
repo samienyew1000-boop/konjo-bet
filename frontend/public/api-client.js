@@ -884,6 +884,32 @@
     }
   }
 
+  async function fetchWithdrawMethods() {
+    try {
+      return await request("/api/withdrawals/methods");
+    } catch (_) {
+      return {
+        ok: true,
+        methods: [
+          { id: "cbe", name: "Commercial Bank of Ethiopia", minAmount: 500, maxAmount: 50000, fee: "Free" },
+          { id: "telebirr", name: "Telebirr", minAmount: 500, maxAmount: 50000, fee: "Free" },
+        ],
+      };
+    }
+  }
+
+  async function requestWithdraw(payload) {
+    return await request("/api/withdrawals/request", { method: "POST", body: JSON.stringify(payload) });
+  }
+
+  async function fetchWithdrawHistory() {
+    try {
+      return await request("/api/withdrawals/history");
+    } catch (_) {
+      return { ok: true, withdrawals: [] };
+    }
+  }
+
   async function superAdminGetUsers() {
     try {
       return await request("/api/super/users");
@@ -957,6 +983,51 @@
     } catch (_) {
       const store = getStandaloneStore();
       return { ok: true, deposits: store.deposits || [], pagination: { page: 1, limit: 50, total: 0, pages: 1 } };
+    }
+  }
+
+  async function superAdminApproveDeposit(id, note = "") {
+    return await request(`/api/super/deposits/${encodeURIComponent(id)}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  async function superAdminRejectDeposit(id, note = "") {
+    return await request(`/api/super/deposits/${encodeURIComponent(id)}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  async function superAdminGetWithdrawals(params = {}) {
+    try {
+      return await request(`/api/super/withdrawals${queryString(params)}`);
+    } catch (_) {
+      const store = getStandaloneStore();
+      return { ok: true, withdrawals: store.withdrawals || [], pagination: { page: 1, limit: 50, total: 0, pages: 1 } };
+    }
+  }
+
+  async function superAdminApproveWithdrawal(id, note = "") {
+    return await request(`/api/super/withdrawals/${encodeURIComponent(id)}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  async function superAdminRejectWithdrawal(id, note = "") {
+    return await request(`/api/super/withdrawals/${encodeURIComponent(id)}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  async function superAdminGetOnlineRequests() {
+    try {
+      return await request("/api/super/online-requests");
+    } catch (_) {
+      return { ok: true, pendingDepositsCount: 0, pendingWithdrawalsCount: 0, pendingDeposits: [], pendingWithdrawals: [] };
     }
   }
 
@@ -1472,6 +1543,9 @@
     fetchDepositMethods,
     requestDeposit,
     fetchDepositHistory,
+    fetchWithdrawMethods,
+    requestWithdraw,
+    fetchWithdrawHistory,
     superAdminGetUsers,
     superAdminCreateUser,
     superAdminTopUp,
@@ -1481,6 +1555,12 @@
     superAdminGetFinance,
     superAdminGetTransactions,
     superAdminGetDeposits,
+    superAdminApproveDeposit,
+    superAdminRejectDeposit,
+    superAdminGetWithdrawals,
+    superAdminApproveWithdrawal,
+    superAdminRejectWithdrawal,
+    superAdminGetOnlineRequests,
     superAdminGetTickets,
     superAdminGetReports,
     superAdminGetAuditLogs,

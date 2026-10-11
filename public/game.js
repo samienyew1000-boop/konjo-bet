@@ -7270,7 +7270,8 @@ async function settleEndedTickets(targetTicketId = null) {
     });
 
     // If ticket was marked lost, but NO match has actually finished and lost:
-    if (ticket.status === "lost" && !anyFinishedAndLost) {
+    const isAlreadyBonus = Boolean(ticket.bonusAwarded || ticket.bonus_awarded || (Number(ticket.payout || 0) > 0));
+    if (ticket.status === "lost" && !anyFinishedAndLost && !isAlreadyBonus) {
       ticket.status = "open";
       ticket.payout = 0;
       ticket.bonusAwarded = false;
@@ -7317,13 +7318,14 @@ async function settleEndedTickets(targetTicketId = null) {
           localT.status = res.ticket.status;
           localT.payout = res.ticket.payout;
           if (res.ticket.bets) localT.bets = res.ticket.bets;
-          if (res.ticket.bonusAwarded) {
-            localT.bonusAwarded = res.ticket.bonusAwarded;
-            localT.bonusAmount = res.ticket.bonusAmount;
-            localT.bonusMultiplier = res.ticket.bonusMultiplier;
-            localT.bonusRuleName = res.ticket.bonusRuleName;
-            localT.bonusFailedCount = res.ticket.bonusFailedCount;
-            localT.bonusTotalTeams = res.ticket.bonusTotalTeams;
+          const isResBonus = Boolean(res.ticket.bonusAwarded || res.ticket.bonus_awarded || (Number(res.ticket.payout || 0) > 0 && res.ticket.status === "lost"));
+          if (isResBonus) {
+            localT.bonusAwarded = true;
+            localT.bonusAmount = res.ticket.bonusAmount || res.ticket.bonus_amount || res.ticket.payout;
+            localT.bonusMultiplier = res.ticket.bonusMultiplier || res.ticket.bonus_multiplier;
+            localT.bonusRuleName = res.ticket.bonusRuleName || res.ticket.bonus_rule_name;
+            localT.bonusFailedCount = res.ticket.bonusFailedCount || res.ticket.bonus_failed_count;
+            localT.bonusTotalTeams = res.ticket.bonusTotalTeams || res.ticket.bonus_total_teams;
           }
           save();
         }
@@ -7562,10 +7564,17 @@ function passesMyBetsStatusFilter(ticket) {
   const status = ticket.status || "in-course";
   const hasLost = (ticket.bets || []).some((b) => getBetSelectionResult(b, ticket) === "lost");
   const isAllWon = (ticket.bets || []).length > 0 && (ticket.bets || []).every((b) => getBetSelectionResult(b, ticket) === "won");
-  const isSettled = Boolean(ticket.bonusAwarded) || (status === "closed") || (status === "won" && isAllWon) || (status === "lost" && hasLost) || hasLost || isAllWon;
+  const isBonus = Boolean(
+    ticket.bonusAwarded ||
+    ticket.bonus_awarded ||
+    (Number(ticket.payout || 0) > 0 && (status === "lost" || hasLost)) ||
+    (ticket.bonusAmount && Number(ticket.bonusAmount) > 0) ||
+    (ticket.bonus_amount && Number(ticket.bonus_amount) > 0)
+  );
+  const isSettled = isBonus || (status === "closed") || (status === "won" && isAllWon) || (status === "lost" && hasLost) || hasLost || isAllWon;
 
   if (state.myBetsStatus === "bonus") {
-    return Boolean(ticket.bonusAwarded);
+    return isBonus;
   }
   if (state.myBetsStatus === "closed" || state.myBetsStatus === "settled") {
     return isSettled;
@@ -7696,10 +7705,19 @@ function renderMyBetsPage() {
 
       let outcomeHtml = "";
       let headerStatusTag = "";
-      if (t.bonusAwarded) {
-        const bonusTxt = t.bonusRuleName ? `${t.bonusRuleName} (${t.bonusMultiplier}x)` : `Cut Bonus (${t.bonusMultiplier || 1}x)`;
-        outcomeHtml = `<div class="mb-ticket-outcome is-bonus"><span class="mb-outcome-badge">🎁</span><span>Near-Miss Bonus Won: ${Number(t.bonusAmount || t.payout || 0).toFixed(2)} ETB (${bonusTxt})</span></div>`;
-        headerStatusTag = `<span class="mb-header-status is-bonus">Bonus Won (+${Number(t.bonusAmount || t.payout || 0).toFixed(2)} ETB)</span>`;
+      const isBonusTicket = Boolean(
+        t.bonusAwarded ||
+        t.bonus_awarded ||
+        (Number(t.payout || 0) > 0 && (t.status === "lost" || hasLostPick)) ||
+        (t.bonusAmount && Number(t.bonusAmount) > 0) ||
+        (t.bonus_amount && Number(t.bonus_amount) > 0)
+      );
+      const bonusWinAmount = Number(t.bonusAmount || t.bonus_amount || t.payout || 0);
+
+      if (isBonusTicket) {
+        const bonusTxt = t.bonusRuleName ? `${t.bonusRuleName} (${t.bonusMultiplier || 1}x)` : `Cut Bonus (${t.bonusMultiplier || 1}x)`;
+        outcomeHtml = `<div class="mb-ticket-outcome is-bonus"><span class="mb-outcome-badge">🎁</span><span>Near-Miss Bonus Won: ${bonusWinAmount.toFixed(2)} ETB (${bonusTxt})</span></div>`;
+        headerStatusTag = `<span class="mb-header-status is-bonus">BONUS WIN: ${bonusWinAmount.toFixed(2)} ETB</span>`;
       } else if (hasLostPick || t.status === "lost") {
         outcomeHtml = `<div class="mb-ticket-outcome is-lost"><span class="mb-outcome-badge">✕</span><span>Ticket Lost</span></div>`;
         headerStatusTag = `<span class="mb-header-status is-lost">Ticket Lost</span>`;
@@ -7750,7 +7768,7 @@ function renderMyBetsPage() {
         <div class="mb-card-footer">
           <div class="mb-amounts-row">
             <span>Stake: ${stakeVal} ETB</span>
-            <span>Total Win: ${totalWinVal} ETB</span>
+            <span>Total Win: ${isBonusTicket ? `${bonusWinAmount.toFixed(2)} ETB (Bonus Won)` : `${totalWinVal} ETB`}</span>
           </div>
           ${outcomeHtml}
           <button type="button" class="mb-btn-repeat" data-repeat-ticket="${t.id}">Add Ticket To Betslip</button>
@@ -16052,16 +16070,36 @@ async function syncFromApi() {
         return b;
       });
 
+      const isBonus = Boolean(
+        t.bonusAwarded ||
+        t.bonus_awarded ||
+        (Number(t.payout || 0) > 0 && (t.status === "lost" || (bets && bets.some(b => b.status === "lost")))) ||
+        (t.bonusAmount && Number(t.bonusAmount) > 0) ||
+        (t.bonus_amount && Number(t.bonus_amount) > 0)
+      );
+      const bonusPayout = Number(t.bonusAmount || t.bonus_amount || (t.status === "lost" ? t.payout : 0) || t.payout || 0);
+
       return {
         id: t.id,
+        publicCode: t.publicCode,
+        ticketHash: t.ticketHash,
+        cashierCode: t.cashierCode,
         type: (bets && bets.length > 1) ? "Multiple" : "Single",
         bets,
         stake: t.stake,
         totalOdds: t.totalOdds,
         totalWin: t.totalWin || Number((t.stake * (t.totalOdds || 1)).toFixed(2)),
+        potentialWin: t.potentialWin || t.totalWin,
         status: t.status || "in-course",
-        payout: t.payout || 0,
+        payout: t.payout || (isBonus ? bonusPayout : 0),
+        bonusAwarded: isBonus,
+        bonusAmount: bonusPayout,
+        bonusMultiplier: t.bonusMultiplier || t.bonus_multiplier || null,
+        bonusRuleName: t.bonusRuleName || t.bonus_rule_name || null,
+        bonusFailedCount: t.bonusFailedCount || t.bonus_failed_count || null,
+        bonusTotalTeams: t.bonusTotalTeams || t.bonus_total_teams || null,
         placedAt: t.placedAt,
+        settledAt: t.settledAt,
       };
     });
     const mergedMap = new Map();
@@ -16713,12 +16751,18 @@ function buildTicketReceiptHtml(ticket, options = {}) {
   const normalizedTicketStatus = String(ticket.status || "").toLowerCase();
   const hasLostPick = allBets.some((b) => getBetSelectionResult(b, ticket) === "lost");
   const isAllWon = allBets.length > 0 && allBets.every((b) => getBetSelectionResult(b, ticket) === "won");
-  const isCancelled = normalizedTicketStatus === "cancelled" || normalizedTicketStatus === "canceled";
-  const isBonus = !isCancelled && Boolean(ticket.bonusAwarded);
+  const isBonus = !isCancelled && Boolean(
+    ticket.bonusAwarded ||
+    ticket.bonus_awarded ||
+    (Number(ticket.payout || 0) > 0 && (normalizedTicketStatus === "lost" || hasLostPick)) ||
+    (ticket.bonusAmount && Number(ticket.bonusAmount) > 0) ||
+    (ticket.bonus_amount && Number(ticket.bonus_amount) > 0)
+  );
+  const bonusPayout = Number(ticket.bonusAmount || ticket.bonus_amount || ticket.payout || 0);
   const isLost = !isCancelled && !isBonus && (hasLostPick || normalizedTicketStatus === "lost");
-  const isWon = !isCancelled && !hasLostPick && (isAllWon || normalizedTicketStatus === "won");
+  const isWon = !isCancelled && !isBonus && !hasLostPick && (isAllWon || normalizedTicketStatus === "won");
   const isSettled = isBonus || isLost || isWon || isCancelled || normalizedTicketStatus === "closed";
-  const statusLabel = isCancelled ? "TICKET CANCELLED" : (isBonus ? "BONUS WON" : (isLost ? "TICKET LOST" : (isWon ? "TICKET WON" : (ticket.status || "IN COURSE").toUpperCase())));
+  const statusLabel = isCancelled ? "TICKET CANCELLED" : (isBonus ? `BONUS WIN: ${fmt(bonusPayout)} ETB` : (isLost ? "TICKET LOST" : (isWon ? "TICKET WON" : (ticket.status || "IN COURSE").toUpperCase())));
   const statusClass = isCancelled ? "is-cancelled" : (isBonus ? "is-bonus" : (isLost ? "is-lost" : (isWon ? "is-won" : "is-open")));
 
   // Check if this is a reprint (already printed before)
@@ -16872,7 +16916,7 @@ function buildTicketReceiptHtml(ticket, options = {}) {
     ${isBonus ? `
     <div class="receipt-box receipt-outcome-box is-bonus">
       <span class="receipt-outcome-icon">🎁</span>
-      <span>CONSOLATION BONUS WON: ${fmt(ticket.bonusAmount || ticket.payout)} ETB (${escapeHtml(ticket.bonusRuleName || 'Cut Bonus')} - ${ticket.bonusMultiplier || 1}x)</span>
+      <span>BONUS WON: ${fmt(bonusPayout)} ETB (${escapeHtml(ticket.bonusRuleName || 'Cut Bonus')} - ${ticket.bonusMultiplier || 1}x)</span>
     </div>` : (isLost ? `
     <div class="receipt-box receipt-outcome-box is-lost">
       <span class="receipt-outcome-icon">✕</span>
@@ -16903,8 +16947,8 @@ function buildTicketReceiptHtml(ticket, options = {}) {
       ${winTaxHtml}
       <div class="rec-fin-divider"></div>
       <div class="rec-fin-total ${isBonus ? 'is-bonus' : (isLost ? 'is-lost' : (isWon ? 'is-won' : ''))}">
-        <span class="rec-fin-total-label">${isBonus ? 'BONUS PAYOUT' : 'WINNING'}</span>
-        <span class="rec-fin-total-amount">${isBonus ? fmt(ticket.bonusAmount || ticket.payout) + ' ETB (BONUS)' : (isLost ? '0.00 ETB (LOST)' : fmt(finalWin) + ' ETB')}</span>
+        <span class="rec-fin-total-label">${isBonus ? 'BONUS WIN' : 'WINNING'}</span>
+        <span class="rec-fin-total-amount">${isBonus ? fmt(bonusPayout) + ' ETB (BONUS WIN)' : (isLost ? '0.00 ETB (LOST)' : fmt(finalWin) + ' ETB')}</span>
       </div>
     </div>
 

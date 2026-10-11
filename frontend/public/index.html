@@ -1425,6 +1425,9 @@
                 <button type="button" class="sa-nav-item" data-sa-tab="deposits" id="sa-tab-deposits-btn">
                   <span class="sa-nav-icon">⇩</span><span>Deposits</span><span class="sa-nav-count sa-nav-count--warning" id="sa-tab-deposits-count">0</span>
                 </button>
+                <button type="button" class="sa-nav-item" data-sa-tab="online-requests" id="sa-tab-online-requests-btn">
+                  <span class="sa-nav-icon">⇄</span><span>Online Requests</span><span class="sa-nav-count sa-nav-count--warning" id="sa-tab-online-requests-count">0</span>
+                </button>
                 <button type="button" class="sa-nav-item" data-sa-tab="tickets" id="sa-tab-tickets-btn">
                   <span class="sa-nav-icon">▤</span><span>Tickets</span>
                 </button>
@@ -1574,9 +1577,136 @@
 
                 <!-- DEPOSITS -->
                 <div class="sa-workspace" id="sa-content-deposits" data-sa-workspace="deposits" hidden>
-                  <div class="sa-workspace-toolbar"><div><span class="sa-section-kicker">CASHIER QUEUE</span><h2 class="sa-workspace-title-large">Deposit oversight</h2><p class="sa-workspace-subtitle">Monitor all player deposit requests across every shop.</p></div></div>
+                  <div class="sa-workspace-toolbar"><div><span class="sa-section-kicker">CASHIER QUEUE</span><h2 class="sa-workspace-title-large">Deposit oversight</h2><p class="sa-workspace-subtitle">Monitor and process player deposit requests across every shop and online player.</p></div></div>
                   <div class="sa-queue-summary" id="sa-deposits-summary"></div>
-                  <section class="sa-panel"><div class="sa-filter-toolbar"><div class="sa-search-box sa-search-box--wide"><span>⌕</span><input type="search" id="sa-deposits-search" placeholder="Search player, reference or shop…" autocomplete="off" /></div><select id="sa-deposits-status-filter" class="sa-select"><option value="all">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><select id="sa-deposits-method-filter" class="sa-select"><option value="all">All methods</option><option value="telebirr">Telebirr</option><option value="cbe">CBE Birr</option><option value="voucher">Voucher</option></select><span class="sa-result-count" id="sa-deposits-result-count">0 deposits</span></div><div class="sa-info-banner">Deposit approvals remain with the responsible shop cashier. This global view is read-only and is provided for supervision and escalation.</div><div class="sa-table-wrapper"><table class="sa-table sa-table--operations"><thead><tr><th>Player</th><th>Shop</th><th>Method</th><th>Amount</th><th>Reference</th><th>Status</th><th>Submitted</th></tr></thead><tbody id="sa-deposits-tbody"><tr><td colspan="7" class="sa-table-empty">Loading deposits…</td></tr></tbody></table></div><div class="sa-pagination" id="sa-deposits-pagination"></div></section>
+                  <section class="sa-panel"><div class="sa-filter-toolbar"><div class="sa-search-box sa-search-box--wide"><span>⌕</span><input type="search" id="sa-deposits-search" placeholder="Search player, reference or shop…" autocomplete="off" /></div><select id="sa-deposits-status-filter" class="sa-select"><option value="all">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><select id="sa-deposits-method-filter" class="sa-select"><option value="all">All methods</option><option value="telebirr">Telebirr</option><option value="cbe">CBE Birr</option><option value="voucher">Voucher</option></select><span class="sa-result-count" id="sa-deposits-result-count">0 deposits</span></div><div class="sa-info-banner">Super Admin can directly approve or reject pending deposits for online registered players and network shops.</div><div class="sa-table-wrapper"><table class="sa-table sa-table--operations"><thead><tr><th>Player</th><th>Shop</th><th>Method</th><th>Amount</th><th>Reference</th><th>Status</th><th>Submitted</th><th style="text-align: right;">Action</th></tr></thead><tbody id="sa-deposits-tbody"><tr><td colspan="8" class="sa-table-empty">Loading deposits…</td></tr></tbody></table></div><div class="sa-pagination" id="sa-deposits-pagination"></div></section>
+                </div>
+
+                <!-- ONLINE REQUESTS (ONLINE REGISTERED PLAYERS CONTROL) -->
+                <div class="sa-workspace" id="sa-content-online-requests" data-sa-workspace="online-requests" hidden>
+                  <div class="sa-workspace-toolbar">
+                    <div>
+                      <span class="sa-section-kicker">ONLINE PLAYERS CASHIER</span>
+                      <h2 class="sa-workspace-title-large">Online Player Requests (Deposit & Withdraw)</h2>
+                      <p class="sa-workspace-subtitle">Live control command center for online registered players: instantly approve or reject deposits & withdrawal payouts.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <button type="button" class="sa-btn sa-btn--secondary" id="sa-online-requests-refresh-btn" style="display: flex; align-items: center; gap: 6px;">
+                        <span>🔄</span> Refresh Requests
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Summary KPIs -->
+                  <div class="sa-queue-summary" id="sa-online-requests-summary" style="display: flex; gap: 16px; margin-bottom: 20px;">
+                    <div style="flex: 1; background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 14px 18px;">
+                      <span style="font-size: 11px; text-transform: uppercase; color: #9ca3af; font-weight: 700;">Pending Deposits</span>
+                      <div style="font-size: 24px; font-weight: 800; color: #10b981; margin: 4px 0;" id="sa-online-pending-deposits-cnt">0</div>
+                      <small style="color: #6b7280; font-size: 12px;" id="sa-online-pending-deposits-amt">0.00 ETB waiting credit</small>
+                    </div>
+                    <div style="flex: 1; background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 14px 18px;">
+                      <span style="font-size: 11px; text-transform: uppercase; color: #9ca3af; font-weight: 700;">Pending Withdrawals</span>
+                      <div style="font-size: 24px; font-weight: 800; color: #f59e0b; margin: 4px 0;" id="sa-online-pending-withdrawals-cnt">0</div>
+                      <small style="color: #6b7280; font-size: 12px;" id="sa-online-pending-withdrawals-amt">0.00 ETB waiting payout</small>
+                    </div>
+                  </div>
+
+                  <!-- Segment Tabs: Deposits vs Withdrawals -->
+                  <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                    <button type="button" class="sa-btn sa-btn--primary" id="sa-or-tab-deposits-btn" style="padding: 10px 22px; font-weight: 700; border-radius: 8px;">
+                      📥 Deposit Requests (<span id="sa-or-badge-dep">0</span>)
+                    </button>
+                    <button type="button" class="sa-btn sa-btn--secondary" id="sa-or-tab-withdrawals-btn" style="padding: 10px 22px; font-weight: 700; border-radius: 8px;">
+                      📤 Withdrawal Requests (<span id="sa-or-badge-wth">0</span>)
+                    </button>
+                  </div>
+
+                  <!-- ONLINE DEPOSITS PANEL -->
+                  <section class="sa-panel" id="sa-or-panel-deposits">
+                    <div class="sa-panel-head">
+                      <div>
+                        <span class="sa-panel-kicker">INCOMING FUNDS</span>
+                        <h2 class="sa-panel-title">Online Player Deposits</h2>
+                        <p class="sa-panel-desc">Verify player reference ID and approve to credit their balance in real time.</p>
+                      </div>
+                    </div>
+                    <div class="sa-filter-toolbar">
+                      <div class="sa-search-box sa-search-box--wide">
+                        <span>⌕</span>
+                        <input type="search" id="sa-or-dep-search" placeholder="Search online player, phone or transaction reference…" autocomplete="off" />
+                      </div>
+                      <select id="sa-or-dep-status-filter" class="sa-select">
+                        <option value="pending" selected>Pending Only</option>
+                        <option value="all">All Statuses</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                      <span class="sa-result-count" id="sa-or-dep-result-count">0 deposits</span>
+                    </div>
+                    <div class="sa-table-wrapper">
+                      <table class="sa-table sa-table--operations">
+                        <thead>
+                          <tr>
+                            <th>Player</th>
+                            <th>Origin</th>
+                            <th>Method</th>
+                            <th>Amount</th>
+                            <th>Reference / Receipt</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th style="text-align: right;">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody id="sa-or-deposits-tbody">
+                          <tr><td colspan="8" class="sa-table-empty">Loading online deposits…</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <!-- ONLINE WITHDRAWALS PANEL -->
+                  <section class="sa-panel" id="sa-or-panel-withdrawals" hidden>
+                    <div class="sa-panel-head">
+                      <div>
+                        <span class="sa-panel-kicker">OUTGOING PAYOUTS</span>
+                        <h2 class="sa-panel-title">Online Player Withdrawals</h2>
+                        <p class="sa-panel-desc">Review player requested payouts. Approving marks payout disbursed; Rejecting refunds the player balance.</p>
+                      </div>
+                    </div>
+                    <div class="sa-filter-toolbar">
+                      <div class="sa-search-box sa-search-box--wide">
+                        <span>⌕</span>
+                        <input type="search" id="sa-or-wth-search" placeholder="Search player, bank account or mobile number…" autocomplete="off" />
+                      </div>
+                      <select id="sa-or-wth-status-filter" class="sa-select">
+                        <option value="pending" selected>Pending Only</option>
+                        <option value="all">All Statuses</option>
+                        <option value="approved">Approved / Paid</option>
+                        <option value="rejected">Rejected & Refunded</option>
+                      </select>
+                      <span class="sa-result-count" id="sa-or-wth-result-count">0 withdrawals</span>
+                    </div>
+                    <div class="sa-table-wrapper">
+                      <table class="sa-table sa-table--operations">
+                        <thead>
+                          <tr>
+                            <th>Player</th>
+                            <th>Origin</th>
+                            <th>Method</th>
+                            <th>Amount</th>
+                            <th>Bank Account / Mobile</th>
+                            <th>Player Balance</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th style="text-align: right;">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody id="sa-or-withdrawals-tbody">
+                          <tr><td colspan="9" class="sa-table-empty">Loading online withdrawals…</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
                 </div>
 
                 <!-- TICKETS -->
