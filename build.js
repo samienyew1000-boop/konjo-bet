@@ -67,5 +67,40 @@ if (fs.existsSync(srcGame)) {
   fs.cpSync(srcGame, path.join(apiPublicDir, 'game'), { recursive: true, force: true });
 }
 
-console.log('Build completed: Root public directory and frontend subdirectories prepared.');
+// 5. Mobile App APK & Download folder
+const apkName = 'KonjoBet.apk';
+const candidateApks = [
+  path.join(__dirname, 'download', apkName),
+  path.join(frontendDir, 'download', apkName),
+  path.join(__dirname, apkName),
+  path.join(publicDir, 'download', apkName),
+];
+let foundApk = null;
+for (const p of candidateApks) {
+  if (fs.existsSync(p)) {
+    foundApk = p;
+    break;
+  }
+}
+if (foundApk) {
+  const targetApkDirs = [
+    path.join(__dirname, 'download'),
+    path.join(frontendDir, 'download'),
+    path.join(publicDir, 'download'),
+    path.join(frontendPublicDir, 'download'),
+    path.join(apiPublicDir, 'download'),
+    publicDir,
+    apiPublicDir
+  ];
+  for (const d of targetApkDirs) {
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+    fs.copyFileSync(foundApk, path.join(d, 'KonjoBet.apk'));
+    fs.copyFileSync(foundApk, path.join(d, 'konjobet.apk'));
+  }
+  if (foundApk !== path.join(__dirname, 'KonjoBet.apk')) {
+    fs.copyFileSync(foundApk, path.join(__dirname, 'KonjoBet.apk'));
+  }
+}
+
+console.log('Build completed: Root public directory, mobile app APK, and frontend subdirectories prepared.');
 

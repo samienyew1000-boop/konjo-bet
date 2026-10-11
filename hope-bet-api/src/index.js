@@ -91,6 +91,26 @@ for (const dir of frontendDirs) {
   }
 }
 
+app.get(["/download/KonjoBet.apk", "/download/konjobet.apk", "/KonjoBet.apk", "/konjobet.apk", "/download/app.apk", "/app.apk"], (_req, res) => {
+  const candidatePaths = [
+    path.join(__dirname, "..", "public", "download", "KonjoBet.apk"),
+    path.join(__dirname, "..", "..", "public", "download", "KonjoBet.apk"),
+    path.join(__dirname, "..", "..", "download", "KonjoBet.apk"),
+    path.join(__dirname, "..", "..", "frontend", "download", "KonjoBet.apk"),
+    path.join(__dirname, "..", "..", "KonjoBet.apk"),
+    path.join(__dirname, "..", "public", "KonjoBet.apk"),
+    path.join(__dirname, "..", "..", "public", "KonjoBet.apk")
+  ];
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      res.setHeader("Content-Type", "application/vnd.android.package-archive");
+      res.setHeader("Content-Disposition", 'attachment; filename="KonjoBet.apk"');
+      return res.sendFile(path.resolve(p));
+    }
+  }
+  res.status(404).send("APK file not found");
+});
+
 app.get(["/check/:code", "/v/:code"], (req, res) => {
   const code = encodeURIComponent(req.params.code || "");
   res.redirect(`/frontend/?check=${code}`);

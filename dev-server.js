@@ -42,7 +42,8 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
-  '.ttf': 'font/ttf'
+  '.ttf': 'font/ttf',
+  '.apk': 'application/vnd.android.package-archive'
 };
 
 // 3. Static server + API Reverse Proxy
@@ -136,10 +137,14 @@ const server = http.createServer((req, res) => {
       fs.readFile(target, (err2, data) => {
         if (!err2) {
           const ext = path.extname(target).toLowerCase();
-          res.writeHead(200, {
+          const headers = {
             'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
             'Cache-Control': 'no-cache'
-          });
+          };
+          if (ext === '.apk') {
+            headers['Content-Disposition'] = 'attachment; filename="KonjoBet.apk"';
+          }
+          res.writeHead(200, headers);
           res.end(data);
         } else {
           tryNext(index + 1);

@@ -24924,5 +24924,171 @@ html.is-night-mode .uf-breadcrumb {
   }
 }
 
+/* ===== KONJO BET ANDROID APP INSTALL MODAL ===== */
+.app-install-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.app-install-modal[hidden] {
+  display: none !important;
+}
+.app-install-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+}
+.app-install-card {
+  position: relative;
+  background: #181514;
+  color: #ffffff;
+  border: 1px solid #332d2c;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  z-index: 2;
+  box-sizing: border-box;
+}
+.app-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: #2a2423;
+  color: #fff;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-modal-close:hover {
+  background: #d32f2f;
+}
+.app-install-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.app-install-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+}
+.app-install-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+}
+.app-install-badge {
+  display: inline-block;
+  margin-top: 4px;
+  background: #2e7d32;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.app-install-desc {
+  font-size: 13px;
+  color: #a8a09e;
+  line-height: 1.45;
+  margin: 0 0 18px 0;
+}
+.app-install-dl-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #2e7d32;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 13px 18px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(46, 125, 50, 0.4);
+  transition: background 0.2s;
+  margin-bottom: 18px;
+}
+.app-install-dl-btn:hover {
+  background: #1b5e20;
+}
+.app-install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #221d1c;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+}
+.app-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 12px;
+}
+.app-step-num {
+  background: #d32f2f;
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 11px;
+}
+.app-step-item strong {
+  display: block;
+  color: #fff;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+.app-step-item p {
+  margin: 0;
+  color: #9e9694;
+  line-height: 1.35;
+}
+.app-step-item code {
+  background: #332a29;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #ffcc80;
+}
+.app-install-footer {
+  text-align: center;
+}
+.app-install-dismiss {
+  background: #332a29;
+  color: #ccc;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.app-install-dismiss:hover {
+  background: #443836;
+  color: #fff;
+}
+
 
 

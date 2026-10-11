@@ -232,7 +232,7 @@
               <div class="night-toggle-thumb"></div>
             </div>
           </label>
-          <button type="button" class="top-app-pill" data-coming-soon>App</button>
+          <button type="button" class="top-app-pill" id="top-app-pill" title="Download Android App">App</button>
           <button type="button" class="top-util-link" id="top-live-chat">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
@@ -3871,6 +3871,59 @@
         </div>
       </div>
       <p class="camera-scan-hint">Position the ticket's QR code or Barcode inside the frame to verify.</p>
+    </div>
+  </div>
+
+  <!-- ===== KONJO BET ANDROID APP DOWNLOAD & INSTALL MODAL ===== -->
+  <div class="app-install-modal" id="app-install-modal" hidden>
+    <div class="app-install-backdrop" id="app-install-backdrop"></div>
+    <div class="app-install-card">
+      <button type="button" class="app-modal-close" id="app-modal-close" aria-label="Close">✕</button>
+      <div class="app-install-header">
+        <img src="assets/app-icons/app-icon-96.png" alt="Konjo Bet App" class="app-install-icon" />
+        <div class="app-install-title-group">
+          <h3 class="app-install-title">Konjo Bet Mobile App</h3>
+          <span class="app-install-badge">Android APK v1.0.0 • 93 KB</span>
+        </div>
+      </div>
+      <p class="app-install-desc">
+        ለማንኛውም አንድሮይድ ስልክ የሚሰራ ፈጣን ይፋዊ አፕሊኬሽን (Fast official app for all Android devices).
+      </p>
+
+      <a href="/download/KonjoBet.apk" download="KonjoBet.apk" class="app-install-dl-btn" id="app-modal-direct-dl">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+        </svg>
+        <span>አፑን ዳውንሎድ ያድርጉ (DOWNLOAD APK)</span>
+      </a>
+
+      <div class="app-install-steps">
+        <div class="app-step-item">
+          <span class="app-step-num">1</span>
+          <div>
+            <strong>1. ዳውንሎድ ያድርጉ (Download)</strong>
+            <p>ከላይ ያለውን አረንጓዴ በተን ሲጫኑ አፑ ወዲያውኑ ዳውንሎድ ማድረግ ይጀምራል።</p>
+          </div>
+        </div>
+        <div class="app-step-item">
+          <span class="app-step-num">2</span>
+          <div>
+            <strong>2. ፋይሉን ይክፈቱ (Open File)</strong>
+            <p>ዳውንሎድ ሲያልቅ "Open" የሚለውን ወይም ስልክዎ Downloads ውስጥ ያለውን <code>KonjoBet.apk</code> ይጫኑ።</p>
+          </div>
+        </div>
+        <div class="app-step-item">
+          <span class="app-step-num">3</span>
+          <div>
+            <strong>3. ጫን (Install)</strong>
+            <p>"Install" (ወይም "Install anyway") የሚለውን ተጭነው በሰከንዶች ውስጥ ይጠቀሙ።</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-install-footer">
+        <button type="button" class="app-install-dismiss" id="app-modal-dismiss">እሺ ተረድቻለሁ (Close)</button>
+      </div>
     </div>
   </div>
 

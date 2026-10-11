@@ -15961,12 +15961,15 @@ function closeAppInstallModal() {
 function triggerAppDownload() {
   try {
     const link = document.createElement("a");
-    link.href = "/download/KonjoBet.apk?v=1.0.1";
+    link.href = "/download/KonjoBet.apk";
     link.download = "KonjoBet.apk";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  } catch (_) {}
+    toast("📥 Konjo Bet App download started! (93 KB)", "ok");
+  } catch (_) {
+    window.location.href = "/download/KonjoBet.apk";
+  }
   openAppInstallModal();
 }
 
@@ -18144,7 +18147,8 @@ document.addEventListener("click", (e) => {
 
   on($("account-android"), "click", (e) => {
     e.preventDefault();
-    toast("Android app coming soon", "ok");
+    closeMobileDrawers();
+    triggerAppDownload();
   });
 
   on($("account-ios"), "click", (e) => {
@@ -19515,6 +19519,8 @@ document.addEventListener("click", (e) => {
   on($("mobile-top-app-pill-auth"), "click", triggerAppDownload);
 
   on($("app-modal-close"), "click", closeAppInstallModal);
+  on($("app-install-backdrop"), "click", closeAppInstallModal);
+  on($("app-modal-dismiss"), "click", closeAppInstallModal);
   on($("app-install-modal"), "click", (e) => {
     if (e.target === $("app-install-modal")) closeAppInstallModal();
   });
