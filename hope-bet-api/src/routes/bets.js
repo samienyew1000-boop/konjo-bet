@@ -1587,7 +1587,7 @@ router.get("/history", authRequired, async (req, res) => {
   await autoSettleOpenTickets(req.user.id);
 
   try { repairMistakenlyLostTickets(); } catch (_) {}
-  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
   const isCashierOrAdmin = req.user.role === "admin" || req.user.role === "super_admin";
   const rows = withStore((store) =>
     store.bets.filter((b) => {

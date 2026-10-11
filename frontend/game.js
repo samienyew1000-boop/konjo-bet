@@ -480,7 +480,13 @@ const state = {
   slipMode: "multiple",
   stake: MIN_STAKE,
   betslipTab: "slip",
-  history: [],
+  history: (() => {
+    try {
+      return JSON.parse(localStorage.getItem("konjo_bet_ticket_history_backup") || "[]");
+    } catch (_) {
+      return [];
+    }
+  })(),
   ticketSeq: 1,
   liveSource: false,
   detailFixtureId: null,
@@ -5630,7 +5636,12 @@ function applySubNav(id) {
       toast("Please log in to view your bets", "err");
       return;
     }
+    state.myBetsStatus = state.myBetsStatus || "all";
+    state.myBetsTime = state.myBetsTime || "all";
     setView("my-bets");
+    if (useApi() && typeof syncFromApi === "function") {
+      syncFromApi().catch(() => {});
+    }
     renderMyBetsPage();
     return;
   }
@@ -5726,9 +5737,9 @@ function ticketPlacedAtMs(ticket) {
 }
 
 function passesMyBetsTimeFilter(ticket) {
+  if (!state.myBetsTime || state.myBetsTime === "all") return true;
   const placed = ticketPlacedAtMs(ticket);
   const now = Date.now();
-  if (state.myBetsTime === "all") return true;
   if (state.myBetsTime === "week") return placed >= now - 7 * 24 * 3600000;
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -7545,7 +7556,7 @@ async function checkAndShowTicket(ticketId) {
 window.checkAndShowTicket = checkAndShowTicket;
 
 function passesMyBetsStatusFilter(ticket) {
-  if (state.myBetsStatus === "all") {
+  if (!state.myBetsStatus || state.myBetsStatus === "all") {
     return true;
   }
   const status = ticket.status || "in-course";
@@ -16053,7 +16064,21 @@ async function syncFromApi() {
         placedAt: t.placedAt,
       };
     });
-    state.history = apiTickets || [];
+    const mergedMap = new Map();
+    (apiTickets || []).forEach((t) => mergedMap.set(String(t.id), t));
+    (state.history || []).forEach((t) => {
+      if (!mergedMap.has(String(t.id))) mergedMap.set(String(t.id), t);
+    });
+    try {
+      const storedBackup = JSON.parse(localStorage.getItem("konjo_bet_ticket_history_backup") || "[]");
+      storedBackup.forEach((t) => {
+        if (!mergedMap.has(String(t.id))) mergedMap.set(String(t.id), t);
+      });
+    } catch (_) {}
+    state.history = Array.from(mergedMap.values());
+    try {
+      localStorage.setItem("konjo_bet_ticket_history_backup", JSON.stringify(state.history.slice(0, 200)));
+    } catch (_) {}
     renderSession();
     renderBalance();
     refreshMyBetsIfVisible();
@@ -16222,6 +16247,9 @@ async function placeBet() {
         state.balance = result.balance;
       }
       state.history.unshift(ticket);
+      try {
+        localStorage.setItem("konjo_bet_ticket_history_backup", JSON.stringify(state.history.slice(0, 200)));
+      } catch (_) {}
       state.betPlacedSuccessTicket = ticket;
       state.slip = [];
       renderBalance();
