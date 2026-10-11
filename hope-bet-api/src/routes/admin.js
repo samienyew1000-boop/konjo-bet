@@ -1324,4 +1324,70 @@ router.post("/coupons/:ticketId/cancel", adminRequired, (req, res) => {
   }
 });
 
+// 11. Submit / Enter match result (scores and cards)
+router.post("/match-result", adminRequired, (req, res) => {
+  try {
+    const fixtureId = Number(req.body.fixtureId);
+    if (!fixtureId) {
+      return res.status(400).json({ ok: false, error: "fixtureId is required" });
+    }
+
+    const homeGoals = Number(req.body.homeGoals ?? req.body.goalsHome ?? 0);
+    const awayGoals = Number(req.body.awayGoals ?? req.body.goalsAway ?? 0);
+    const htHomeGoals = Number(req.body.htHomeGoals ?? req.body.htHome ?? Math.floor(homeGoals / 2));
+    const htAwayGoals = Number(req.body.htAwayGoals ?? req.body.htAway ?? Math.floor(awayGoals / 2));
+
+    const homeYellow = Number(req.body.homeYellow ?? req.body.homeYellowCards ?? 0);
+    const awayYellow = Number(req.body.awayYellow ?? req.body.awayYellowCards ?? 0);
+    const htHomeYellow = Number(req.body.htHomeYellow ?? req.body.htHomeYellowCards ?? 0);
+    const htAwayYellow = Number(req.body.htAwayYellow ?? req.body.htAwayYellowCards ?? 0);
+    const homeRed = Number(req.body.homeRed ?? 0);
+    const awayRed = Number(req.body.awayRed ?? 0);
+
+    const matchResultObj = {
+      fixtureId,
+      status: "FT",
+      homeGoals,
+      awayGoals,
+      htHomeGoals,
+      htAwayGoals,
+      homeYellow,
+      awayYellow,
+      totalYellow: homeYellow + awayYellow,
+      htHomeYellow,
+      htAwayYellow,
+      htTotalYellow: htHomeYellow + htAwayYellow,
+      shHomeYellow: Math.max(0, homeYellow - htHomeYellow),
+      shAwayYellow: Math.max(0, awayYellow - htAwayYellow),
+      shTotalYellow: Math.max(0, homeYellow - htHomeYellow) + Math.max(0, awayYellow - htAwayYellow),
+      homeRed,
+      awayRed,
+      totalRed: homeRed + awayRed,
+      submittedBy: req.user.id,
+      submittedAt: new Date().toISOString(),
+    };
+
+    withStore((store) => {
+      if (!store.matchResults) store.matchResults = {};
+      store.matchResults[String(fixtureId)] = matchResultObj;
+    });
+
+    // Auto settle open tickets that include this fixture
+    const betsRouter = require("./bets");
+    if (betsRouter && typeof betsRouter.autoSettleOpenTickets === "function") {
+      betsRouter.autoSettleOpenTickets().catch(() => {});
+    }
+
+    res.json({
+      ok: true,
+      message: `Result for match #${fixtureId} submitted successfully`,
+      matchResult: matchResultObj,
+    });
+  } catch (err) {
+    console.error("[POST /admin/match-result] Error:", err);
+    res.status(500).json({ ok: false, error: err.message || "Could not save match result" });
+  }
+});
+
+
 module.exports = router;

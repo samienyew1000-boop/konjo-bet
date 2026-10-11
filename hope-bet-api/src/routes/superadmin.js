@@ -1395,4 +1395,192 @@ router.post("/games/profit-control", (req, res) => {
   }
 });
 
+router.get("/game-controls", (_req, res) => {
+  try {
+    const store = loadStore();
+    const defaults = defaultGameControls();
+    const raw = store.game_controls || defaults;
+
+    // Calculate live game analytics
+    const games = { ...defaults.games, ...(raw.games || {}) };
+    let totalTurnover = 0;
+    let totalPayout = 0;
+    let totalRounds = 0;
+
+    for (const g of Object.values(games)) {
+      if (g.stats) {
+        totalTurnover += Number(g.stats.totalTurnover) || 0;
+        totalPayout += Number(g.stats.totalPayout) || 0;
+        totalRounds += Number(g.stats.roundsPlayed) || 0;
+      }
+    }
+    const netProfit = Math.round((totalTurnover - totalPayout) * 100) / 100;
+    const realizedMargin = totalTurnover > 0 ? Math.round(((totalTurnover - totalPayout) / totalTurnover) * 1000) / 10 : (raw.global?.globalMargin || 10.0);
+    const realizedRtp = Math.round((100 - realizedMargin) * 10) / 10;
+
+    const responseData = {
+      global: { ...defaults.global, ...(raw.global || {}) },
+      games,
+      summary: {
+        totalTurnover: Math.round(totalTurnover * 100) / 100,
+        totalPayout: Math.round(totalPayout * 100) / 100,
+        netProfit,
+        realizedMargin,
+        realizedRtp,
+        totalRounds,
+      },
+      updatedAt: raw.updatedAt || new Date().toISOString(),
+    };
+
+    res.json({ ok: true, gameControls: responseData, data: responseData });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/game-controls", (req, res) => {
+  try {
+    const { global, games } = req.body;
+    const updated = withStore((store) => {
+      const defaults = defaultGameControls();
+      if (!store.game_controls) store.game_controls = defaults;
+      const before = JSON.parse(JSON.stringify(store.game_controls));
+
+      if (global && typeof global === "object") {
+        if (global.maintenanceMode !== undefined) store.game_controls.global.maintenanceMode = Boolean(global.maintenanceMode);
+        if (global.globalMargin !== undefined) {
+          const margin = Math.min(50, Math.max(1, Number(global.globalMargin) || 10));
+          store.game_controls.global.globalMargin = margin;
+          store.game_controls.global.globalRtp = Math.round((100 - margin) * 10) / 10;
+        }
+        if (global.globalRtp !== undefined) {
+          const rtp = Math.min(99, Math.max(50, Number(global.globalRtp) || 90));
+          store.game_controls.global.globalRtp = rtp;
+          store.game_controls.global.globalMargin = Math.round((100 - rtp) * 10) / 10;
+        }
+        if (global.maxPayoutPerRound !== undefined) {
+          store.game_controls.global.maxPayoutPerRound = Math.max(100, Number(global.maxPayoutPerRound) || 50000);
+        }
+        if (global.autoProfitProtection !== undefined) {
+          store.game_controls.global.autoProfitProtection = Boolean(global.autoProfitProtection);
+        }
+      }
+
+      if (games && typeof games === "object") {
+        for (const [gid, patch] of Object.entries(games)) {
+          if (!store.game_controls.games[gid]) {
+            store.game_controls.games[gid] = defaults.games[gid] || { id: gid, enabled: true };
+          }
+          const target = store.game_controls.games[gid];
+          if (patch.enabled !== undefined) target.enabled = Boolean(patch.enabled);
+          if (patch.targetMargin !== undefined) {
+            const m = Math.min(60, Math.max(1, Number(patch.targetMargin) || 10));
+            target.targetMargin = m;
+            target.rtp = Math.round((100 - m) * 10) / 10;
+          }
+          if (patch.rtp !== undefined) {
+            const r = Math.min(99, Math.max(40, Number(patch.rtp) || 90));
+            target.rtp = r;
+            target.targetMargin = Math.round((100 - r) * 10) / 10;
+          }
+          if (patch.earlyCrashRate !== undefined) target.earlyCrashRate = Math.min(75, Math.max(1, Number(patch.earlyCrashRate) || 15));
+          if (patch.maxMultiplier !== undefined) target.maxMultiplier = Math.min(10000, Math.max(2, Number(patch.maxMultiplier) || 100));
+          if (patch.volatility !== undefined) target.volatility = String(patch.volatility);
+          if (patch.minBet !== undefined) target.minBet = Math.max(0.1, Number(patch.minBet) || 1);
+          if (patch.maxBet !== undefined) target.maxBet = Math.max(target.minBet || 1, Number(patch.maxBet) || 5000);
+          if (patch.maxWin !== undefined) target.maxWin = Math.max(100, Number(patch.maxWin) || 25000);
+          if (patch.crashSpeedFactor !== undefined) target.crashSpeedFactor = Number(patch.crashSpeedFactor) || 1.2;
+          if (patch.bonusStarFrequency !== undefined) target.bonusStarFrequency = String(patch.bonusStarFrequency);
+          if (patch.goldenRingChance !== undefined) target.goldenRingChance = Number(patch.goldenRingChance) || 0.05;
+        }
+      }
+
+      store.game_controls.updatedAt = new Date().toISOString();
+      addAuditLog(store, req.user, "game_controls.update", { type: "game_controls", id: "all" }, { before, after: store.game_controls });
+      return store.game_controls;
+    });
+
+    res.json({ ok: true, gameControls: updated, message: "Game profit controls saved successfully" });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/game-controls/preset", (req, res) => {
+  try {
+    const { preset } = req.body;
+    const updated = withStore((store) => {
+      const defaults = defaultGameControls();
+      if (!store.game_controls) store.game_controls = defaults;
+      const before = JSON.parse(JSON.stringify(store.game_controls));
+
+      if (preset === "high_profit") {
+        store.game_controls.global.globalMargin = 18.0;
+        store.game_controls.global.globalRtp = 82.0;
+        for (const g of Object.values(store.game_controls.games)) {
+          g.targetMargin = 18.0;
+          g.rtp = 82.0;
+          if (g.id === "aviator") { g.earlyCrashRate = 25.0; g.maxMultiplier = 50.0; g.volatility = "house_favor"; }
+          if (g.id === "chicken_road") { g.crashSpeedFactor = 1.4; }
+          if (g.id === "bingo") { g.targetMargin = 20.0; g.rtp = 80.0; }
+        }
+      } else if (preset === "promo") {
+        store.game_controls.global.globalMargin = 4.0;
+        store.game_controls.global.globalRtp = 96.0;
+        for (const g of Object.values(store.game_controls.games)) {
+          g.targetMargin = 4.0;
+          g.rtp = 96.0;
+          if (g.id === "aviator") { g.earlyCrashRate = 6.0; g.maxMultiplier = 250.0; g.volatility = "player_favor"; }
+          if (g.id === "chicken_road") { g.crashSpeedFactor = 1.0; }
+          if (g.id === "bingo") { g.targetMargin = 8.0; g.rtp = 92.0; }
+        }
+      } else {
+        // Balanced (default)
+        store.game_controls.global.globalMargin = 10.0;
+        store.game_controls.global.globalRtp = 90.0;
+        for (const g of Object.values(store.game_controls.games)) {
+          g.targetMargin = g.id === "bingo" ? 15.0 : 10.0;
+          g.rtp = 100.0 - g.targetMargin;
+          if (g.id === "aviator") { g.earlyCrashRate = 15.0; g.maxMultiplier = 100.0; g.volatility = "medium"; }
+          if (g.id === "chicken_road") { g.crashSpeedFactor = 1.2; }
+        }
+      }
+
+      store.game_controls.updatedAt = new Date().toISOString();
+      addAuditLog(store, req.user, "game_controls.preset", { type: "game_controls", preset }, { before, after: store.game_controls });
+      return store.game_controls;
+    });
+
+    res.json({ ok: true, gameControls: updated, message: `Applied ${preset} profit preset` });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post("/game-controls/toggle", (req, res) => {
+  try {
+    const { gameId, enabled } = req.body;
+    if (!gameId) return res.status(400).json({ ok: false, error: "Missing gameId" });
+
+    const updated = withStore((store) => {
+      const defaults = defaultGameControls();
+      if (!store.game_controls) store.game_controls = defaults;
+      if (!store.game_controls.games[gameId]) {
+        store.game_controls.games[gameId] = defaults.games[gameId] || { id: gameId, enabled: true };
+      }
+      const target = store.game_controls.games[gameId];
+      const previous = target.enabled !== false;
+      target.enabled = enabled !== undefined ? Boolean(enabled) : !previous;
+      store.game_controls.updatedAt = new Date().toISOString();
+      addAuditLog(store, req.user, "game_controls.toggle", { type: "game", id: gameId }, { previous, enabled: target.enabled });
+      return store.game_controls;
+    });
+
+    res.json({ ok: true, gameControls: updated });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
 module.exports = router;

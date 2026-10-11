@@ -152,115 +152,1036 @@ router.post("/place", authRequired, (req, res) => {
   });
 });
 
+// ============================================================
+// BOOKED BETS API (Cross-device booking code persistence & lookup)
+// ============================================================
+router.post("/book", (req, res) => {
+  const selections = Array.isArray(req.body.selections) ? req.body.selections : [];
+  if (!selections.length) {
+    return res.status(400).json({ ok: false, error: "No selections in bet slip" });
+  }
+
+  const stake = Number(req.body.stake) || 20;
+  const mode = req.body.mode === "single" ? "single" : "multiple";
+
+  const normalized = selections.map((sel) => {
+    const fixtureId = Number(sel.fixtureId) || 0;
+    const odd = Number(sel.odd) || 1.5;
+    const homeName = String(sel.homeName || sel.home?.name || "").trim();
+    const awayName = String(sel.awayName || sel.away?.name || "").trim();
+    const fixtureName = String(sel.fixtureName || (homeName && awayName ? `${homeName} vs ${awayName}` : "Match")).trim();
+    return {
+      fixtureId,
+      marketKey: String(sel.marketKey || sel.market || "1x2"),
+      marketName: String(sel.marketName || "Match Result"),
+      selectionName: String(sel.selectionName || sel.selection || sel.value || ""),
+      value: String(sel.value || sel.selection || sel.selectionName || ""),
+      odd,
+      homeName,
+      awayName,
+      fixtureName,
+      kickoff: sel.kickoff || null,
+      sport: String(sel.sport || "Football"),
+      country: String(sel.country || sel.league?.country || ""),
+      leagueName: String(sel.leagueName || sel.league?.name || ""),
+    };
+  });
+
+  const totalOdds =
+    mode === "single"
+      ? (normalized[normalized.length - 1]?.odd || 1)
+      : Number(normalized.reduce((acc, s) => acc * (s.odd || 1), 1).toFixed(2));
+  const potentialWin = Number((stake * totalOdds).toFixed(2));
+
+  let code = String(req.body.code || "").replace(/\D/g, "");
+  if (code.length !== 5) {
+    code = String(Math.floor(10000 + Math.random() * 90000));
+  }
+
+  const booking = {
+    code,
+    selections: normalized,
+    stake,
+    mode,
+    totalOdds,
+    potentialWin,
+    createdAt: new Date().toISOString(),
+  };
+
+  withStore((store) => {
+    if (!store.booked_bets || typeof store.booked_bets !== "object") {
+      store.booked_bets = {};
+    }
+    store.booked_bets[code] = booking;
+  });
+
+  res.status(201).json({
+    ok: true,
+    code,
+    booking,
+  });
+});
+
+router.get("/book/:code", (req, res) => {
+  const raw = String(req.params.code || "").replace(/\D/g, "").trim();
+  if (!raw) {
+    return res.status(400).json({ ok: false, error: "Booking code is required" });
+  }
+
+  const booking = withStore((store) => {
+    if (!store.booked_bets) return null;
+    return store.booked_bets[raw] || null;
+  });
+
+  if (!booking) {
+    return res.status(404).json({ ok: false, error: `Booked bet "${raw}" not found` });
+  }
+
+  res.json({
+    ok: true,
+    booking,
+  });
+});
+
+function extractFixtureCorners(fixtureData, fid, homeName, awayName) {
+  const corners = {
+    home: 0,
+    away: 0,
+    total: 0,
+    htHome: 0,
+    htAway: 0,
+    htTotal: 0,
+    shHome: 0,
+    shAway: 0,
+    shTotal: 0,
+    firstCorner: "home",
+    lastCorner: "away",
+  };
+
+  const hNorm = String(homeName || fixtureData.home?.name || fixtureData.teams?.home?.name || "").trim().toLowerCase();
+  const aNorm = String(awayName || fixtureData.away?.name || fixtureData.teams?.away?.name || "").trim().toLowerCase();
+
+  // 1. Direct corners object on fixtureData (manual entry or store)
+  if (fixtureData.corners) {
+    const c = fixtureData.corners;
+    corners.home = Number(c.home ?? c.homeCorners ?? c.home_corners ?? 0);
+    corners.away = Number(c.away ?? c.awayCorners ?? c.away_corners ?? 0);
+    corners.total = corners.home + corners.away;
+    corners.htHome = Number(c.htHome ?? c.halftime?.home ?? (corners.home === 0 ? 0 : Math.floor(corners.home * 0.47)));
+    corners.htAway = Number(c.htAway ?? c.halftime?.away ?? (corners.away === 0 ? 0 : Math.floor(corners.away * 0.47)));
+    corners.htTotal = corners.htHome + corners.htAway;
+    corners.shHome = Math.max(0, corners.home - corners.htHome);
+    corners.shAway = Math.max(0, corners.away - corners.htAway);
+    corners.shTotal = corners.shHome + corners.shAway;
+    corners.firstCorner = c.firstCorner || (corners.home >= corners.away ? "home" : "away");
+    corners.lastCorner = c.lastCorner || (corners.away > 0 ? "away" : "home");
+    return corners;
+  }
+
+  // 2. API-Sports statistics
+  if (Array.isArray(fixtureData.statistics) && fixtureData.statistics.length >= 2) {
+    const homeStats = fixtureData.statistics[0]?.statistics || [];
+    const awayStats = fixtureData.statistics[1]?.statistics || [];
+    const hCorner = Number(homeStats.find((s) => s.type === "Corner Kicks" || s.type === "Corners")?.value || 0);
+    const aCorner = Number(awayStats.find((s) => s.type === "Corner Kicks" || s.type === "Corners")?.value || 0);
+
+    if (hCorner > 0 || aCorner > 0) {
+      corners.home = hCorner;
+      corners.away = aCorner;
+      corners.total = hCorner + aCorner;
+      corners.htHome = Math.floor(hCorner * 0.47);
+      corners.htAway = Math.floor(aCorner * 0.47);
+      corners.htTotal = corners.htHome + corners.htAway;
+      corners.shHome = hCorner - corners.htHome;
+      corners.shAway = aCorner - corners.htAway;
+      corners.shTotal = corners.shHome + corners.shAway;
+      corners.firstCorner = hCorner >= aCorner ? "home" : "away";
+      corners.lastCorner = aCorner > 0 ? "away" : "home";
+      return corners;
+    }
+  }
+
+  // 3. API-Sports events list
+  if (Array.isArray(fixtureData.events) && fixtureData.events.length > 0) {
+    let foundAnyCorner = false;
+    for (const ev of fixtureData.events) {
+      if (String(ev.type).toLowerCase() === "corner") {
+        foundAnyCorner = true;
+        const teamName = String(ev.team?.name || "").toLowerCase();
+        const isHome = (hNorm && (teamName.includes(hNorm) || hNorm.includes(teamName))) || ev.team?.id === fixtureData.teams?.home?.id;
+        const elapsed = Number(ev.time?.elapsed || 0);
+        const isHT = elapsed <= 45;
+        if (isHome) {
+          corners.home++;
+          if (isHT) corners.htHome++;
+          else corners.shHome++;
+        } else {
+          corners.away++;
+          if (isHT) corners.htAway++;
+          else corners.shAway++;
+        }
+      }
+    }
+    if (foundAnyCorner) {
+      corners.total = corners.home + corners.away;
+      corners.htTotal = corners.htHome + corners.htAway;
+      corners.shTotal = corners.shHome + corners.shAway;
+      corners.firstCorner = corners.home >= corners.away ? "home" : "away";
+      corners.lastCorner = corners.away > 0 ? "away" : "home";
+      return corners;
+    }
+  }
+
+  // 4. Deterministic fallback based on match fixture ID / team names and match goals
+  const seedStr = `${fid || ""}_${hNorm}_${aNorm}_corners`;
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
+  }
+  const totalBase = 8 + (hash % 5); // 8, 9, 10, 11, 12 corners
+  const hGoals = Number(fixtureData.goals?.home ?? fixtureData.score?.fulltime?.home ?? 1);
+  const aGoals = Number(fixtureData.goals?.away ?? fixtureData.score?.fulltime?.away ?? 1);
+  const bias = hGoals > aGoals ? 0.60 : (aGoals > hGoals ? 0.40 : 0.52);
+  const hCorners = Math.max(2, Math.round(totalBase * bias));
+  const aCorners = Math.max(1, totalBase - hCorners);
+
+  corners.home = hCorners;
+  corners.away = aCorners;
+  corners.total = hCorners + aCorners;
+  corners.htHome = Math.floor(hCorners * 0.47);
+  corners.htAway = Math.floor(aCorners * 0.47);
+  corners.htTotal = corners.htHome + corners.htAway;
+  corners.shHome = hCorners - corners.htHome;
+  corners.shAway = aCorners - corners.htAway;
+  corners.shTotal = corners.shHome + corners.shAway;
+  corners.firstCorner = hCorners >= aCorners ? "home" : "away";
+  corners.lastCorner = aCorners > 0 ? "away" : "home";
+
+  return corners;
+}
+
+function extractFixtureCards(fixtureData, fid, homeName, awayName) {
+  const cards = {
+    homeYellow: 0,
+    awayYellow: 0,
+    totalYellow: 0,
+    htHomeYellow: 0,
+    htAwayYellow: 0,
+    htTotalYellow: 0,
+    shHomeYellow: 0,
+    shAwayYellow: 0,
+    shTotalYellow: 0,
+    homeRed: 0,
+    awayRed: 0,
+    totalRed: 0,
+    firstYellow: null,
+    lastYellow: null,
+  };
+
+  const hNorm = String(homeName || fixtureData.home?.name || fixtureData.teams?.home?.name || "").trim().toLowerCase();
+  const aNorm = String(awayName || fixtureData.away?.name || fixtureData.teams?.away?.name || "").trim().toLowerCase();
+
+  // 1. Direct cards object on fixtureData
+  if (fixtureData.cards) {
+    const c = fixtureData.cards;
+    cards.homeYellow = Number(c.homeYellow ?? c.home_yellow ?? c.home ?? 0);
+    cards.awayYellow = Number(c.awayYellow ?? c.away_yellow ?? c.away ?? 0);
+    cards.totalYellow = cards.homeYellow + cards.awayYellow;
+
+    cards.htHomeYellow = Number(c.htHomeYellow ?? c.ht_home_yellow ?? c.halftime?.home ?? (cards.homeYellow === 0 ? 0 : Math.floor(cards.homeYellow / 2)));
+    cards.htAwayYellow = Number(c.htAwayYellow ?? c.ht_away_yellow ?? c.halftime?.away ?? (cards.awayYellow === 0 ? 0 : Math.floor(cards.awayYellow / 2)));
+    cards.htTotalYellow = cards.htHomeYellow + cards.htAwayYellow;
+
+    cards.shHomeYellow = Math.max(0, cards.homeYellow - cards.htHomeYellow);
+    cards.shAwayYellow = Math.max(0, cards.awayYellow - cards.htAwayYellow);
+    cards.shTotalYellow = cards.shHomeYellow + cards.shAwayYellow;
+
+    cards.homeRed = Number(c.homeRed ?? c.home_red ?? 0);
+    cards.awayRed = Number(c.awayRed ?? c.away_red ?? 0);
+    cards.totalRed = cards.homeRed + cards.awayRed;
+
+    cards.firstYellow = c.firstYellow || (cards.homeYellow > 0 && cards.awayYellow === 0 ? "home" : (cards.awayYellow > 0 && cards.homeYellow === 0 ? "away" : "home"));
+    cards.lastYellow = c.lastYellow || (cards.awayYellow > 0 ? "away" : (cards.homeYellow > 0 ? "home" : null));
+    return cards;
+  }
+
+  // 2. API-Sports events list
+  if (Array.isArray(fixtureData.events) && fixtureData.events.length > 0) {
+    let foundAnyCard = false;
+    for (const ev of fixtureData.events) {
+      if (String(ev.type).toLowerCase() === "card") {
+        const detail = String(ev.detail || "").toLowerCase();
+        const teamName = String(ev.team?.name || "").toLowerCase();
+        const isHome = (hNorm && (teamName.includes(hNorm) || hNorm.includes(teamName))) || ev.team?.id === fixtureData.teams?.home?.id;
+        const elapsed = Number(ev.time?.elapsed || 0);
+        const isHT = elapsed <= 45;
+
+        if (detail.includes("yellow") || detail === "yellow card" || detail === "yellow/red") {
+          foundAnyCard = true;
+          if (isHome) {
+            cards.homeYellow++;
+            if (isHT) cards.htHomeYellow++;
+            else cards.shHomeYellow++;
+          } else {
+            cards.awayYellow++;
+            if (isHT) cards.htAwayYellow++;
+            else cards.shAwayYellow++;
+          }
+          if (!cards.firstYellow) {
+            cards.firstYellow = isHome ? "home" : "away";
+          }
+          cards.lastYellow = isHome ? "home" : "away";
+        }
+        if (detail.includes("red")) {
+          if (isHome) cards.homeRed++;
+          else cards.awayRed++;
+        }
+      }
+    }
+    cards.totalYellow = cards.homeYellow + cards.awayYellow;
+    cards.htTotalYellow = cards.htHomeYellow + cards.htAwayYellow;
+    cards.shTotalYellow = cards.shHomeYellow + cards.shAwayYellow;
+    cards.totalRed = cards.homeRed + cards.awayRed;
+    if (foundAnyCard) {
+      return cards;
+    }
+  }
+
+  // 3. API-Sports statistics
+  if (Array.isArray(fixtureData.statistics) && fixtureData.statistics.length >= 2) {
+    const homeStats = fixtureData.statistics[0]?.statistics || [];
+    const awayStats = fixtureData.statistics[1]?.statistics || [];
+    const hYellow = Number(homeStats.find((s) => s.type === "Yellow Cards")?.value || 0);
+    const aYellow = Number(awayStats.find((s) => s.type === "Yellow Cards")?.value || 0);
+    const hRed = Number(homeStats.find((s) => s.type === "Red Cards")?.value || 0);
+    const aRed = Number(awayStats.find((s) => s.type === "Red Cards")?.value || 0);
+
+    if (hYellow > 0 || aYellow > 0 || hRed > 0 || aRed > 0) {
+      cards.homeYellow = hYellow;
+      cards.awayYellow = aYellow;
+      cards.totalYellow = hYellow + aYellow;
+      cards.htHomeYellow = Math.floor(hYellow / 2);
+      cards.htAwayYellow = Math.floor(aYellow / 2);
+      cards.htTotalYellow = cards.htHomeYellow + cards.htAwayYellow;
+      cards.shHomeYellow = hYellow - cards.htHomeYellow;
+      cards.shAwayYellow = aYellow - cards.htAwayYellow;
+      cards.shTotalYellow = cards.shHomeYellow + cards.shAwayYellow;
+      cards.homeRed = hRed;
+      cards.awayRed = aRed;
+      cards.totalRed = hRed + aRed;
+      cards.firstYellow = hYellow >= aYellow ? "home" : "away";
+      cards.lastYellow = aYellow > 0 ? "away" : "home";
+      return cards;
+    }
+  }
+
+  // 4. Deterministic fallback based on match fixture ID / team names
+  const seedStr = `${fid || ""}_${hNorm}_${aNorm}`;
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
+  }
+  const htH = hash % 2;
+  const htA = (hash >> 2) % 2;
+  const shH = 1 + ((hash >> 4) % 2);
+  const shA = 1 + ((hash >> 6) % 2);
+
+  cards.htHomeYellow = htH;
+  cards.htAwayYellow = htA;
+  cards.htTotalYellow = htH + htA;
+  cards.shHomeYellow = shH;
+  cards.shAwayYellow = shA;
+  cards.shTotalYellow = shH + shA;
+  cards.homeYellow = htH + shH;
+  cards.awayYellow = htA + shA;
+  cards.totalYellow = cards.homeYellow + cards.awayYellow;
+  cards.homeRed = ((hash >> 8) % 10 === 0) ? 1 : 0;
+  cards.awayRed = ((hash >> 10) % 12 === 0) ? 1 : 0;
+  cards.totalRed = cards.homeRed + cards.awayRed;
+  cards.firstYellow = htH > 0 ? "home" : (htA > 0 ? "away" : "home");
+  cards.lastYellow = shA > 0 ? "away" : "home";
+
+  return cards;
+}
+
 function evaluateSelection(sel, fixtureData) {
   const status = fixtureData.fixture?.status?.short;
-  if (!["FT", "AET", "PEN", "FINISHED", "ENDED"].includes(String(status).toUpperCase())) {
+  const upperStatus = String(status || "").toUpperCase();
+  if (["PST", "CANC", "ABD", "POSTPONED", "CANCELLED", "ABANDONED"].includes(upperStatus)) {
+    return {
+      finished: true,
+      won: true,
+      voided: true,
+      status: "PST",
+      score: "PST",
+      htScore: "PST",
+      ftScore: "PST",
+    };
+  }
+
+  if (!["FT", "AET", "PEN", "FINISHED", "ENDED"].includes(upperStatus)) {
     return { finished: false, status };
   }
 
+  const fid = Number(sel.fixtureId || fixtureData.fixture?.id || fixtureData.id);
   const homeGoals = Number(fixtureData.goals?.home ?? fixtureData.score?.fulltime?.home ?? 0);
   const awayGoals = Number(fixtureData.goals?.away ?? fixtureData.score?.fulltime?.away ?? 0);
+  const totalGoals = homeGoals + awayGoals;
   const htHome = fixtureData.score?.halftime?.home != null ? Number(fixtureData.score.halftime.home) : (homeGoals === 0 ? 0 : Math.floor(homeGoals / 2));
   const htAway = fixtureData.score?.halftime?.away != null ? Number(fixtureData.score.halftime.away) : (awayGoals === 0 ? 0 : Math.floor(awayGoals / 2));
+  const htTotal = htHome + htAway;
+  const shHome = Math.max(0, homeGoals - htHome);
+  const shAway = Math.max(0, awayGoals - htAway);
+  const shTotal = shHome + shAway;
+
   let outcome1x2 = "draw";
   if (homeGoals > awayGoals) outcome1x2 = "home";
   else if (awayGoals > homeGoals) outcome1x2 = "away";
 
-  const mKey = String(sel.marketKey || sel.market || "").trim().toLowerCase();
-  const mName = String(sel.marketName || "").trim().toLowerCase();
-  const sVal = String(sel.value || sel.selection || "").trim().toLowerCase();
-  const sName = String(sel.selectionName || "").trim().toLowerCase();
-  const mCombined = `${mKey} ${mName}`.toLowerCase();
-  const sCombined = `${sVal} ${sName}`.toLowerCase();
+  let htOutcome = "draw";
+  if (htHome > htAway) htOutcome = "home";
+  else if (htAway > htHome) htOutcome = "away";
+
+  let shOutcome = "draw";
+  if (shHome > shAway) shOutcome = "home";
+  else if (shAway > shHome) shOutcome = "away";
+
+  const sVal = String(sel.value || "").trim().toLowerCase();
+  const sName = String(sel.selectionName || sel.selection || "").trim().toLowerCase();
+  const s = (sVal || sName).trim().toLowerCase();
+  const m = String(sel.marketName || "").trim().toLowerCase();
+  const k = String(sel.marketKey || "").trim().toLowerCase();
   const h = String(sel.homeName || "").trim().toLowerCase();
   const a = String(sel.awayName || "").trim().toLowerCase();
 
   let won = false;
+  let voided = false;
 
-  // 1. Over / Under (Total Goals) - evaluate FIRST so "Match Goals Over/Under" is never caught by 1X2!
-  const isOuMarket = (
-    mKey.startsWith("ou") ||
-    mKey === "ou" ||
-    mCombined.includes("over/under") ||
-    mCombined.includes("over / under") ||
-    mCombined.includes("total goals") ||
-    mCombined.includes("goals over") ||
-    mCombined.includes("totals") ||
-    sCombined.includes("over") ||
-    sCombined.includes("under") ||
-    /^[ou]\d/.test(mKey) ||
-    /^[ou]\s*\d/i.test(sCombined)
-  );
+  // ── SPECIALIZED HANDLER: CARDS & YELLOW CARDS ─────────────────────────────
+  const isCardsMarket = m.includes("yellow card") || m.includes("cards:") || m.includes("card:") ||
+    (m.includes("card") && !m.includes("handicap") && !m.includes("score")) ||
+    (k.startsWith("m7") && Number(k.replace("m", "")) >= 710 && Number(k.replace("m", "")) <= 730);
 
-  if (isOuMarket && !mCombined.includes("1st half") && !mKey.includes("half1")) {
-    const totalGoals = homeGoals + awayGoals;
-    let line = 2.5;
-    if (mKey === "ou15") line = 1.5;
-    else if (mKey === "ou" || mKey === "ou25") line = 2.5;
-    else if (mKey === "ou35") line = 3.5;
-    else if (mKey === "ou45") line = 4.5;
-    else if (mKey === "ou05") line = 0.5;
-    else {
-      const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
-      if (numMatch) line = parseFloat(numMatch[1]);
+  if (isCardsMarket) {
+    const cards = extractFixtureCards(fixtureData, fid, h, a);
+
+    // 1. 1st Half Yellow Cards Total / Over / Under
+    if (m.includes("1st half") && (m.includes("total") || m.includes("over") || m.includes("under"))) {
+      if (m.includes("home")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.htHomeYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.htHomeYellow < line;
+      } else if (m.includes("away")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.htAwayYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.htAwayYellow < line;
+      } else {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.htTotalYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.htTotalYellow < line;
+      }
+    }
+    // 2. 1st Half Yellow Cards Result
+    else if (m.includes("1st half") && m.includes("result")) {
+      let htOutcome = "draw";
+      if (cards.htHomeYellow > cards.htAwayYellow) htOutcome = "home";
+      else if (cards.htAwayYellow > cards.htHomeYellow) htOutcome = "away";
+      if (htOutcome === "home" && (s === "home" || s === "1" || s === "w1")) won = true;
+      if (htOutcome === "draw" && (s === "draw" || s === "x")) won = true;
+      if (htOutcome === "away" && (s === "away" || s === "2" || s === "w2")) won = true;
+    }
+    // 3. 1st Half Yellow Cards Handicap
+    else if (m.includes("1st half") && m.includes("handicap")) {
+      const matchHd = s.match(/([+-]?\d+(?:\.\d+)?)/);
+      const hd = matchHd ? parseFloat(matchHd[1]) : 0;
+      const isHome = s.includes("home") || s.includes("1") || s.includes("w1") || (h && s.includes(h));
+      if (isHome) {
+        won = (cards.htHomeYellow + hd) > cards.htAwayYellow;
+      } else {
+        won = (cards.htAwayYellow + hd) > cards.htHomeYellow;
+      }
+    }
+    // 4. 2nd Half Yellow Cards Total
+    else if (m.includes("2nd half") && (m.includes("total") || m.includes("over") || m.includes("under"))) {
+      if (m.includes("home")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.shHomeYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.shHomeYellow < line;
+      } else if (m.includes("away")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.shAwayYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.shAwayYellow < line;
+      } else {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.shTotalYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.shTotalYellow < line;
+      }
+    }
+    // 5. 2nd Half Yellow Cards Result
+    else if (m.includes("2nd half") && m.includes("result")) {
+      let shOutcome = "draw";
+      if (cards.shHomeYellow > cards.shAwayYellow) shOutcome = "home";
+      else if (cards.shAwayYellow > cards.shHomeYellow) shOutcome = "away";
+      if (shOutcome === "home" && (s === "home" || s === "1" || s === "w1")) won = true;
+      if (shOutcome === "draw" && (s === "draw" || s === "x")) won = true;
+      if (shOutcome === "away" && (s === "away" || s === "2" || s === "w2")) won = true;
+    }
+    // 6. First Yellow Card
+    else if (m.includes("first yellow")) {
+      if (cards.totalYellow === 0 && (s === "neither" || s === "none")) won = true;
+      else if (cards.firstYellow === "home" && (s === "home" || s === "1" || s === "w1" || (h && s.includes(h)))) won = true;
+      else if (cards.firstYellow === "away" && (s === "away" || s === "2" || s === "w2" || (a && s.includes(a)))) won = true;
+    }
+    // 7. Last Yellow Card
+    else if (m.includes("last yellow")) {
+      if (cards.totalYellow === 0 && (s === "neither" || s === "none")) won = true;
+      else if (cards.lastYellow === "home" && (s === "home" || s === "1" || s === "w1" || (h && s.includes(h)))) won = true;
+      else if (cards.lastYellow === "away" && (s === "away" || s === "2" || s === "w2" || (a && s.includes(a)))) won = true;
+    }
+    // 8. Both Teams to Receive a Card
+    else if (m.includes("both teams to receive a card")) {
+      const bothReceived = (cards.homeYellow > 0 || cards.homeRed > 0) && (cards.awayYellow > 0 || cards.awayRed > 0);
+      if (s === "yes" && bothReceived) won = true;
+      if (s === "no" && !bothReceived) won = true;
+    }
+    // 9. Both Teams to Receive 2 or More Card Points (1 pt yellow, 2 pt red)
+    else if (m.includes("2 or more card points")) {
+      const ptsH = cards.homeYellow + cards.homeRed * 2;
+      const ptsA = cards.awayYellow + cards.awayRed * 2;
+      const both2Pts = ptsH >= 2 && ptsA >= 2;
+      if (s === "yes" && both2Pts) won = true;
+      if (s === "no" && !both2Pts) won = true;
+    }
+    // 10. A Card in Both Halves
+    else if (m.includes("card in both halves")) {
+      const inBoth = cards.htTotalYellow > 0 && cards.shTotalYellow > 0;
+      if (s === "yes" && inBoth) won = true;
+      if (s === "no" && !inBoth) won = true;
+    }
+    // 11. Red Card / Sending Off
+    else if (m.includes("red card") || m.includes("sending off")) {
+      const hasRed = cards.totalRed > 0;
+      if (s === "yes" && hasRed) won = true;
+      if (s === "no" && !hasRed) won = true;
+    }
+    // 12. Full-Time Yellow Cards Total / Over / Under
+    else if (m.includes("total") || m.includes("over") || m.includes("under")) {
+      if (m.includes("home")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.homeYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.homeYellow < line;
+      } else if (m.includes("away")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.awayYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.awayYellow < line;
+      } else {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 3.5;
+        if (s.includes("over") || s.startsWith("o")) won = cards.totalYellow > line;
+        else if (s.includes("under") || s.startsWith("u")) won = cards.totalYellow < line;
+      }
+    }
+    // 13. Full-Time Yellow Cards Result
+    else if (m.includes("result") || m.includes("winner")) {
+      let ftOutcome = "draw";
+      if (cards.homeYellow > cards.awayYellow) ftOutcome = "home";
+      else if (cards.awayYellow > cards.homeYellow) ftOutcome = "away";
+      if (ftOutcome === "home" && (s === "home" || s === "1" || s === "w1")) won = true;
+      if (ftOutcome === "draw" && (s === "draw" || s === "x")) won = true;
+      if (ftOutcome === "away" && (s === "away" || s === "2" || s === "w2")) won = true;
+    }
+    // 14. Full-Time Yellow Cards Handicap
+    else if (m.includes("handicap")) {
+      const matchHd = s.match(/([+-]?\d+(?:\.\d+)?)/);
+      const hd = matchHd ? parseFloat(matchHd[1]) : 0;
+      const isHome = s.includes("home") || s.includes("1") || s.includes("w1") || (h && s.includes(h));
+      if (isHome) {
+        won = (cards.homeYellow + hd) > cards.awayYellow;
+      } else {
+        won = (cards.awayYellow + hd) > cards.homeYellow;
+      }
     }
 
-    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o") || sCombined.includes(">");
-    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u") || sCombined.includes("<");
-
-    if (isOver && totalGoals > line) won = true;
-    else if (isUnder && totalGoals < line) won = true;
+    return {
+      finished: true,
+      won,
+      score: `Cards: ${cards.homeYellow}-${cards.awayYellow}`,
+      htScore: `${cards.htHomeYellow}:${cards.htAwayYellow}`,
+      ftScore: `${cards.homeYellow}:${cards.awayYellow}`,
+      status,
+      cards,
+    };
   }
-  // 2. 1st Half Over / Under
-  else if (isOuMarket && (mCombined.includes("1st half") || mKey.includes("half1") || mKey === "half1_ou15")) {
-    const htTotal = htHome + htAway;
-    let line = 1.5;
-    const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
-    if (numMatch) line = parseFloat(numMatch[1]);
 
-    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o");
-    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u");
+  // Helper pick matchers for team/draw selections:
+  const isHomePick = sVal === "home" || sVal === "1" || sVal === "w1" || sName === "1" || sName === "w1" || (h && (sVal === h || sName === h || (sName.length >= 3 && (sName.startsWith(h) || h.startsWith(sName)))));
+  const isDrawPick = sVal === "draw" || sVal === "x" || sVal === "tie" || sName === "draw" || sName === "x" || sName.includes("draw");
+  const isAwayPick = sVal === "away" || sVal === "2" || sVal === "w2" || sName === "2" || sName === "w2" || (a && (sVal === a || sName === a || (sName.length >= 3 && (sName.startsWith(a) || a.startsWith(sName)))));
 
-    if (isOver && htTotal > line) won = true;
-    else if (isUnder && htTotal < line) won = true;
+  // ── SPECIALIZED HANDLER: CORNERS ───────────────────────────────────────────
+  const isCornersMarket = m.includes("corner") || k.includes("corner") ||
+    (k.startsWith("m4") && Number(k.replace("m", "")) >= 401 && Number(k.replace("m", "")) <= 425);
+
+  if (isCornersMarket) {
+    const corners = extractFixtureCorners(fixtureData, fid, h, a);
+    let won = false;
+
+    // 1. Corners Result (1X2) - Full Time
+    if (m === "corners result" || (m.includes("corners") && (m.includes("result") || m.includes("1x2") || m.includes("winner")) && !m.includes("1st half") && !m.includes("half"))) {
+      let ftOutcome = "draw";
+      if (corners.home > corners.away) ftOutcome = "home";
+      else if (corners.away > corners.home) ftOutcome = "away";
+      if (ftOutcome === "home" && isHomePick) won = true;
+      if (ftOutcome === "draw" && isDrawPick) won = true;
+      if (ftOutcome === "away" && isAwayPick) won = true;
+    }
+    // 2. Corners 1st Half Result
+    else if (m.includes("1st half") && (m.includes("result") || m.includes("1x2") || m.includes("winner"))) {
+      let htOutcome = "draw";
+      if (corners.htHome > corners.htAway) htOutcome = "home";
+      else if (corners.htAway > corners.htHome) htOutcome = "away";
+      if (htOutcome === "home" && isHomePick) won = true;
+      if (htOutcome === "draw" && isDrawPick) won = true;
+      if (htOutcome === "away" && isAwayPick) won = true;
+    }
+    // 3. Corners Total 3-Way (Over, Exactly, Under)
+    else if (m.includes("3-way") || m.includes("3 way")) {
+      const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+      const line = numMatch ? parseFloat(numMatch[1]) : 9.0;
+      if ((s.includes("over") || s.startsWith("o")) && corners.total > line) won = true;
+      else if ((s.includes("exactly") || s.includes("exact") || s.startsWith("e")) && corners.total === line) won = true;
+      else if ((s.includes("under") || s.startsWith("u")) && corners.total < line) won = true;
+    }
+    // 4. Corners Total (Bands) (e.g. 0-8 Corners, 9-11 Corners, 12+ Corners)
+    else if (m.includes("bands") || s.includes("0-8") || s.includes("9-11") || s.includes("12+")) {
+      if (s.includes("0-8") && corners.total <= 8) won = true;
+      else if (s.includes("9-11") && corners.total >= 9 && corners.total <= 11) won = true;
+      else if (s.includes("12+") && corners.total >= 12) won = true;
+    }
+    // 5. Corners: First Corner / Last Corner
+    else if (m.includes("first corner")) {
+      if (corners.total === 0 && (s === "neither" || s === "none")) won = true;
+      else if (corners.firstCorner === "home" && isHomePick) won = true;
+      else if (corners.firstCorner === "away" && isAwayPick) won = true;
+    }
+    else if (m.includes("last corner")) {
+      if (corners.lastCorner === "home" && isHomePick) won = true;
+      else if (corners.lastCorner === "away" && isAwayPick) won = true;
+    }
+    // 6. Corners Race To (3.0, 5.0, 7.0, 9.0)
+    else if (m.includes("race to")) {
+      const numMatch = m.match(/(\d+(?:\.\d+)?)/) || sName.match(/(\d+(?:\.\d+)?)/);
+      const target = numMatch ? parseFloat(numMatch[1]) : 5.0;
+      let raceWinner = "neither";
+      if (corners.home >= target && corners.away < target) raceWinner = "home";
+      else if (corners.away >= target && corners.home < target) raceWinner = "away";
+      else if (corners.home >= target && corners.away >= target) raceWinner = corners.home >= corners.away ? "home" : "away";
+      if (raceWinner === "home" && isHomePick) won = true;
+      else if (raceWinner === "away" && isAwayPick) won = true;
+      else if (raceWinner === "neither" && (s === "neither" || s === "none")) won = true;
+    }
+    // 7. Corners 1st Half Handicap
+    else if (m.includes("1st half") && m.includes("handicap")) {
+      const matchHd = s.match(/([+-]?\d+(?:\.\d+)?)/);
+      const hd = matchHd ? parseFloat(matchHd[1]) : 0;
+      const isHome = isHomePick || s.includes("home") || s.includes("1");
+      if (isHome) {
+        won = (corners.htHome + hd) > corners.htAway;
+      } else {
+        won = (corners.htAway + hd) > corners.htHome;
+      }
+    }
+    // 8. Corners Full-Time Handicap
+    else if (m.includes("handicap")) {
+      const matchHd = s.match(/([+-]?\d+(?:\.\d+)?)/);
+      const hd = matchHd ? parseFloat(matchHd[1]) : 0;
+      const isHome = isHomePick || s.includes("home") || s.includes("1");
+      if (isHome) {
+        won = (corners.home + hd) > corners.away;
+      } else {
+        won = (corners.away + hd) > corners.home;
+      }
+    }
+    // 9. Corners 1st Half Home / Away / Total
+    else if (m.includes("1st half")) {
+      if (m.includes("home") || m.includes("team 1")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 2.5;
+        if (s.includes("over") || s.startsWith("o")) won = corners.htHome > line;
+        else if (s.includes("under") || s.startsWith("u")) won = corners.htHome < line;
+      } else if (m.includes("away") || m.includes("team 2")) {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+        if (s.includes("over") || s.startsWith("o")) won = corners.htAway > line;
+        else if (s.includes("under") || s.startsWith("u")) won = corners.htAway < line;
+      } else {
+        const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 4.5;
+        if (s.includes("over") || s.startsWith("o")) won = corners.htTotal > line;
+        else if (s.includes("under") || s.startsWith("u")) won = corners.htTotal < line;
+      }
+    }
+    // 10. Corners 2nd Half Total
+    else if (m.includes("2nd half")) {
+      const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+      const line = numMatch ? parseFloat(numMatch[1]) : 5.5;
+      if (s.includes("over") || s.startsWith("o")) won = corners.shTotal > line;
+      else if (s.includes("under") || s.startsWith("u")) won = corners.shTotal < line;
+    }
+    // 11. Corners Home Total / Away Total
+    else if (m.includes("home total") || (m.includes("corners") && m.includes("home") && m.includes("total"))) {
+      const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+      const line = numMatch ? parseFloat(numMatch[1]) : 5.5;
+      if (s.includes("over") || s.startsWith("o")) won = corners.home > line;
+      else if (s.includes("under") || s.startsWith("u")) won = corners.home < line;
+    }
+    else if (m.includes("away total") || (m.includes("corners") && m.includes("away") && m.includes("total"))) {
+      const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+      const line = numMatch ? parseFloat(numMatch[1]) : 3.5;
+      if (s.includes("over") || s.startsWith("o")) won = corners.away > line;
+      else if (s.includes("under") || s.startsWith("u")) won = corners.away < line;
+    }
+    // 12. Full-Time Corners Total (Over / Under)
+    else if (m.includes("total") || m.includes("over") || m.includes("under") || s.includes("over") || s.includes("under")) {
+      const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+      const line = numMatch ? parseFloat(numMatch[1]) : 9.5;
+      if (s.includes("over") || s.startsWith("o")) won = corners.total > line;
+      else if (s.includes("under") || s.startsWith("u")) won = corners.total < line;
+    }
+
+    return {
+      finished: true,
+      won,
+      score: `Corners: ${corners.home}-${corners.away}`,
+      htScore: `${corners.htHome}:${corners.htAway}`,
+      ftScore: `${corners.home}:${corners.away}`,
+      status,
+      corners,
+    };
   }
-  // 3. Double Chance
-  else if (mKey === "dc" || mCombined.includes("double") || mCombined.includes("dc")) {
-    if ((sCombined.includes("1x") || sCombined.includes("1/x")) && (outcome1x2 === "home" || outcome1x2 === "draw")) won = true;
-    if ((sCombined.includes("12") || sCombined.includes("1/2")) && (outcome1x2 === "home" || outcome1x2 === "away")) won = true;
-    if ((sCombined.includes("x2") || sCombined.includes("x/2")) && (outcome1x2 === "draw" || outcome1x2 === "away")) won = true;
+
+  // 0. Double Chance - First Half (m3002)
+  if (k === "m3002" || (m.includes("double chance") && (m.includes("first half") || m.includes("1st half")))) {
+    const is1X = s.includes("1x") || s.includes("home/draw") || s.includes("home or draw") || s.includes("1 or x");
+    const is12 = s.includes("12") || s.includes("home/away") || s.includes("home or away") || s.includes("1 or 2");
+    const isX2 = s.includes("x2") || s.includes("draw/away") || s.includes("draw or away") || s.includes("x or 2");
+    if (is1X && (htOutcome === "home" || htOutcome === "draw")) won = true;
+    if (is12 && (htOutcome === "home" || htOutcome === "away")) won = true;
+    if (isX2 && (htOutcome === "draw" || htOutcome === "away")) won = true;
   }
-  // 4. Both Teams to Score (BTTS / GG / NG)
-  else if (mKey === "btts" || mCombined.includes("btts") || mCombined.includes("both") || mCombined.includes("gg")) {
+  // 1. Double Chance (DC)
+  else if (k === "dc" || k === "m12" || k === "m3001" || m.includes("double chance") || m.includes("dc") || sVal === "1x" || sVal === "12" || sVal === "x2" || sName === "1x" || sName === "12" || sName === "x2" || s.includes("home/draw") || s.includes("draw/away") || s.includes("home/away")) {
+    const is1X = sVal === "1x" || sName === "1x" || s.includes("1x") || s.includes("1/x") || s.includes("home/draw") || s.includes("draw/home") || s.includes("home or draw") || s.includes("1 or x") || (h && s.includes(h) && (s.includes("draw") || s.includes("x")));
+    const is12 = sVal === "12" || sName === "12" || s.includes("12") || s.includes("1/2") || s.includes("home/away") || s.includes("away/home") || s.includes("home or away") || s.includes("1 or 2") || (h && a && s.includes(h) && s.includes(a));
+    const isX2 = sVal === "x2" || sName === "x2" || s.includes("x2") || s.includes("x/2") || s.includes("draw/away") || s.includes("away/draw") || s.includes("draw or away") || s.includes("x or 2") || (a && s.includes(a) && (s.includes("draw") || s.includes("x")));
+
+    if (is1X && (outcome1x2 === "home" || outcome1x2 === "draw")) won = true;
+    if (is12 && (outcome1x2 === "home" || outcome1x2 === "away")) won = true;
+    if (isX2 && (outcome1x2 === "draw" || outcome1x2 === "away")) won = true;
+  }
+  // 1b. Outcome and Total Goals (m5101 / combo)
+  else if (k === "m5101" || m.includes("outcome and total goals") || m.includes("match result and total goals") || m.includes("result & total goals") || m.includes("result & goals")) {
+    const parts = s.split(/&|\/|and/i).map((x) => x.trim());
+    const outPick = parts[0] || "";
+    const goalPick = parts[1] || "";
+    let outOk = false;
+    if (outPick.includes("1x") || outPick.includes("home/draw") || outPick.includes("home or draw") || outPick.includes("1 or x")) {
+      outOk = (outcome1x2 === "home" || outcome1x2 === "draw");
+    } else if (outPick.includes("x2") || outPick.includes("draw/away") || outPick.includes("draw or away") || outPick.includes("x or 2")) {
+      outOk = (outcome1x2 === "draw" || outcome1x2 === "away");
+    } else if (outPick.includes("12") || outPick.includes("home/away") || outPick.includes("home or away") || outPick.includes("1 or 2")) {
+      outOk = (outcome1x2 === "home" || outcome1x2 === "away");
+    } else if (outPick.startsWith("1") || outPick.includes("home")) {
+      outOk = (outcome1x2 === "home");
+    } else if (outPick.startsWith("2") || outPick.includes("away")) {
+      outOk = (outcome1x2 === "away");
+    } else if (outPick.startsWith("x") || outPick.includes("draw")) {
+      outOk = (outcome1x2 === "draw");
+    }
+
+    let goalOk = false;
+    const numMatch = goalPick.match(/(\d+(?:\.\d+)?)/) || s.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+    if (goalPick.includes("ov") || goalPick.includes("over")) goalOk = totalGoals > line;
+    else if (goalPick.includes("un") || goalPick.includes("under")) goalOk = totalGoals < line;
+    else goalOk = totalGoals > line;
+    won = outOk && goalOk;
+  }
+  // 1c. Double Chance Combination (m5105 / m5106)
+  else if (k === "m5105" || k === "m5106" || m.includes("double chance combination") || m.includes("double chance and both")) {
+    let dcOk = false;
+    if (s.includes("1x") || s.includes("home/draw") || s.includes("home or draw")) dcOk = (outcome1x2 === "home" || outcome1x2 === "draw");
+    else if (s.includes("x2") || s.includes("draw/away") || s.includes("draw or away")) dcOk = (outcome1x2 === "draw" || outcome1x2 === "away");
+    else if (s.includes("12") || s.includes("home/away") || s.includes("home or away")) dcOk = (outcome1x2 === "home" || outcome1x2 === "away");
+
+    let secondOk = false;
     const btts = homeGoals > 0 && awayGoals > 0;
-    if ((sCombined.includes("yes") || sCombined.includes("gg")) && btts) won = true;
-    if ((sCombined.includes("no") || sCombined.includes("ng")) && !btts) won = true;
+    if (s.includes("both teams to score") || s.includes("both to score") || s.includes("yes") || s.includes("no")) {
+      secondOk = s.includes("no") ? !btts : btts;
+    } else if (s.includes("over") || s.includes("under")) {
+      const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+      const line = numMatch ? parseFloat(numMatch[1]) : 2.5;
+      secondOk = s.includes("over") ? totalGoals > line : totalGoals < line;
+    }
+    won = dcOk && secondOk;
   }
-  // 5. Draw No Bet (DNB)
-  else if (mKey === "dnb" || mCombined.includes("dnb") || mCombined.includes("draw no bet")) {
-    if (homeGoals > awayGoals && (sCombined.includes("home") || sCombined === "1" || (h && sCombined.includes(h)))) won = true;
-    if (awayGoals > homeGoals && (sCombined.includes("away") || sCombined === "2" || (a && sCombined.includes(a)))) won = true;
-    if (homeGoals === awayGoals) won = true; // push
+  // 1d. Outcome and Both Teams to Score (m5103)
+  else if (k === "m5103" || m.includes("outcome and both") || m.includes("result & both teams to score")) {
+    let outOk = false;
+    if (s.includes("home") || s.startsWith("1") || s.includes("1/")) outOk = (outcome1x2 === "home");
+    else if (s.includes("away") || s.startsWith("2") || s.includes("2/")) outOk = (outcome1x2 === "away");
+    else if (s.includes("draw") || s.startsWith("x") || s.includes("x/")) outOk = (outcome1x2 === "draw");
+    const btts = homeGoals > 0 && awayGoals > 0;
+    const bttsOk = s.includes("no") ? !btts : btts;
+    won = outOk && bttsOk;
   }
-  // 6. Half Time 1X2
-  else if (mKey === "half1_1x2" || (mCombined.includes("1st half") || mCombined.includes("half")) && (mCombined.includes("1x2") || mCombined.includes("winner") || mCombined.includes("result"))) {
-    let htOutcome = "draw";
-    if (htHome > htAway) htOutcome = "home";
-    else if (htAway > htHome) htOutcome = "away";
-    if (htOutcome === "home" && (sCombined.includes("home") || sCombined === "1" || sCombined === "w1")) won = true;
-    if (htOutcome === "draw" && (sCombined.includes("draw") || sCombined === "x")) won = true;
-    if (htOutcome === "away" && (sCombined.includes("away") || sCombined === "2" || sCombined === "w2")) won = true;
+  // 1e. Both Teams To Score and Total Goals (m5108)
+  else if (k === "m5108" || (m.includes("both teams to score") && m.includes("total goals"))) {
+    const btts = homeGoals > 0 && awayGoals > 0;
+    const bttsOk = s.includes("no") ? !btts : btts;
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 2.5;
+    const goalOk = s.includes("under") || s.includes("un") ? totalGoals < line : totalGoals > line;
+    won = bttsOk && goalOk;
   }
-  // 7. Match Result / 1X2 / Winner (Default)
+  // 1f. Half Time / Full Time and Total Goals (m5112)
+  else if (k === "m5112" || (m.includes("half time/full time") && m.includes("total goals"))) {
+    const htCode = htHome > htAway ? "1" : (htHome < htAway ? "2" : "x");
+    const ftCode = homeGoals > awayGoals ? "1" : (homeGoals < awayGoals ? "2" : "x");
+    const actualCombo = `${htCode}/${ftCode}`;
+    const cleanActual = `${htCode}${ftCode}`;
+    const cleanPick = (sVal || sName).replace(/[^12x]/gi, "").toLowerCase().slice(0, 2);
+    const htftOk = cleanPick === cleanActual || s.includes(actualCombo);
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+    const goalOk = s.includes("under") || s.includes("un") ? totalGoals < line : totalGoals > line;
+    won = htftOk && goalOk;
+  }
+  // 1g. 1st Half Or Match Result (m5002)
+  else if (k === "m5002" || m.includes("1st half or match result")) {
+    const pickHome = s.includes("home") || s === "1" || isHomePick;
+    const pickDraw = s.includes("draw") || s === "x" || isDrawPick;
+    const pickAway = s.includes("away") || s === "2" || isAwayPick;
+    if (pickHome && (htOutcome === "home" || outcome1x2 === "home")) won = true;
+    if (pickDraw && (htOutcome === "draw" || outcome1x2 === "draw")) won = true;
+    if (pickAway && (htOutcome === "away" || outcome1x2 === "away")) won = true;
+  }
+  // 1h. Team Total Goals (m2001 Home / m2101 Away)
+  else if (k === "m2001" || m.includes("home total goals") || m.includes("home total")) {
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+    won = (s.includes("over") || s.startsWith("o")) ? homeGoals > line : homeGoals < line;
+  }
+  else if (k === "m2101" || m.includes("away total goals") || m.includes("away total")) {
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+    won = (s.includes("over") || s.startsWith("o")) ? awayGoals > line : awayGoals < line;
+  }
+  // 1i. Away / Home to Score in Both Halves (m2112)
+  else if (k === "m2112" || m.includes("score in both halves")) {
+    if (m.includes("away")) {
+      const both = htAway > 0 && shAway > 0;
+      won = s.includes("no") ? !both : both;
+    } else {
+      const both = htHome > 0 && shHome > 0;
+      won = s.includes("no") ? !both : both;
+    }
+  }
+  // 1j. Away / Home to Score in Second Half (m2111)
+  else if (k === "m2111" || m.includes("score in second half")) {
+    if (m.includes("away")) {
+      won = s.includes("no") ? shAway === 0 : shAway > 0;
+    } else {
+      won = s.includes("no") ? shHome === 0 : shHome > 0;
+    }
+  }
+  // 1k. Away to Score (m2109) / Home to Score
+  else if (k === "m2109" || m.includes("away to score") || k === "away_score") {
+    won = s.includes("no") ? awayGoals === 0 : awayGoals > 0;
+  }
+  else if (k === "home_score" || m.includes("home to score")) {
+    won = s.includes("no") ? homeGoals === 0 : homeGoals > 0;
+  }
+  // 1L. 1-15 Min Winner (m501)
+  else if (k === "m501" || m.includes("1-15 min")) {
+    // In low-event fallback, default to draw
+    if (s.includes("draw") || s === "x") won = true;
+  }
+  // 1m. 1-30 Min Total Goals (m506)
+  else if (k === "m506" || m.includes("1-30 min")) {
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+    // Approximated by first half goals
+    won = s.includes("over") ? htTotal > line : htTotal < line;
+  }
+  // 1n. 1-75 Min Away Total Goals (m2106)
+  else if (k === "m2106" || m.includes("1-75 min")) {
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+    won = s.includes("over") ? awayGoals > line : awayGoals < line;
+  }
+  // 2. 1st Half Match Result (1X2)
+  else if (k === "half1_1x2" || (m.includes("1st half") && (m.includes("result") || m.includes("1x2") || m.includes("winner")))) {
+    if (htOutcome === "home" && isHomePick) won = true;
+    if (htOutcome === "draw" && isDrawPick) won = true;
+    if (htOutcome === "away" && isAwayPick) won = true;
+  }
+  // 3. 2nd Half Match Result (1X2 / m3)
+  else if (k === "half2_1x2" || k === "m3" || m.includes("second half winner") || (m.includes("2nd half") && (m.includes("result") || m.includes("1x2") || m.includes("winner")))) {
+    if (shOutcome === "home" && isHomePick) won = true;
+    if (shOutcome === "draw" && isDrawPick) won = true;
+    if (shOutcome === "away" && isAwayPick) won = true;
+  }
+  // 4. 1st Half Over/Under
+  else if (k === "half1_ou15" || (m.includes("1st half") && (m.includes("over") || m.includes("under") || m.includes("goals")))) {
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+    const isOver = sVal === "over" || sVal.startsWith("o") || sName.includes("over");
+    const isUnder = sVal === "under" || sVal.startsWith("u") || sName.includes("under");
+    if (isOver && htTotal > line) won = true;
+    if (isUnder && htTotal < line) won = true;
+  }
+  // 5. 2nd Half Over/Under
+  else if (k === "half2_ou15" || (m.includes("2nd half") && (m.includes("over") || m.includes("under") || m.includes("goals")))) {
+    const numMatch = s.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+    const isOver = sVal === "over" || sVal.startsWith("o") || sName.includes("over");
+    const isUnder = sVal === "under" || sVal.startsWith("u") || sName.includes("under");
+    if (isOver && shTotal > line) won = true;
+    if (isUnder && shTotal < line) won = true;
+  }
+  // 6. 1st Half Both Teams to Score (half1_btts / m34)
+  else if (k === "half1_btts" || k === "m34" || (m.includes("1st half") && (m.includes("both") || m.includes("btts")))) {
+    const btts1 = htHome > 0 && htAway > 0;
+    const isYes = sVal === "yes" || sVal === "gg" || sName.includes("yes") || sName.includes("gg");
+    const isNo = sVal === "no" || sVal === "ng" || sName.includes("no") || sName.includes("ng");
+    if (isYes && btts1) won = true;
+    if (isNo && !btts1) won = true;
+  }
+  // 7. 2nd Half Both Teams to Score (half2_btts / m35)
+  else if (k === "half2_btts" || k === "m35" || (m.includes("2nd half") && (m.includes("both") || m.includes("btts")))) {
+    const btts2 = shHome > 0 && shAway > 0;
+    const isYes = sVal === "yes" || sVal === "gg" || sName.includes("yes") || sName.includes("gg");
+    const isNo = sVal === "no" || sVal === "ng" || sName.includes("no") || sName.includes("ng");
+    if (isYes && btts2) won = true;
+    if (isNo && !btts2) won = true;
+  }
+  // 8. Both Teams to Score (BTTS / GG / NG / m8) Full-Time
+  else if (k === "btts" || k === "m8" || m.includes("both teams to score") || m.includes("both teams score") || m.includes("btts") || sVal === "gg" || sVal === "ng" || sName.startsWith("gg") || sName.startsWith("ng")) {
+    const btts = homeGoals > 0 && awayGoals > 0;
+    const isYes = sVal === "yes" || sVal === "gg" || sName.includes("yes") || sName.includes("gg");
+    const isNo = sVal === "no" || sVal === "ng" || sName.includes("no") || sName.includes("ng");
+    if (isYes && btts) won = true;
+    if (isNo && !btts) won = true;
+  }
+  // 9. Draw No Bet (DNB)
+  else if (k === "dnb" || m.includes("draw no bet") || m.includes("dnb")) {
+    if (homeGoals === awayGoals) {
+      won = true;
+      voided = true; // push
+    } else if (homeGoals > awayGoals && isHomePick) {
+      won = true;
+    } else if (awayGoals > homeGoals && isAwayPick) {
+      won = true;
+    }
+  }
+  // 10. Handicap (-1 / +1)
+  else if (k === "handicap" || m.includes("handicap")) {
+    if (isHomePick && (homeGoals - 1) > awayGoals) won = true;
+    else if (isDrawPick && (homeGoals - 1) === awayGoals) won = true;
+    else if (isAwayPick && (homeGoals - 1) < awayGoals) won = true;
+  }
+  // 11. Half Time / Full Time (HT/FT)
+  else if (k === "htft" || m.includes("half time / full time") || m.includes("ht/ft") || m.includes("htft")) {
+    const htCode = htHome > htAway ? "1" : (htHome < htAway ? "2" : "x");
+    const ftCode = homeGoals > awayGoals ? "1" : (homeGoals < awayGoals ? "2" : "x");
+    const actualCombo = `${htCode}/${ftCode}`;
+    const cleanPick = (sVal || sName).replace(/[^12x]/gi, "").toLowerCase();
+    const cleanActual = `${htCode}${ftCode}`;
+    if (cleanPick === cleanActual || s.includes(actualCombo)) won = true;
+  }
+  // 12. Correct Score
+  else if (k === "score" || m.includes("correct score") || m.includes("score")) {
+    const actualScore = `${homeGoals}-${awayGoals}`;
+    const cleanPick = (sVal || sName).replace(/\s+/g, "").replace(":", "-").replace(/score:?/gi, "").trim();
+    if (cleanPick === actualScore) won = true;
+  }
+  // 13. Clean Sheet (Home Clean Sheet / Away Clean Sheet)
+  else if (k === "home_cs" || m.includes("home clean sheet")) {
+    const isYes = sVal === "yes" || sName.includes("yes");
+    const isNo = sVal === "no" || sName.includes("no");
+    if (isYes && awayGoals === 0) won = true;
+    if (isNo && awayGoals > 0) won = true;
+  }
+  else if (k === "away_cs" || m.includes("away clean sheet")) {
+    const isYes = sVal === "yes" || sName.includes("yes");
+    const isNo = sVal === "no" || sName.includes("no");
+    if (isYes && homeGoals === 0) won = true;
+    if (isNo && homeGoals > 0) won = true;
+  }
+  // 14. To Score (Home To Score / Away To Score)
+  else if (k === "home_score" || m.includes("home to score")) {
+    if (homeGoals > 0) won = true;
+  }
+  else if (k === "away_score" || m.includes("away to score")) {
+    if (awayGoals > 0) won = true;
+  }
+  // 15. Team Over/Under 1.5 (home_ou15 / away_ou15)
+  else if (k === "home_ou15" || m.includes("home over/under 1.5")) {
+    const isOver = sVal === "over" || sVal.startsWith("o") || sName.includes("over");
+    const isUnder = sVal === "under" || sVal.startsWith("u") || sName.includes("under");
+    if (isOver && homeGoals > 1.5) won = true;
+    if (isUnder && homeGoals < 1.5) won = true;
+  }
+  else if (k === "away_ou15" || m.includes("away over/under 1.5")) {
+    const isOver = sVal === "over" || sVal.startsWith("o") || sName.includes("over");
+    const isUnder = sVal === "under" || sVal.startsWith("u") || sName.includes("under");
+    if (isOver && awayGoals > 1.5) won = true;
+    if (isUnder && awayGoals < 1.5) won = true;
+  }
+  // 16. Combo (Result & Goals 2.5: 1_ov, x_ov, 2_ov, 1_un, 2_un)
+  else if (k === "combo" || m.includes("result & goals")) {
+    const isOver = totalGoals > 2.5;
+    const isUnder = totalGoals < 2.5;
+    if ((sVal === "1_ov" || sName.includes("1 & over")) && outcome1x2 === "home" && isOver) won = true;
+    if ((sVal === "x_ov" || sName.includes("draw & over")) && outcome1x2 === "draw" && isOver) won = true;
+    if ((sVal === "2_ov" || sName.includes("2 & over")) && outcome1x2 === "away" && isOver) won = true;
+    if ((sVal === "1_un" || sName.includes("1 & under")) && outcome1x2 === "home" && isUnder) won = true;
+    if ((sVal === "2_un" || sName.includes("2 & under")) && outcome1x2 === "away" && isUnder) won = true;
+  }
+  // 17. Total Goals Over / Under (Full-Time)
+  else if (k === "ou" || k === "ou15" || k === "ou35" || k === "m5" || m.includes("over/under") || m.includes("total") || m.includes("over") || m.includes("under") || m.includes("goals") || sVal === "over" || sVal === "under" || sName.includes("over") || sName.includes("under")) {
+    let line = 2.5;
+    if (k === "ou15") line = 1.5;
+    else if (k === "ou35") line = 3.5;
+    else {
+      const numMatch = sName.match(/(\d+(?:\.\d+)?)/) || m.match(/(\d+(?:\.\d+)?)/) || sVal.match(/(\d+(?:\.\d+)?)/);
+      if (numMatch) line = parseFloat(numMatch[1]);
+    }
+    const isOver = sVal === "over" || sVal.startsWith("o") || sName.includes("over");
+    const isUnder = sVal === "under" || sVal.startsWith("u") || sName.includes("under");
+    if (isOver && totalGoals > line) won = true;
+    if (isUnder && totalGoals < line) won = true;
+  }
+  // 18. Match Result / 1X2 / Winner / Match Winner (Default fallback)
   else {
-    if (outcome1x2 === "home" && (sCombined.includes("home") || sCombined === "1" || sCombined === "w1" || (h && (sCombined === h || h.includes(sCombined))))) won = true;
-    if (outcome1x2 === "draw" && (sCombined.includes("draw") || sCombined === "x")) won = true;
-    if (outcome1x2 === "away" && (sCombined.includes("away") || sCombined === "2" || sCombined === "w2" || (a && (sCombined === a || a.includes(sCombined))))) won = true;
+    if (outcome1x2 === "home" && (isHomePick || s === "home" || s === "1" || s.includes("home"))) won = true;
+    if (outcome1x2 === "draw" && (isDrawPick || s === "draw" || s === "x" || s.includes("draw"))) won = true;
+    if (outcome1x2 === "away" && (isAwayPick || s === "away" || s === "2" || s.includes("away"))) won = true;
   }
 
   return {
     finished: true,
     won,
+    voided,
     score: `${homeGoals}-${awayGoals}`,
     htScore: `${htHome}:${htAway}`,
     ftScore: `${homeGoals}:${awayGoals}`,
@@ -279,19 +1200,24 @@ function calculateNearMissBonus(stake, selections) {
 
     const totalTeams = selections.length;
     const lostCount = selections.filter((s) => s.status === "lost").length;
-    if (lostCount < 1 || lostCount > 4) return null;
-
-    const minOdd = Number(settings.bonus_min_odd_per_leg) || 0;
-    if (minOdd > 1) {
-      const validOdds = selections.every((s) => !s.odd || Number(s.odd) >= minOdd);
-      if (!validOdds) return null;
-    }
+    if (lostCount < 1) return null;
 
     const eligibleRules = rules.filter((r) => {
       if (!r.enabled) return false;
       if (Number(r.failedCount) !== lostCount) return false;
       if (totalTeams < Number(r.minTeams)) return false;
       if (r.maxTeams != null && r.maxTeams !== "" && totalTeams > Number(r.maxTeams)) return false;
+
+      // Realistic odds verification:
+      // Ensure heavy favourite legs (e.g. 1.09, 1.10) do not void multi-leg tickets if slips generally qualify
+      const minOdd = Number(r.minOddPerLeg) || Number(settings.bonus_min_odd_per_leg) || 1.10;
+      if (minOdd > 1) {
+        const validLegsCount = selections.filter((s) => !s.odd || Number(s.odd) >= Math.min(minOdd, 1.15)).length;
+        const allReasonable = selections.every((s) => !s.odd || Number(s.odd) >= 1.05);
+        if (!allReasonable && validLegsCount < Number(r.minTeams) - Number(r.failedCount)) {
+          return false;
+        }
+      }
       return true;
     });
 
@@ -341,10 +1267,14 @@ async function autoSettleOpenTickets(userId) {
     const fixMap = new Map();
     if (fixtureIdSet.size) {
       try {
-        const fixturesFromApi = await fetchFixtureResults(Array.from(fixtureIdSet));
-        for (const f of fixturesFromApi) {
-          const fid = f.fixture?.id || f.id || f.fixtureId;
-          if (fid) fixMap.set(Number(fid), f);
+        const idList = Array.from(fixtureIdSet);
+        for (let i = 0; i < idList.length; i += 20) {
+          const chunk = idList.slice(i, i + 20);
+          const fixturesFromApi = await fetchFixtureResults(chunk);
+          for (const f of fixturesFromApi) {
+            const fid = f.fixture?.id || f.id || f.fixtureId;
+            if (fid) fixMap.set(Number(fid), f);
+          }
         }
       } catch (_) {}
     }
@@ -371,22 +1301,9 @@ async function autoSettleOpenTickets(userId) {
 
         const fid = Number(sel.fixtureId);
         let matchData = fixMap.get(fid);
-        if (matchData) {
-          const apiHome = String(matchData.teams?.home?.name || matchData.home?.name || "").toLowerCase();
-          const apiAway = String(matchData.teams?.away?.name || matchData.away?.name || "").toLowerCase();
-          const selHome = String(sel.homeName || "").toLowerCase();
-          const selAway = String(sel.awayName || "").toLowerCase();
-          if (selHome && selAway && apiHome && apiAway) {
-            const hMatch = apiHome.includes(selHome) || selHome.includes(apiHome);
-            const aMatch = apiAway.includes(selAway) || selAway.includes(apiAway);
-            if (!hMatch || !aMatch) {
-              matchData = null;
-            }
-          }
-        }
 
         const matchStatus = String(matchData?.fixture?.status?.short || "").toUpperCase();
-        if (!matchData || !["FT", "AET", "PEN", "FINISHED", "ENDED"].includes(matchStatus)) {
+        if (!matchData || !["FT", "AET", "PEN", "FINISHED", "ENDED", "PST", "CANC", "ABD", "POSTPONED", "CANCELLED", "ABANDONED"].includes(matchStatus)) {
           const fallbackRes = findMatchResultForFixture(fid, sel.homeName, sel.awayName, sel.kickoff);
           if (fallbackRes) matchData = fallbackRes;
         }
@@ -395,9 +1312,11 @@ async function autoSettleOpenTickets(userId) {
           const evalRes = evaluateSelection(sel, matchData);
           if (evalRes.finished) {
             sel.status = evalRes.won ? "won" : "lost";
+            if (evalRes.voided) sel.voided = true;
             if (evalRes.score) sel.score = evalRes.score;
             if (evalRes.htScore) sel.htScore = evalRes.htScore;
             if (evalRes.ftScore) sel.ftScore = evalRes.ftScore;
+            if (evalRes.cards) sel.cards = evalRes.cards;
             if (!evalRes.won) anyLost = true;
           } else {
             allFinished = false;
@@ -407,54 +1326,75 @@ async function autoSettleOpenTickets(userId) {
         }
       }
 
-      if (anyLost) {
-        let bonusInfo = null;
-        let bonusPayout = 0;
-        if (allFinished) {
-          bonusInfo = calculateNearMissBonus(row.stake, selections);
-          bonusPayout = bonusInfo ? bonusInfo.amount : 0;
-        }
+      if (allFinished) {
+        if (anyLost) {
+          const bonusInfo = calculateNearMissBonus(row.stake, selections);
+          const bonusPayout = bonusInfo ? bonusInfo.amount : 0;
 
-        withStore((store) => {
-          const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
-          if (bet && bet.status === "open") {
-            bet.status = "lost";
-            bet.payout = bonusPayout;
-            bet.settled_at = new Date().toISOString();
-            bet.selections = JSON.stringify(selections);
-            if (bonusInfo && bonusPayout > 0) {
-              bet.bonus_awarded = true;
-              bet.bonus_amount = bonusInfo.amount;
-              bet.bonus_multiplier = bonusInfo.multiplier;
-              bet.bonus_rule_name = bonusInfo.rule.name;
-              bet.bonus_failed_count = bonusInfo.failedCount;
-              bet.bonus_total_teams = bonusInfo.totalTeams;
+          withStore((store) => {
+            const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
+            if (bet && bet.status === "open") {
+              bet.status = "lost";
+              bet.payout = bonusPayout;
+              bet.settled_at = new Date().toISOString();
+              bet.selections = JSON.stringify(selections);
+              if (bonusInfo && bonusPayout > 0) {
+                bet.bonus_awarded = true;
+                bet.bonus_amount = bonusInfo.amount;
+                bet.bonus_multiplier = bonusInfo.multiplier;
+                bet.bonus_rule_name = bonusInfo.rule.name;
+                bet.bonus_failed_count = bonusInfo.failedCount;
+                bet.bonus_total_teams = bonusInfo.totalTeams;
+              }
+            }
+          });
+
+          if (bonusPayout > 0) {
+            creditWallet(row.user_id, bonusPayout, "bonus_cut", row.ticket_id, {
+              ticketId: row.ticket_id,
+              multiplier: bonusInfo.multiplier,
+              failedCount: bonusInfo.failedCount,
+              totalTeams: bonusInfo.totalTeams,
+              ruleName: bonusInfo.rule.name,
+            });
+          }
+        } else {
+          // All won!
+          let effectiveOdds = 1.0;
+          let hasVoided = false;
+          for (const s of selections) {
+            if (s.voided) {
+              hasVoided = true;
+              effectiveOdds *= 1.0;
+            } else {
+              effectiveOdds *= Number(s.odd || 1);
             }
           }
-        });
+          const payout = hasVoided
+            ? Number((row.stake * effectiveOdds).toFixed(2))
+            : Number(row.potential_win || (row.stake * effectiveOdds).toFixed(2));
 
-        if (bonusPayout > 0) {
-          creditWallet(row.user_id, bonusPayout, "bonus_cut", row.ticket_id, {
-            ticketId: row.ticket_id,
-            multiplier: bonusInfo.multiplier,
-            failedCount: bonusInfo.failedCount,
-            totalTeams: bonusInfo.totalTeams,
+          withStore((store) => {
+            const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
+            if (bet && bet.status === "open") {
+              bet.status = "won";
+              bet.payout = payout;
+              bet.settled_at = new Date().toISOString();
+              bet.selections = JSON.stringify(selections);
+            }
           });
+          if (payout > 0) {
+            creditWallet(row.user_id, payout, "bet_win", row.ticket_id, { ticketId: row.ticket_id });
+          }
         }
-      } else if (allFinished) {
-        const payout = Number(row.potential_win || 0);
+      } else {
+        // Not all finished yet: save intermediate selection statuses so slip updates, but keep status: "open"
         withStore((store) => {
           const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
           if (bet && bet.status === "open") {
-            bet.status = "won";
-            bet.payout = payout;
-            bet.settled_at = new Date().toISOString();
             bet.selections = JSON.stringify(selections);
           }
         });
-        if (payout > 0) {
-          creditWallet(row.user_id, payout, "bet_win", row.ticket_id, { ticketId: row.ticket_id });
-        }
       }
     }
   } catch (err) {
@@ -462,78 +1402,191 @@ async function autoSettleOpenTickets(userId) {
   }
 }
 
-function repairMistakenlyLostTickets() {
+async function retroactiveSettleAllTickets() {
+  const settledResults = [];
   try {
-    withStore((store) => {
-      for (const bet of store.bets) {
-        if (bet.status !== "lost") continue;
-        let selections = [];
-        try { selections = JSON.parse(bet.selections); } catch (_) { continue; }
-        if (!selections.length) continue;
+    const rows = withStore((store) => store.bets.slice());
+    if (!rows.length) return settledResults;
 
-        let changed = false;
+    const fixtureIdSet = new Set();
+    const parsedMap = new Map();
+    for (const row of rows) {
+      try {
+        const selections = JSON.parse(row.selections);
+        parsedMap.set(row.ticket_id, selections);
         for (const sel of selections) {
-          const scoreStr = sel.ftScore || sel.score;
-          if (!scoreStr) continue;
-          const parts = String(scoreStr).replace(":", "-").split("-");
-          if (parts.length !== 2) continue;
-          const gh = Number(parts[0]);
-          const ga = Number(parts[1]);
-          if (isNaN(gh) || isNaN(ga)) continue;
+          if (sel.fixtureId) fixtureIdSet.add(Number(sel.fixtureId));
+        }
+      } catch (_) {}
+    }
 
-          const fixtureObj = {
-            fixture: { status: { short: "FT" } },
-            goals: { home: gh, away: ga },
-            score: { fulltime: { home: gh, away: ga } }
-          };
-          const evalRes = evaluateSelection(sel, fixtureObj);
-          if (evalRes.finished && evalRes.won && sel.status !== "won") {
-            sel.status = "won";
-            changed = true;
+    const fixMap = new Map();
+    if (fixtureIdSet.size) {
+      const idList = Array.from(fixtureIdSet);
+      for (let i = 0; i < idList.length; i += 20) {
+        const chunk = idList.slice(i, i + 20);
+        try {
+          const fixturesFromApi = await fetchFixtureResults(chunk);
+          for (const f of fixturesFromApi) {
+            const fid = f.fixture?.id || f.id || f.fixtureId;
+            if (fid) fixMap.set(Number(fid), f);
           }
+        } catch (_) {}
+      }
+    }
+
+    for (const row of rows) {
+      const selections = parsedMap.get(row.ticket_id);
+      if (!selections || !selections.length) continue;
+
+      let allFinished = true;
+      let anyLost = false;
+
+      for (const sel of selections) {
+        if (sel.status === "won" || sel.status === "lost") {
+          if (sel.status === "lost") anyLost = true;
+          continue;
         }
 
-        const anyLost = selections.some((s) => s.status === "lost");
-        const allWon = selections.length > 0 && selections.every((s) => s.status === "won");
+        const kickTime = sel.kickoff ? new Date(sel.kickoff).getTime() : 0;
+        if (kickTime && kickTime > Date.now() + 60000) {
+          allFinished = false;
+          continue;
+        }
 
-        if (allWon) {
-          bet.status = "won";
-          bet.payout = Number(bet.potential_win || 0);
-          bet.selections = JSON.stringify(selections);
-          if (bet.payout > 0) {
-            creditWallet(bet.user_id, bet.payout, "bet_win_correction", bet.ticket_id, {
-              ticketId: bet.ticket_id,
-              note: "Result settlement correction for Over/Under",
-            });
+        const fid = Number(sel.fixtureId);
+        let matchData = fixMap.get(fid);
+        const matchStatus = String(matchData?.fixture?.status?.short || "").toUpperCase();
+        if (!matchData || !["FT", "AET", "PEN", "FINISHED", "ENDED", "PST", "CANC", "ABD", "POSTPONED", "CANCELLED", "ABANDONED"].includes(matchStatus)) {
+          const fallbackRes = findMatchResultForFixture(fid, sel.homeName, sel.awayName, sel.kickoff);
+          if (fallbackRes) matchData = fallbackRes;
+        }
+
+        if (matchData) {
+          const evalRes = evaluateSelection(sel, matchData);
+          if (evalRes.finished) {
+            sel.status = evalRes.won ? "won" : "lost";
+            if (evalRes.voided) sel.voided = true;
+            if (evalRes.score) sel.score = evalRes.score;
+            if (evalRes.htScore) sel.htScore = evalRes.htScore;
+            if (evalRes.ftScore) sel.ftScore = evalRes.ftScore;
+            if (evalRes.cards) sel.cards = evalRes.cards;
+            if (!evalRes.won) anyLost = true;
+          } else {
+            allFinished = false;
           }
-        } else if (!anyLost) {
-          bet.status = "open";
-          bet.payout = 0;
-          bet.settled_at = null;
-          bet.selections = JSON.stringify(selections);
-        } else if (changed) {
-          bet.selections = JSON.stringify(selections);
+        } else {
+          allFinished = false;
         }
       }
-    });
-  } catch (err) {
-    console.error("[repairMistakenlyLostTickets] Error:", err.message);
-  }
-}
 
-// Run repair on startup
-setTimeout(repairMistakenlyLostTickets, 2000);
+      if (allFinished) {
+        if (anyLost) {
+          const bonusInfo = calculateNearMissBonus(row.stake, selections);
+          const bonusPayout = bonusInfo ? bonusInfo.amount : 0;
+          const wasAwarded = Boolean(row.bonus_awarded || (row.payout && row.payout > 0));
+
+          if (bonusInfo && bonusPayout > 0 && !wasAwarded) {
+            withStore((store) => {
+              const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
+              if (bet) {
+                bet.status = "lost";
+                bet.payout = bonusPayout;
+                bet.bonus_awarded = true;
+                bet.bonus_amount = bonusInfo.amount;
+                bet.bonus_multiplier = bonusInfo.multiplier;
+                bet.bonus_rule_name = bonusInfo.rule.name;
+                bet.bonus_failed_count = bonusInfo.failedCount;
+                bet.bonus_total_teams = bonusInfo.totalTeams;
+                bet.settled_at = bet.settled_at || new Date().toISOString();
+                bet.selections = JSON.stringify(selections);
+              }
+            });
+
+            creditWallet(row.user_id, bonusPayout, "bonus_cut", row.ticket_id, {
+              ticketId: row.ticket_id,
+              multiplier: bonusInfo.multiplier,
+              failedCount: bonusInfo.failedCount,
+              totalTeams: bonusInfo.totalTeams,
+              ruleName: bonusInfo.rule.name,
+              retroactive: true,
+            });
+
+            settledResults.push({
+              ticket_id: row.ticket_id,
+              user_id: row.user_id,
+              stake: row.stake,
+              bonus_amount: bonusPayout,
+              multiplier: bonusInfo.multiplier,
+              rule_name: bonusInfo.rule.name,
+              failed_count: bonusInfo.failedCount,
+              total_teams: bonusInfo.totalTeams,
+            });
+          } else {
+            withStore((store) => {
+              const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
+              if (bet && bet.status === "open") {
+                bet.status = "lost";
+                bet.settled_at = new Date().toISOString();
+                bet.selections = JSON.stringify(selections);
+              }
+            });
+          }
+        } else {
+          // All won
+          if (row.status === "open") {
+            let effectiveOdds = 1.0;
+            let hasVoided = false;
+            for (const s of selections) {
+              if (s.voided) {
+                hasVoided = true;
+                effectiveOdds *= 1.0;
+              } else {
+                effectiveOdds *= Number(s.odd || 1);
+              }
+            }
+            const payout = hasVoided
+              ? Number((row.stake * effectiveOdds).toFixed(2))
+              : Number(row.potential_win || (row.stake * effectiveOdds).toFixed(2));
+
+            withStore((store) => {
+              const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
+              if (bet) {
+                bet.status = "won";
+                bet.payout = payout;
+                bet.settled_at = new Date().toISOString();
+                bet.selections = JSON.stringify(selections);
+              }
+            });
+            if (payout > 0) {
+              creditWallet(row.user_id, payout, "bet_win", row.ticket_id, { ticketId: row.ticket_id });
+            }
+          }
+        }
+      } else {
+        withStore((store) => {
+          const bet = store.bets.find((b) => b.ticket_id === row.ticket_id);
+          if (bet && bet.status === "open") {
+            bet.selections = JSON.stringify(selections);
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[retroactiveSettleAllTickets] Error:", err.message);
+  }
+  return settledResults;
+}
 
 // Background poller to auto-settle any finished matches every 2 minutes
 setInterval(() => {
   autoSettleOpenTickets().catch(() => {});
-  repairMistakenlyLostTickets();
 }, 120000);
 
 router.get("/history", authRequired, async (req, res) => {
   await autoSettleOpenTickets(req.user.id);
-  repairMistakenlyLostTickets();
 
+  try { repairMistakenlyLostTickets(); } catch (_) {}
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
   const isCashierOrAdmin = req.user.role === "admin" || req.user.role === "super_admin";
   const rows = withStore((store) =>
@@ -779,7 +1832,33 @@ router.post("/settle/:ticketId", authRequired, async (req, res) => {
 router.get("/ticket/:ticketId", async (req, res) => {
   const ticketId = req.params.ticketId;
   const row = withStore((store) => store.bets.find((b) => matchTicket(b, ticketId)));
-  if (!row) return res.status(404).json({ ok: false, error: "Ticket not found" });
+  if (!row) {
+    const rawDigits = String(ticketId).replace(/\D/g, "");
+    if (rawDigits.length === 5) {
+      const booking = withStore((store) => (store.booked_bets ? store.booked_bets[rawDigits] : null));
+      if (booking) {
+        return res.json({
+          ok: true,
+          isBookedBet: true,
+          ticket: {
+            id: `BOOK-${booking.code}`,
+            bookingCode: booking.code,
+            cashierCode: booking.code,
+            publicCode: booking.code,
+            isBookedBet: true,
+            status: "booked",
+            stake: booking.stake,
+            totalOdds: booking.totalOdds,
+            potentialWin: booking.potentialWin,
+            mode: booking.mode,
+            bets: booking.selections,
+            placedAt: booking.createdAt,
+          },
+        });
+      }
+    }
+    return res.status(404).json({ ok: false, error: "Ticket not found" });
+  }
 
   if (row.status === "open") {
     await autoSettleOpenTickets(row.user_id);
@@ -836,4 +1915,83 @@ router.get("/ticket/:ticketId", async (req, res) => {
   });
 });
 
+router.post("/retroactive-settle", authRequired, async (req, res) => {
+  const isCashierOrAdmin = req.user.role === "admin" || req.user.role === "super_admin";
+  if (!isCashierOrAdmin) {
+    return res.status(403).json({ ok: false, error: "Only admins and cashiers can run retroactive settlement" });
+  }
+  const results = await retroactiveSettleAllTickets();
+  res.json({ ok: true, count: results.length, settlements: results });
+});
+
+router.autoSettleOpenTickets = autoSettleOpenTickets;
+router.retroactiveSettleAllTickets = retroactiveSettleAllTickets;
+
+function repairMistakenlyLostTickets() {
+  try {
+    withStore((store) => {
+      for (const bet of (store.bets || [])) {
+        if (bet.status !== "lost" && bet.status !== "open") continue;
+        let selections = [];
+        try { selections = JSON.parse(bet.selections); } catch (_) { continue; }
+        if (!selections.length) continue;
+
+        let changed = false;
+        for (const sel of selections) {
+          const scoreStr = sel.ftScore || sel.score;
+          if (!scoreStr) continue;
+          const parts = String(scoreStr).replace(":", "-").split("-");
+          if (parts.length !== 2) continue;
+          const gh = Number(parts[0]);
+          const ga = Number(parts[1]);
+          if (isNaN(gh) || isNaN(ga)) continue;
+
+          const fixtureObj = {
+            fixture: { status: { short: "FT" } },
+            goals: { home: gh, away: ga },
+            score: { fulltime: { home: gh, away: ga } }
+          };
+          const evalRes = evaluateSelection(sel, fixtureObj);
+          if (evalRes.finished && evalRes.won && sel.status !== "won") {
+            sel.status = "won";
+            changed = true;
+          }
+        }
+
+        const anyLost = selections.some((s) => s.status === "lost");
+        const allWon = selections.length > 0 && selections.every((s) => s.status === "won");
+
+        if (allWon) {
+          if (bet.status !== "won") {
+            bet.status = "won";
+            bet.payout = Number(bet.potential_win || 0);
+            bet.settled_at = new Date().toISOString();
+            bet.selections = JSON.stringify(selections);
+            if (bet.payout > 0) {
+              creditWallet(bet.user_id, bet.payout, "bet_win_correction", bet.ticket_id, {
+                ticketId: bet.ticket_id,
+                note: "Result settlement correction for Over/Under / markets",
+              });
+            }
+          }
+        } else if (!anyLost) {
+          if (bet.status !== "open") {
+            bet.status = "open";
+            bet.payout = 0;
+            bet.settled_at = null;
+            bet.selections = JSON.stringify(selections);
+          }
+        } else if (changed) {
+          bet.selections = JSON.stringify(selections);
+        }
+      }
+    });
+  } catch (err) {
+    console.error("[repairMistakenlyLostTickets] Error:", err.message);
+  }
+}
+
+setTimeout(repairMistakenlyLostTickets, 2500);
+
 module.exports = router;
+

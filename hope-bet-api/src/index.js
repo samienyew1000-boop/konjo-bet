@@ -48,6 +48,23 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+app.get("/api/games/config", (_req, res) => {
+  try {
+    const { loadStore, defaultGameControls } = require("./db");
+    const store = loadStore();
+    const defaults = defaultGameControls();
+    const raw = store.game_controls || defaults;
+    res.json({
+      ok: true,
+      global: { ...defaults.global, ...(raw.global || {}) },
+      games: { ...defaults.games, ...(raw.games || {}) },
+      updatedAt: raw.updatedAt || new Date().toISOString(),
+    });
+  } catch (err) {
+    res.json({ ok: true, error: err.message });
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/super", superAdminRoutes);
 app.use("/api/superadmin", superAdminRoutes);

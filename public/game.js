@@ -1,13 +1,16 @@
-"use strict";
-
-(function () {
+(function enforceKonjoBetLicense() {
   const allowedHosts = ["konjobet.com", "www.konjobet.com", "konjobetcom.et", "www.konjobetcom.et", "konjobet.com.et", "www.konjobet.com.et", "13.140.146.163", "localhost", "127.0.0.1"];
-  const currentHost = (window.location.hostname || "").toLowerCase();
-  if (currentHost && !allowedHosts.includes(currentHost)) {
-    document.documentElement.innerHTML = '<div style="background:#070a10;color:#ef4444;height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:20px;font-weight:700;text-align:center;padding:24px;flex-direction:column;"><div style="font-size:48px;margin-bottom:16px;">&#128683;</div><div>UNAUTHORIZED INSTALLATION DETECTED</div><div style="color:#94a3b8;font-size:14px;font-weight:400;margin-top:12px;max-width:480px;">This software is cryptographically licensed exclusively for konjobet.com. Code execution and API operations have been permanently disabled.</div></div>';
-    throw new Error("License validation failed: Unauthorized domain.");
+  const h = (window.location.hostname || "").toLowerCase();
+  const isAuthorized = allowedHosts.some(function(dh) {
+    return h === dh || h.endsWith("." + dh) || h.indexOf(dh) !== -1;
+  });
+  if (!isAuthorized && h && !h.includes("localhost") && !h.includes("127.0.0.1")) {
+    document.documentElement.innerHTML = "<div style='display:flex;align-items:center;justify-content:center;height:100vh;background:#0d1117;color:#f85149;font-family:sans-serif;font-size:20px;font-weight:bold;text-align:center;'>Access Denied: Konjo Bet Proprietary Engine.<br>Unauthorized Domain.</div>";
+    throw new Error("[SECURITY LOCK] Unauthorized domain: " + h);
   }
 })();
+
+"use strict";
 
 const STORAGE = "sport-betting-v1";
 const API_BASE = "https://multi-shop-games-2.onrender.com/api/games/sportsbook";
@@ -17,7 +20,7 @@ const MIN_STAKE = 20;
 const QUICK_STAKES = [20, 50, 100, 500];
 const CURRENCY = "ETB";
 
-const api = () => window.HopeBetAPI;
+const api = () => window.KonjoBetAPI || window.HopeBetAPI;
 const useApi = () => api() && api().isEnabled();
 
 function escapeHtml(str) {
@@ -33,13 +36,12 @@ window.escapeHtml = escapeHtml;
 
 // --- Theme and Color Mode logic ---
 const THEME_COLOR_STORAGE_KEY = "hope-bet-theme-color";
-const NIGHT_MODE_STORAGE_KEY = "hope-bet-night-mode";
 const VALID_THEMES = ["red", "dark", "blue", "green", "purple"];
 
 let currentThemeColor = "red";
-let currentNightMode = false;
 
 function applyTheme(colorName) {
+  if (colorName === "black") colorName = "dark";
   if (!VALID_THEMES.includes(colorName)) {
     colorName = "red";
   }
@@ -51,83 +53,34 @@ function applyTheme(colorName) {
 
   // Update active dot in all color pickers
   document.querySelectorAll(".theme-color-dot").forEach((dot) => {
-    dot.classList.toggle("is-active", dot.dataset.themeColor === colorName);
+    const dotColor = dot.dataset.themeColor === "black" ? "dark" : dot.dataset.themeColor;
+    dot.classList.toggle("is-active", dotColor === colorName);
   });
 }
 
-function isDesktopView() {
-  return typeof window !== "undefined" && window.innerWidth > 900;
-}
-
-function setNightMode(enable) {
-  if (isDesktopView()) {
-    currentNightMode = false;
+function clearNightMode() {
+  try {
+    localStorage.removeItem("hope-bet-night-mode");
     if (document.documentElement) {
       document.documentElement.removeAttribute("data-night");
       if (document.documentElement.classList) {
         document.documentElement.classList.remove("is-night-mode");
       }
     }
-    try { localStorage.removeItem(NIGHT_MODE_STORAGE_KEY); } catch (e) {}
-    return;
-  }
-  currentNightMode = Boolean(enable);
-  if (document.documentElement) {
-    document.documentElement.setAttribute("data-night", currentNightMode ? "true" : "false");
-    if (document.documentElement.classList) {
-      document.documentElement.classList.toggle("is-night-mode", currentNightMode);
-    }
-  }
-  localStorage.setItem(NIGHT_MODE_STORAGE_KEY, currentNightMode ? "1" : "0");
-
-  const nightToggle = document.getElementById("night-toggle");
-  if (nightToggle) {
-    nightToggle.classList.toggle("is-active", currentNightMode);
-  }
-  const guestSwitch = document.getElementById("account-theme-switch-guest");
-  if (guestSwitch) {
-    guestSwitch.classList.toggle("is-active", currentNightMode);
-  }
-  const signedSwitch = document.getElementById("account-theme-switch-signed");
-  if (signedSwitch) {
-    signedSwitch.classList.toggle("is-active", currentNightMode);
-  }
-}
-
-function toggleNightMode() {
-  if (isDesktopView()) {
-    setNightMode(false);
-    return;
-  }
-  const isNight = document.documentElement.getAttribute("data-night") === "true";
-  setNightMode(!isNight);
+  } catch (_) {}
 }
 
 (function initTheme() {
-  const isDesktop = isDesktopView();
-  if (isDesktop) {
-    try { localStorage.removeItem(NIGHT_MODE_STORAGE_KEY); } catch (e) {}
-  }
-  const savedColor = localStorage.getItem(THEME_COLOR_STORAGE_KEY) || localStorage.getItem("hope-bet-theme") || "red";
-  const savedNight = isDesktop ? null : localStorage.getItem(NIGHT_MODE_STORAGE_KEY);
-
+  clearNightMode();
+  let savedColor = localStorage.getItem(THEME_COLOR_STORAGE_KEY) || localStorage.getItem("hope-bet-theme") || "red";
+  if (savedColor === "black") savedColor = "dark";
   const color = VALID_THEMES.includes(savedColor) ? savedColor : "red";
-  const isNight = !isDesktop && (savedNight === "1");
 
   applyTheme(color);
-  setNightMode(isNight);
 
   window.addEventListener("DOMContentLoaded", () => {
+    clearNightMode();
     applyTheme(color);
-    setNightMode(isNight);
-  });
-
-  window.addEventListener("resize", () => {
-    if (isDesktopView()) {
-      if (document.documentElement.hasAttribute("data-night") || document.documentElement.classList.contains("is-night-mode")) {
-        setNightMode(false);
-      }
-    }
   });
 })();
 
@@ -377,10 +330,9 @@ const SPORTS_MENU = [
 
 const TIME_FILTERS_SIDEBAR = [
   { id: "all", label: "ALL", hours: null },
+  { id: "today", label: "Today", hours: "today" },
+  { id: "tomorrow", label: "Tomorrow", hours: "tomorrow" },
   { id: "3h", label: "3H", hours: 3 },
-  { id: "6h", label: "6H", hours: 6 },
-  { id: "9h", label: "9H", hours: 9 },
-  { id: "12h", label: "12H", hours: 12 },
   { id: "24h", label: "24H", hours: 24 },
 ];
 
@@ -710,12 +662,51 @@ function isMobileLayout() {
 }
 
 function closeMobileDrawers() {
-  document.body.classList.remove("menu-open", "betslip-open", "account-open", "mmenu-open");
+  document.body.classList.remove("menu-open", "betslip-open", "account-open", "mmenu-open", "mobile-search-open");
   const backdrop = $("mobile-drawer-backdrop");
   if (backdrop) backdrop.hidden = true;
   const mBackdrop = $("mobile-menu-backdrop");
   if (mBackdrop) mBackdrop.hidden = true;
+  const overlay = $("mobile-search-overlay");
+  if (overlay) overlay.hidden = true;
 }
+
+function openMobileSearchModal(query = "") {
+  closeMobileDrawers();
+  const overlay = $("mobile-search-overlay");
+  if (!overlay) return;
+  overlay.hidden = false;
+  document.body.classList.add("mobile-search-open");
+
+  const input = $("mobile-event-search-input");
+  const clearBtn = $("mobile-search-clear-btn");
+  const resultsBox = $("mobile-search-results-box");
+  const suggestions = $("mobile-search-suggestions");
+
+  if (input) {
+    if (typeof query === "string" && query.trim()) {
+      input.value = query.trim();
+      runMobileSearch(query.trim());
+    } else {
+      input.value = "";
+      if (clearBtn) clearBtn.hidden = true;
+      if (resultsBox) resultsBox.hidden = true;
+      if (suggestions) suggestions.hidden = false;
+    }
+    setTimeout(() => {
+      input.focus();
+    }, 60);
+  }
+}
+
+function closeMobileSearchModal() {
+  const overlay = $("mobile-search-overlay");
+  if (overlay) overlay.hidden = true;
+  document.body.classList.remove("mobile-search-open");
+  const input = $("mobile-event-search-input");
+  if (input) input.blur();
+}
+
 
 function openDedicatedMobileMenu() {
   document.body.classList.add("mmenu-open");
@@ -808,6 +799,7 @@ function syncMobileSlipCount() {
 function renderMobileSportsStrip() {
   const el = $("mobile-sports-strip");
   if (!el) return;
+  const footballCount = state.fixtures?.length || 1210;
   const authed = isLoggedIn();
 
   el.innerHTML = `
@@ -865,7 +857,7 @@ function renderMobileSportsStrip() {
           <line x1="10" y1="14" x2="5.5" y2="17.5"></line>
           <line x1="8.5" y1="9.5" x2="3.5" y2="7.5"></line>
         </svg>
-        <span class="mobile-sport-badge">771</span>
+        <span class="mobile-sport-badge">${footballCount || 1210}</span>
       </span>
       <span>Football</span>
     </button>
@@ -877,7 +869,7 @@ function renderMobileSportsStrip() {
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"></path>
           <path d="M12 2a15.3 15.3 0 0 0-4 10 15.3 15.3 0 0 0 4 10"></path>
         </svg>
-        <span class="mobile-sport-badge">49</span>
+        <span class="mobile-sport-badge">60</span>
       </span>
       <span>Basketball</span>
     </button>
@@ -888,7 +880,7 @@ function renderMobileSportsStrip() {
           <path d="M4 6.5a10 10 0 0 0 13.5 13.5"></path>
           <path d="M20 17.5a10 10 0 0 0-13.5-13.5"></path>
         </svg>
-        <span class="mobile-sport-badge">174</span>
+        <span class="mobile-sport-badge">113</span>
       </span>
       <span>Tennis</span>
     </button>
@@ -898,7 +890,7 @@ function renderMobileSportsStrip() {
 function renderMobileTimeStrip() {
   const el = $("mobile-time-strip");
   if (!el) return;
-  const show = isMobileLayout() && state.subNav !== "upcoming" && (state.sportsMenuMode || isBoardSubNav());
+  const show = isMobileLayout() && !["my-bets", "results", "check-bet"].includes(state.subNav);
   el.hidden = !show;
   if (!show) return;
   el.innerHTML = TIME_FILTERS_SIDEBAR.map(
@@ -1178,6 +1170,45 @@ function generateLiveOdds(goals, elapsed = 0) {
   };
 }
 
+function generatePrematchOdds(fixtureId) {
+  const seed = (Math.abs(Number(fixtureId) || 0) * 1103515245 + 12345) & 0x7fffffff;
+  const rand1 = ((seed % 1000) / 1000);
+  const rand2 = (((Math.floor(seed / 1000)) % 1000) / 1000);
+  const rand3 = (((Math.floor(seed / 1000000)) % 1000) / 1000);
+
+  let homeProb = 0.36 + rand1 * 0.22;
+  let drawProb = 0.23 + rand2 * 0.08;
+  let awayProb = Math.max(0.16, 1 - homeProb - drawProb);
+
+  const homeOdd = Math.max(1.18, Number((1 / (homeProb * 1.07)).toFixed(2)));
+  const drawOdd = Math.max(2.85, Number((1 / (drawProb * 1.07)).toFixed(2)));
+  const awayOdd = Math.max(1.28, Number((1 / (awayProb * 1.07)).toFixed(2)));
+
+  const hd = Math.max(1.10, Number((1 / ((homeProb + drawProb) * 1.07)).toFixed(2)));
+  const ha = Math.max(1.12, Number((1 / ((homeProb + awayProb) * 1.07)).toFixed(2)));
+  const da = Math.max(1.14, Number((1 / ((drawProb + awayProb) * 1.07)).toFixed(2)));
+
+  const o25Prob = 0.44 + rand3 * 0.14;
+  const u25Prob = 1 - o25Prob;
+  const o25 = Math.max(1.42, Number((1 / (o25Prob * 1.07)).toFixed(2)));
+  const u25 = Math.max(1.42, Number((1 / (u25Prob * 1.07)).toFixed(2)));
+
+  return {
+    home: String(homeOdd),
+    draw: String(drawOdd),
+    away: String(awayOdd),
+    doubleChance: {
+      homeDraw: String(hd),
+      homeAway: String(ha),
+      drawAway: String(da),
+    },
+    totals: {
+      over25: String(o25),
+      under25: String(u25),
+    },
+  };
+}
+
 function normalizeApiFixture(row) {
   const shortStatus = row.fixture?.status?.short || row.status || "NS";
   const isLive = ["1H", "2H", "HT", "ET", "P", "LIVE", "IN_PLAY", "BT"].includes(shortStatus);
@@ -1206,13 +1237,7 @@ function normalizeApiFixture(row) {
   } else if (isLive) {
     odds = generateLiveOdds(goals, elapsed);
   } else {
-    odds = {
-      home: "—",
-      draw: "—",
-      away: "—",
-      doubleChance: { homeDraw: "—", homeAway: "—", drawAway: "—" },
-      totals: { over25: "—", under25: "—" },
-    };
+    odds = generatePrematchOdds(row.fixture?.id || row.fixtureId);
   }
 
   // Extract additional markets from row.markets if available
@@ -1313,29 +1338,17 @@ function extractFixtureRows(data) {
 }
 
 async function fetchInPlayLiveFixtures() {
-  const primaryUrl = useApi()
+  const url = useApi()
     ? `${api().apiUrl()}/api/odds/fixtures/live`
     : `${API_BASE}/football/fixtures?live=all`;
 
   try {
-    const data = await fetchJson(primaryUrl, 6000);
+    const data = await fetchJson(url, 6000);
     const rows = extractFixtureRows(data);
-    if (rows && rows.length) {
-      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-    }
-  } catch (_) {}
-
-  // Fallback: If deployed without backend API or custom API failed, load from multi-shop public endpoint directly
-  if (useApi()) {
-    try {
-      const fallbackUrl = `${API_BASE}/football/fixtures?live=all`;
-      const data = await fetchJson(fallbackUrl, 6000);
-      const rows = extractFixtureRows(data);
-      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-    } catch (_) {}
+    return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+  } catch (_) {
+    return [];
   }
-
-  return [];
 }
 
 /**
@@ -1368,60 +1381,34 @@ async function fetchLeagueUpcomingFixtures(leagueId, season = 2026) {
 }
 
 async function fetchAllUpcomingFixtures() {
-  const primaryUrl = useApi()
+  const url = useApi()
     ? `${api().apiUrl()}/api/odds/fixtures/upcoming`
     : `${API_BASE}/football/board/upcoming?bookmaker=${BOOKMAKER}`;
 
   try {
-    const data = await fetchJson(primaryUrl, 7000);
+    const data = await fetchJson(url, 15000);
     const rows = extractFixtureRows(data);
-    if (rows && rows.length) {
-      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-    }
-  } catch (_) {}
-
-  // Fallback: If deployed without backend API or custom API failed, load from multi-shop public endpoint directly
-  if (useApi()) {
-    try {
-      const fallbackUrl = `${API_BASE}/football/board/upcoming?bookmaker=${BOOKMAKER}`;
-      const data = await fetchJson(fallbackUrl, 8000);
-      const rows = extractFixtureRows(data);
-      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-    } catch (_) {}
+    return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+  } catch (_) {
+    return [];
   }
-
-  return [];
 }
 
 async function fetchLiveFixtures() {
   const topLeagues = "39-140-61-88-78-135-40-235";
-  const primaryUrl = useApi()
+  const url = useApi()
     ? `${api().apiUrl()}/api/odds/fixtures/prematch?leagues=${topLeagues}`
     : `${API_BASE}/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${topLeagues}`;
 
   try {
-    const data = await fetchJson(primaryUrl, 7000);
+    const data = await fetchJson(url, 8000);
     const rows = extractFixtureRows(data);
-    if (rows && rows.length) {
-      state.liveSource = true;
-      return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-    }
-  } catch (_) {}
-
-  // Fallback: If backend is offline on deployed host, load directly from multi-shop public endpoint
-  if (useApi()) {
-    try {
-      const fallbackUrl = `${API_BASE}/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${topLeagues}`;
-      const data = await fetchJson(fallbackUrl, 8000);
-      const rows = extractFixtureRows(data);
-      if (rows && rows.length) {
-        state.liveSource = true;
-        return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
-      }
-    } catch (_) {}
+    if (!rows.length) return [];
+    state.liveSource = true;
+    return rows.map(normalizeApiFixture).filter((f) => f.fixtureId && f.home?.name && f.away?.name);
+  } catch (_) {
+    return [];
   }
-
-  return [];
 }
 
 function showBrandLoader(loaderEl, targetEl) {
@@ -1469,6 +1456,23 @@ async function loadFixtures() {
         state.liveFixtures = cached.filter(isLiveFixture);
         state.liveSource = true;
         hasInstantCache = true;
+
+        // Pre-populate countryLeagues from cached fixtures so all leagues are available instantly on startup
+        cached.forEach((f) => {
+          const c = f.league?.country;
+          if (c && f.league?.id) {
+            if (!state.countryLeagues[c]) state.countryLeagues[c] = [];
+            if (!state.countryLeagues[c].some((l) => Number(l.id) === Number(f.league.id))) {
+              state.countryLeagues[c].push({
+                id: f.league.id,
+                name: f.league.name,
+                logo: f.league.logo,
+                country: c,
+                count: 1,
+              });
+            }
+          }
+        });
         renderSportsSidebar();
         renderTopLeaguesGrid();
         updateSportsMenuUI();
@@ -1522,13 +1526,42 @@ async function loadFixtures() {
         state.fixtures = [...fixtureMap.values()];
       }
 
-      // Persist real matches in browser cache for instant 0ms future visits
+      // Populate country leagues from fresh fixtures
+      state.fixtures.forEach((f) => {
+        const c = f.league?.country;
+        if (c && f.league?.id) {
+          if (!state.countryLeagues[c]) state.countryLeagues[c] = [];
+          if (!state.countryLeagues[c].some((l) => Number(l.id) === Number(f.league.id))) {
+            state.countryLeagues[c].push({
+              id: f.league.id,
+              name: f.league.name,
+              logo: f.league.logo,
+              country: c,
+              count: 1,
+            });
+          }
+        }
+      });
+
+      // Persist real matches in browser cache for instant 0ms future visits across browser/PC restarts
       if (state.fixtures && state.fixtures.length) {
-        try {
-          const toCache = JSON.stringify(state.fixtures.slice(0, 200));
-          localStorage.setItem("hope_bet_cached_real_fixtures", toCache);
-          sessionStorage.setItem("hope_bet_cached_real_fixtures", toCache);
-        } catch (_) {}
+        const trySave = (count) => {
+          try {
+            const toCache = JSON.stringify(state.fixtures.slice(0, count));
+            localStorage.setItem("hope_bet_cached_real_fixtures", toCache);
+            sessionStorage.setItem("hope_bet_cached_real_fixtures", toCache);
+            return true;
+          } catch (_) {
+            return false;
+          }
+        };
+        if (!trySave(3000)) {
+          if (!trySave(2000)) {
+            if (!trySave(1000)) {
+              trySave(500);
+            }
+          }
+        }
       }
     } catch (_) {}
   }
@@ -1839,19 +1872,58 @@ function buildExtendedMarkets(fixture, lineupPlayers) {
 }
 
 function buildMockComboMarkets(fixture) {
-  const h = parseFloat(fixture.odds?.home) || 2.45;
-  const d = parseFloat(fixture.odds?.draw) || 3.40;
-  const a = parseFloat(fixture.odds?.away) || 2.80;
+  const h = Math.max(1.04, parseFloat(fixture.odds?.home) || 2.45);
+  const d = Math.max(1.50, parseFloat(fixture.odds?.draw) || 3.40);
+  const a = Math.max(1.04, parseFloat(fixture.odds?.away) || 2.80);
+
+  const num = (v) => Math.max(1.02, Number(v)).toFixed(2);
+
+  // Derive Double Chance with typical bookmaker margin
+  const dc1X_num = Math.max(1.02, Number((1 / (1 / h + 1 / d) * 1.05).toFixed(2)));
+  const dc12_num = Math.max(1.02, Number((1 / (1 / h + 1 / a) * 1.05).toFixed(2)));
+  const dcX2_num = Math.max(1.02, Number((1 / (1 / d + 1 / a) * 1.05).toFixed(2)));
+
+  const dc1X = dc1X_num.toFixed(2);
+  const dc12 = dc12_num.toFixed(2);
+  const dcX2 = dcX2_num.toFixed(2);
+
+  // 1st Half Double Chance
+  const dc1X_1h = num(Math.max(1.04, 1 / (1 / (h * 1.35) + 1 / 2.05) * 1.06));
+  const dc12_1h = num(Math.max(1.10, 1 / (1 / (h * 1.35) + 1 / (a * 1.35)) * 1.06));
+  const dcX2_1h = num(Math.max(1.04, 1 / (1 / 2.05 + 1 / (a * 1.35)) * 1.06));
+
+  // Multipliers for Home based on favorite strength
+  const hMultOv15 = h < 1.30 ? 1.15 : (h < 1.60 ? 1.25 : 1.40);
+  const hMultUn15 = h < 1.30 ? 5.50 : (h < 1.60 ? 4.20 : 3.40);
+  const hMultOv25 = h < 1.30 ? 1.35 : (h < 1.60 ? 1.55 : 1.78);
+  const hMultUn25 = h < 1.30 ? 2.65 : (h < 1.60 ? 2.20 : 1.85);
+  const hMultOv35 = h < 1.30 ? 1.95 : (h < 1.60 ? 2.50 : 3.20);
+  const hMultUn35 = h < 1.30 ? 1.50 : (h < 1.60 ? 1.35 : 1.22);
+  const hMultOv45 = h < 1.30 ? 3.40 : (h < 1.60 ? 4.80 : 6.80);
+  const hMultUn45 = h < 1.30 ? 1.20 : (h < 1.60 ? 1.15 : 1.10);
+
+  // Multipliers for Away based on favorite strength
+  const aMultOv15 = a < 1.30 ? 1.15 : (a < 1.60 ? 1.25 : 1.40);
+  const aMultUn15 = a < 1.30 ? 5.50 : (a < 1.60 ? 4.20 : 3.40);
+  const aMultOv25 = a < 1.30 ? 1.35 : (a < 1.60 ? 1.55 : 1.78);
+  const aMultUn25 = a < 1.30 ? 2.65 : (a < 1.60 ? 2.20 : 1.85);
+  const aMultOv35 = a < 1.30 ? 1.95 : (a < 1.60 ? 2.50 : 3.20);
+  const aMultUn35 = a < 1.30 ? 1.50 : (a < 1.60 ? 1.35 : 1.22);
+  const aMultOv45 = a < 1.30 ? 3.40 : (a < 1.60 ? 4.80 : 6.80);
+  const aMultUn45 = a < 1.30 ? 1.20 : (a < 1.60 ? 1.15 : 1.10);
 
   const hRatio = h / 2.45;
   const aRatio = a / 2.80;
   const dRatio = d / 3.40;
   const mRatio = (hRatio + aRatio) / 2;
 
-  // Scale relative to base odds seen in reference image
+  // Realistic power-law scaling for extended score combinations:
+  // When a team is a heavy favorite (ratio ~0.4), odds scale down naturally (~0.5x)
+  // When underdog (ratio ~3.0), odds scale up naturally
   const f = (base, ratio = 1) => {
-    const val = base * (0.88 + 0.12 * ratio);
-    return Math.max(1.01, val).toFixed(2);
+    const r = Math.max(0.15, Number(ratio) || 1);
+    const scaled = base * Math.pow(r, 0.85);
+    return Math.max(1.02, scaled).toFixed(2);
   };
 
   const team1 = fixture.home?.name || "Team 1";
@@ -1864,9 +1936,9 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Double Chance",
       values: [
-        { value: "Home or Draw", odd: f(1.39, (hRatio + dRatio) / 2), handicap: null },
-        { value: "Home or Away", odd: f(1.28, (hRatio + aRatio) / 2), handicap: null },
-        { value: "Draw or Away", odd: f(1.80, (dRatio + aRatio) / 2), handicap: null },
+        { value: "Home or Draw", odd: dc1X, handicap: null },
+        { value: "Home or Away", odd: dc12, handicap: null },
+        { value: "Draw or Away", odd: dcX2, handicap: null },
       ],
     },
 
@@ -1876,9 +1948,9 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Double Chance - First Half",
       values: [
-        { value: "Home or Draw", odd: f(1.22, (hRatio + dRatio) / 2), handicap: null },
-        { value: "Home or Away", odd: f(1.62, (hRatio + aRatio) / 2), handicap: null },
-        { value: "Draw or Away", odd: f(1.44, (dRatio + aRatio) / 2), handicap: null },
+        { value: "Home or Draw", odd: dc1X_1h, handicap: null },
+        { value: "Home or Away", odd: dc12_1h, handicap: null },
+        { value: "Draw or Away", odd: dcX2_1h, handicap: null },
       ],
     },
 
@@ -1888,54 +1960,54 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Outcome and Total Goals",
       values: [
-        { value: "Home/Ov 1.5", odd: f(2.55, hRatio), handicap: null },
-        { value: "Home/Un 1.5", odd: f(7.50, hRatio), handicap: null },
-        { value: "Draw/Ov 1.5", odd: f(4.70, dRatio), handicap: null },
-        { value: "Draw/Un 1.5", odd: f(7.20, dRatio), handicap: null },
-        { value: "Away/Ov 1.5", odd: f(3.80, aRatio), handicap: null },
-        { value: "Away/Un 1.5", odd: f(10.00, aRatio), handicap: null },
-        { value: "1X & Ov 1.5", odd: f(1.68, (hRatio + dRatio) / 2), handicap: null },
-        { value: "1X & Un 1.5", odd: f(3.70, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 & Ov 1.5", odd: f(1.70, (hRatio + aRatio) / 2), handicap: null },
-        { value: "12 & Un 1.5", odd: f(4.45, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Ov 1.5", odd: f(2.25, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Un 1.5", odd: f(4.15, (dRatio + aRatio) / 2), handicap: null },
-        { value: "Home/Ov 2.5", odd: f(3.40, hRatio), handicap: null },
-        { value: "Home/Un 2.5", odd: f(4.45, hRatio), handicap: null },
-        { value: "Draw/Ov 2.5", odd: f(9.80, dRatio), handicap: null },
-        { value: "Draw/Un 2.5", odd: f(4.30, dRatio), handicap: null },
-        { value: "Away/Ov 2.5", odd: f(4.90, aRatio), handicap: null },
-        { value: "Away/Un 2.5", odd: f(6.10, aRatio), handicap: null },
-        { value: "1X & Ov 2.5", odd: f(2.80, (hRatio + dRatio) / 2), handicap: null },
-        { value: "1X & Un 2.5", odd: f(2.15, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 & Ov 2.5", odd: f(2.20, (hRatio + aRatio) / 2), handicap: null },
-        { value: "12 & Un 2.5", odd: f(2.80, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Ov 2.5", odd: f(3.75, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Un 2.5", odd: f(2.45, (dRatio + aRatio) / 2), handicap: null },
-        { value: "Home/Ov 3.5", odd: f(7.20, hRatio), handicap: null },
-        { value: "Home/Un 3.5", odd: f(2.70, hRatio), handicap: null },
-        { value: "Draw/Ov 3.5", odd: f(11.50, dRatio), handicap: null },
-        { value: "Draw/Un 3.5", odd: f(3.95, dRatio), handicap: null },
-        { value: "Away/Ov 3.5", odd: f(10.50, aRatio), handicap: null },
-        { value: "Away/Un 3.5", odd: f(3.80, aRatio), handicap: null },
-        { value: "1X & Ov 3.5", odd: f(5.40, (hRatio + dRatio) / 2), handicap: null },
-        { value: "1X & Un 3.5", odd: f(1.61, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 & Ov 3.5", odd: f(4.45, (hRatio + aRatio) / 2), handicap: null },
-        { value: "12 & Un 3.5", odd: f(1.72, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Ov 3.5", odd: f(7.20, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Un 3.5", odd: f(1.83, (dRatio + aRatio) / 2), handicap: null },
-        { value: "Home/Ov 4.5", odd: f(14.50, hRatio), handicap: null },
-        { value: "Home/Un 4.5", odd: f(2.28, hRatio), handicap: null },
-        { value: "Draw/Ov 4.5", odd: f(17.00, dRatio), handicap: null },
-        { value: "Draw/Un 4.5", odd: f(3.60, dRatio), handicap: null },
-        { value: "Away/Ov 4.5", odd: f(19.00, aRatio), handicap: null },
-        { value: "Away/Un 4.5", odd: f(3.20, aRatio), handicap: null },
-        { value: "1X & Ov 4.5", odd: f(11.00, (hRatio + dRatio) / 2), handicap: null },
-        { value: "1X & Un 4.5", odd: f(1.36, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 & Ov 4.5", odd: f(9.00, (hRatio + aRatio) / 2), handicap: null },
-        { value: "12 & Un 4.5", odd: f(1.41, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Ov 4.5", odd: f(14.00, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 & Un 4.5", odd: f(1.50, (dRatio + aRatio) / 2), handicap: null },
+        { value: "Home/Ov 1.5", odd: num(h * hMultOv15), handicap: null },
+        { value: "Home/Un 1.5", odd: num(h * hMultUn15), handicap: null },
+        { value: "Draw/Ov 1.5", odd: num(d * 1.38), handicap: null },
+        { value: "Draw/Un 1.5", odd: num(d * 2.15), handicap: null },
+        { value: "Away/Ov 1.5", odd: num(a * aMultOv15), handicap: null },
+        { value: "Away/Un 1.5", odd: num(a * aMultUn15), handicap: null },
+        { value: "1X & Ov 1.5", odd: num(dc1X_num * 1.16), handicap: null },
+        { value: "1X & Un 1.5", odd: num(dc1X_num * 2.85), handicap: null },
+        { value: "12 & Ov 1.5", odd: num(dc12_num * 1.22), handicap: null },
+        { value: "12 & Un 1.5", odd: num(dc12_num * 3.10), handicap: null },
+        { value: "X2 & Ov 1.5", odd: num(dcX2_num * 1.16), handicap: null },
+        { value: "X2 & Un 1.5", odd: num(dcX2_num * 2.85), handicap: null },
+        { value: "Home/Ov 2.5", odd: num(h * hMultOv25), handicap: null },
+        { value: "Home/Un 2.5", odd: num(h * hMultUn25), handicap: null },
+        { value: "Draw/Ov 2.5", odd: num(d * 2.85), handicap: null },
+        { value: "Draw/Un 2.5", odd: num(d * 1.28), handicap: null },
+        { value: "Away/Ov 2.5", odd: num(a * aMultOv25), handicap: null },
+        { value: "Away/Un 2.5", odd: num(a * aMultUn25), handicap: null },
+        { value: "1X & Ov 2.5", odd: num(dc1X_num * 1.48), handicap: null },
+        { value: "1X & Un 2.5", odd: num(dc1X_num * 1.85), handicap: null },
+        { value: "12 & Ov 2.5", odd: num(dc12_num * 1.48), handicap: null },
+        { value: "12 & Un 2.5", odd: num(dc12_num * 1.95), handicap: null },
+        { value: "X2 & Ov 2.5", odd: num(dcX2_num * 1.48), handicap: null },
+        { value: "X2 & Un 2.5", odd: num(dcX2_num * 1.85), handicap: null },
+        { value: "Home/Ov 3.5", odd: num(h * hMultOv35), handicap: null },
+        { value: "Home/Un 3.5", odd: num(h * hMultUn35), handicap: null },
+        { value: "Draw/Ov 3.5", odd: num(d * 3.35), handicap: null },
+        { value: "Draw/Un 3.5", odd: num(d * 1.16), handicap: null },
+        { value: "Away/Ov 3.5", odd: num(a * aMultOv35), handicap: null },
+        { value: "Away/Un 3.5", odd: num(a * aMultUn35), handicap: null },
+        { value: "1X & Ov 3.5", odd: num(dc1X_num * 2.40), handicap: null },
+        { value: "1X & Un 3.5", odd: num(dc1X_num * 1.26), handicap: null },
+        { value: "12 & Ov 3.5", odd: num(dc12_num * 2.30), handicap: null },
+        { value: "12 & Un 3.5", odd: num(dc12_num * 1.30), handicap: null },
+        { value: "X2 & Ov 3.5", odd: num(dcX2_num * 2.40), handicap: null },
+        { value: "X2 & Un 3.5", odd: num(dcX2_num * 1.26), handicap: null },
+        { value: "Home/Ov 4.5", odd: num(h * hMultOv45), handicap: null },
+        { value: "Home/Un 4.5", odd: num(h * hMultUn45), handicap: null },
+        { value: "Draw/Ov 4.5", odd: num(d * 4.90), handicap: null },
+        { value: "Draw/Un 4.5", odd: num(d * 1.08), handicap: null },
+        { value: "Away/Ov 4.5", odd: num(a * aMultOv45), handicap: null },
+        { value: "Away/Un 4.5", odd: num(a * aMultUn45), handicap: null },
+        { value: "1X & Ov 4.5", odd: num(dc1X_num * 4.50), handicap: null },
+        { value: "1X & Un 4.5", odd: num(dc1X_num * 1.12), handicap: null },
+        { value: "12 & Ov 4.5", odd: num(dc12_num * 4.20), handicap: null },
+        { value: "12 & Un 4.5", odd: num(dc12_num * 1.14), handicap: null },
+        { value: "X2 & Ov 4.5", odd: num(dcX2_num * 4.50), handicap: null },
+        { value: "X2 & Un 4.5", odd: num(dcX2_num * 1.12), handicap: null },
       ],
     },
 
@@ -1957,67 +2029,29 @@ function buildMockComboMarkets(fixture) {
         { value: "Home/4-5", odd: f(13.50, hRatio), handicap: null },
         { value: "Home/2-5", odd: f(2.80, hRatio), handicap: null },
         { value: "Home/4-6", odd: f(12.00, hRatio), handicap: null },
-        { value: "Home/3-4", odd: f(6.50, hRatio), handicap: null },
-        { value: "Home/5-6", odd: f(31.00, hRatio), handicap: null },
-        { value: "Home/3-5", odd: f(5.70, hRatio), handicap: null },
-        { value: "Home/Any Other", odd: f(41.00, hRatio), handicap: null },
-        { value: "Draw/1-2", odd: f(4.45, dRatio), handicap: null },
-        { value: "Draw/1-4", odd: f(4.15, dRatio), handicap: null },
-        { value: "Draw/2-3", odd: f(4.20, dRatio), handicap: null },
-        { value: "Draw/Any Other", odd: f(10.50, dRatio), handicap: null },
-        { value: "Draw/3-4", odd: f(11.00, dRatio), handicap: null },
-        { value: "Away/1-5", odd: f(3.35, aRatio), handicap: null },
-        { value: "Away/1-2", odd: f(4.25, aRatio), handicap: null },
-        { value: "Away/1-6", odd: f(3.30, aRatio), handicap: null },
-        { value: "Away/1-3", odd: f(3.60, aRatio), handicap: null },
+        { value: "Draw/0-2", odd: f(4.10, dRatio), handicap: null },
+        { value: "Away/1-2", odd: f(4.20, aRatio), handicap: null },
+        { value: "Draw/1-3", odd: f(5.40, dRatio), handicap: null },
+        { value: "Away/1-3", odd: f(3.40, aRatio), handicap: null },
+        { value: "Draw/1-5", odd: f(4.45, dRatio), handicap: null },
+        { value: "Away/1-4", odd: f(3.20, aRatio), handicap: null },
+        { value: "Draw/2-3", odd: f(9.00, dRatio), handicap: null },
+        { value: "Away/1-5", odd: f(3.10, aRatio), handicap: null },
+        { value: "Draw/2-4", odd: f(8.00, dRatio), handicap: null },
+        { value: "Away/1-6", odd: f(3.05, aRatio), handicap: null },
+        { value: "Draw/2-5", odd: f(7.80, dRatio), handicap: null },
+        { value: "Away/2-3", odd: f(4.70, aRatio), handicap: null },
+        { value: "Draw/2-6", odd: f(7.80, dRatio), handicap: null },
+        { value: "Away/2-4", odd: f(4.25, aRatio), handicap: null },
+        { value: "Draw/3-5", odd: f(18.00, dRatio), handicap: null },
+        { value: "Away/2-5", odd: f(3.90, aRatio), handicap: null },
+        { value: "Draw/3-6", odd: f(18.00, dRatio), handicap: null },
         { value: "Away/2-6", odd: f(3.85, aRatio), handicap: null },
-        { value: "Away/1-4", odd: f(3.40, aRatio), handicap: null },
-        { value: "Away/3-6", odd: f(7.20, aRatio), handicap: null },
-        { value: "Away/2-3", odd: f(4.70, aRatio), handicap: null },
-        { value: "Away/4-5", odd: f(17.50, aRatio), handicap: null },
-        { value: "Away/2-4", odd: f(4.30, aRatio), handicap: null },
-        { value: "Away/4-6", odd: f(15.50, aRatio), handicap: null },
-        { value: "Away/2-5", odd: f(4.00, aRatio), handicap: null },
-        { value: "Away/5-6", odd: f(39.00, aRatio), handicap: null },
-        { value: "Away/3-4", odd: f(8.50, aRatio), handicap: null },
-        { value: "Away/Any Other", odd: f(55.00, aRatio), handicap: null },
-        { value: "Away/3-5", odd: f(7.80, aRatio), handicap: null },
-      ],
-    },
-
-    // ── 5. Outcome and Both Teams to Score ────────────────────────────────────
-    {
-      id: 5103,
-      category: "combo",
-      name: "Outcome and Both Teams to Score",
-      values: [
-        { value: "Home/Yes", odd: f(3.75, hRatio), handicap: null },
-        { value: "Home/No",  odd: f(3.40, hRatio), handicap: null },
-        { value: "Draw/Yes", odd: f(4.35, dRatio), handicap: null },
-        { value: "Draw/No",  odd: f(7.80, dRatio), handicap: null },
-        { value: "Away/Yes", odd: f(5.40, aRatio), handicap: null },
-        { value: "Away/No",  odd: f(5.00, aRatio), handicap: null },
-      ],
-    },
-
-    // ── 6. Outcome and Total Goals (Exact) ────────────────────────────────────
-    {
-      id: 5104,
-      category: "combo",
-      name: "Outcome and Total Goals (Exact)",
-      values: [
-        { value: "Home/0-1", odd: f(7.50, hRatio), handicap: null },
-        { value: "Home/4-5", odd: f(12.00, hRatio), handicap: null },
-        { value: "Home/2-3", odd: f(3.35, hRatio), handicap: null },
-        { value: "Home/6+",  odd: f(26.00, hRatio), handicap: null },
-        { value: "Draw/0-1", odd: f(7.20, dRatio), handicap: null },
-        { value: "Draw/4-5", odd: f(15.00, dRatio), handicap: null },
-        { value: "Draw/2-3", odd: f(4.20, dRatio), handicap: null },
-        { value: "Draw/6+",  odd: f(36.00, dRatio), handicap: null },
-        { value: "Away/0-1", odd: f(10.00, aRatio), handicap: null },
-        { value: "Away/4-5", odd: f(17.50, aRatio), handicap: null },
-        { value: "Away/2-3", odd: f(4.70, aRatio), handicap: null },
-        { value: "Away/6+",  odd: f(36.00, aRatio), handicap: null },
+        { value: "Draw/4-5", odd: f(28.00, dRatio), handicap: null },
+        { value: "Away/3-6", odd: f(7.50, aRatio), handicap: null },
+        { value: "Draw/4-6", odd: f(28.00, dRatio), handicap: null },
+        { value: "Away/4-5", odd: f(18.00, aRatio), handicap: null },
+        { value: "Away/4-6", odd: f(16.00, aRatio), handicap: null },
       ],
     },
 
@@ -2027,42 +2061,42 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Double Chance Combination",
       values: [
-        { value: "1X and Over (2.5) Goals",  odd: f(2.80, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and Over (2.5) Goals",  odd: f(2.20, (hRatio + aRatio) / 2), handicap: null },
-        { value: "1X and Over (3.5) Goals",  odd: f(5.40, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and Over (3.5) Goals",  odd: f(4.45, (hRatio + aRatio) / 2), handicap: null },
-        { value: "1X and Over (4.5) Goals",  odd: f(11.00, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and Over (4.5) Goals",  odd: f(9.00, (hRatio + aRatio) / 2), handicap: null },
-        { value: "1X and Both Teams to Score", odd: f(2.15, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and Both Teams to Score", odd: f(2.45, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and Both Teams to Score", odd: f(2.40, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and Over (2.5) Goals",  odd: f(3.75, (dRatio + aRatio) / 2), handicap: null },
-        { value: "1X and Under (2.5) Goals", odd: f(2.15, (hRatio + dRatio) / 2), handicap: null },
-        { value: "X2 and Over (3.5) Goals",  odd: f(7.20, (dRatio + aRatio) / 2), handicap: null },
-        { value: "1X and Under (3.5) Goals", odd: f(1.61, (hRatio + dRatio) / 2), handicap: null },
-        { value: "X2 and Over (4.5) Goals",  odd: f(14.00, (dRatio + aRatio) / 2), handicap: null },
-        { value: "12 and Under (2.5) Goals", odd: f(2.80, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and Under (2.5) Goals", odd: f(2.45, (dRatio + aRatio) / 2), handicap: null },
-        { value: "1X and Under (4.5) Goals", odd: f(1.36, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and Under (3.5) Goals", odd: f(1.72, (hRatio + aRatio) / 2), handicap: null },
-        { value: "12 and Under (4.5) Goals", odd: f(1.41, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and Under (3.5) Goals", odd: f(1.83, (dRatio + aRatio) / 2), handicap: null },
-        { value: "1X and (2-3) Goals",       odd: f(2.40, (hRatio + dRatio) / 2), handicap: null },
-        { value: "X2 and Under (4.5) Goals", odd: f(1.50, (dRatio + aRatio) / 2), handicap: null },
-        { value: "1X and (2-4) Goals",       odd: f(1.95, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and (2-3) Goals",       odd: f(2.65, (hRatio + aRatio) / 2), handicap: null },
-        { value: "1X and (2-5) Goals",       odd: f(1.82, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and (2-4) Goals",       odd: f(2.25, (hRatio + aRatio) / 2), handicap: null },
-        { value: "1X and (3-4) Goals",       odd: f(3.85, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and (2-5) Goals",       odd: f(2.15, (hRatio + aRatio) / 2), handicap: null },
-        { value: "1X and (3-5) Goals",       odd: f(3.50, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and (3-4) Goals",       odd: f(4.10, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and (2-3) Goals",       odd: f(2.95, (dRatio + aRatio) / 2), handicap: null },
-        { value: "12 and (3-5) Goals",       odd: f(3.70, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and (2-4) Goals",       odd: f(2.55, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and (3-4) Goals",       odd: f(4.80, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and (2-5) Goals",       odd: f(2.40, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and (3-5) Goals",       odd: f(4.45, (dRatio + aRatio) / 2), handicap: null },
+        { value: "1X and Over (2.5) Goals",  odd: num(dc1X_num * 1.48), handicap: null },
+        { value: "12 and Over (2.5) Goals",  odd: num(dc12_num * 1.48), handicap: null },
+        { value: "1X and Over (3.5) Goals",  odd: num(dc1X_num * 2.40), handicap: null },
+        { value: "12 and Over (3.5) Goals",  odd: num(dc12_num * 2.30), handicap: null },
+        { value: "1X and Over (4.5) Goals",  odd: num(dc1X_num * 4.50), handicap: null },
+        { value: "12 and Over (4.5) Goals",  odd: num(dc12_num * 4.20), handicap: null },
+        { value: "1X and Both Teams to Score", odd: num(dc1X_num * 1.62), handicap: null },
+        { value: "12 and Both Teams to Score", odd: num(dc12_num * 1.85), handicap: null },
+        { value: "X2 and Both Teams to Score", odd: num(dcX2_num * 1.62), handicap: null },
+        { value: "X2 and Over (2.5) Goals",  odd: num(dcX2_num * 1.48), handicap: null },
+        { value: "1X and Under (2.5) Goals", odd: num(dc1X_num * 1.85), handicap: null },
+        { value: "X2 and Over (3.5) Goals",  odd: num(dcX2_num * 2.40), handicap: null },
+        { value: "1X and Under (3.5) Goals", odd: num(dc1X_num * 1.26), handicap: null },
+        { value: "X2 and Over (4.5) Goals",  odd: num(dcX2_num * 4.50), handicap: null },
+        { value: "12 and Under (2.5) Goals", odd: num(dc12_num * 1.95), handicap: null },
+        { value: "X2 and Under (2.5) Goals", odd: num(dcX2_num * 1.85), handicap: null },
+        { value: "1X and Under (4.5) Goals", odd: num(dc1X_num * 1.12), handicap: null },
+        { value: "12 and Under (3.5) Goals", odd: num(dc12_num * 1.30), handicap: null },
+        { value: "12 and Under (4.5) Goals", odd: num(dc12_num * 1.14), handicap: null },
+        { value: "X2 and Under (3.5) Goals", odd: num(dcX2_num * 1.26), handicap: null },
+        { value: "1X and (2-3) Goals",       odd: num(dc1X_num * 1.65), handicap: null },
+        { value: "X2 and Under (4.5) Goals", odd: num(dcX2_num * 1.12), handicap: null },
+        { value: "1X and (2-4) Goals",       odd: num(dc1X_num * 1.45), handicap: null },
+        { value: "12 and (2-3) Goals",       odd: num(dc12_num * 1.80), handicap: null },
+        { value: "1X and (2-5) Goals",       odd: num(dc1X_num * 1.35), handicap: null },
+        { value: "12 and (2-4) Goals",       odd: num(dc12_num * 1.55), handicap: null },
+        { value: "1X and (3-4) Goals",       odd: num(dc1X_num * 2.65), handicap: null },
+        { value: "12 and (2-5) Goals",       odd: num(dc12_num * 1.48), handicap: null },
+        { value: "1X and (3-5) Goals",       odd: num(dc1X_num * 2.45), handicap: null },
+        { value: "12 and (3-4) Goals",       odd: num(dc12_num * 2.75), handicap: null },
+        { value: "X2 and (2-3) Goals",       odd: num(dcX2_num * 1.65), handicap: null },
+        { value: "12 and (3-5) Goals",       odd: num(dc12_num * 2.55), handicap: null },
+        { value: "X2 and (2-4) Goals",       odd: num(dcX2_num * 1.45), handicap: null },
+        { value: "X2 and (3-4) Goals",       odd: num(dcX2_num * 2.65), handicap: null },
+        { value: "X2 and (2-5) Goals",       odd: num(dcX2_num * 1.35), handicap: null },
+        { value: "X2 and (3-5) Goals",       odd: num(dcX2_num * 2.45), handicap: null },
       ],
     },
 
@@ -2072,12 +2106,12 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Double Chance and Both To Score",
       values: [
-        { value: "1X and Yes", odd: f(2.15, (hRatio + dRatio) / 2), handicap: null },
-        { value: "1X and No",  odd: f(2.35, (hRatio + dRatio) / 2), handicap: null },
-        { value: "12 and Yes", odd: f(2.45, (hRatio + aRatio) / 2), handicap: null },
-        { value: "12 and No",  odd: f(2.70, (hRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and Yes", odd: f(2.40, (dRatio + aRatio) / 2), handicap: null },
-        { value: "X2 and No",  odd: f(2.70, (dRatio + aRatio) / 2), handicap: null },
+        { value: "1X and Yes", odd: num(dc1X_num * 1.62), handicap: null },
+        { value: "1X and No",  odd: num(dc1X_num * 1.55), handicap: null },
+        { value: "12 and Yes", odd: num(dc12_num * 1.85), handicap: null },
+        { value: "12 and No",  odd: num(dc12_num * 1.65), handicap: null },
+        { value: "X2 and Yes", odd: num(dcX2_num * 1.62), handicap: null },
+        { value: "X2 and No",  odd: num(dcX2_num * 1.55), handicap: null },
       ],
     },
 
@@ -2120,10 +2154,10 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Both Teams To Score and Total Goals (2.5)",
       values: [
-        { value: "Yes & Over (2.5)",  odd: f(2.30, mRatio), handicap: null },
-        { value: "Yes & Under (2.5)", odd: f(6.50, mRatio), handicap: null },
-        { value: "No & Over (2.5)",   odd: f(8.00, mRatio), handicap: null },
-        { value: "No & Under (2.5)",  odd: f(2.05, mRatio), handicap: null },
+        { value: "Yes & Over (2.5)",  odd: num(Math.max(1.75, (h < 1.4 || a < 1.4 ? 2.05 : 2.30))), handicap: null },
+        { value: "Yes & Under (2.5)", odd: num(Math.max(5.50, (h < 1.4 || a < 1.4 ? 7.50 : 6.50))), handicap: null },
+        { value: "No & Over (2.5)",   odd: num(Math.max(2.60, (h < 1.4 || a < 1.4 ? 3.40 : 5.50))), handicap: null },
+        { value: "No & Under (2.5)",  odd: num(Math.max(1.80, (h < 1.4 || a < 1.4 ? 2.35 : 2.05))), handicap: null },
       ],
     },
 
@@ -2133,13 +2167,13 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "First Team To Score and Match Result",
       values: [
-        { value: team1 + " / " + team1, odd: f(2.60, hRatio), handicap: null },
-        { value: team1 + " / Draw",    odd: f(8.50, dRatio), handicap: null },
-        { value: team1 + " / " + team2, odd: f(12.00, aRatio), handicap: null },
-        { value: team2 + " / " + team1, odd: f(11.00, hRatio), handicap: null },
-        { value: team2 + " / Draw",    odd: f(8.50, dRatio), handicap: null },
-        { value: team2 + " / " + team2, odd: f(4.20, aRatio), handicap: null },
-        { value: "No Goal",            odd: f(8.00, dRatio), handicap: null },
+        { value: team1 + " / " + team1, odd: num(Math.max(1.15, h * 1.18)), handicap: null },
+        { value: team1 + " / Draw",    odd: num(Math.max(9.00, d * 2.80)), handicap: null },
+        { value: team1 + " / " + team2, odd: num(Math.max(12.00, a * 3.20)), handicap: null },
+        { value: team2 + " / " + team1, odd: num(Math.max(12.00, h * 3.20)), handicap: null },
+        { value: team2 + " / Draw",    odd: num(Math.max(9.00, d * 2.80)), handicap: null },
+        { value: team2 + " / " + team2, odd: num(Math.max(1.15, a * 1.18)), handicap: null },
+        { value: "No Goal",            odd: num(Math.max(6.50, d * 2.20)), handicap: null },
       ],
     },
 
@@ -2149,13 +2183,13 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "First Team To Score and 2nd Half Result",
       values: [
-        { value: team1 + " / " + team1, odd: f(3.10, hRatio), handicap: null },
-        { value: team1 + " / Draw",    odd: f(3.90, dRatio), handicap: null },
-        { value: team1 + " / " + team2, odd: f(6.50, aRatio), handicap: null },
-        { value: team2 + " / " + team1, odd: f(6.00, hRatio), handicap: null },
-        { value: team2 + " / Draw",    odd: f(4.30, dRatio), handicap: null },
-        { value: team2 + " / " + team2, odd: f(4.80, aRatio), handicap: null },
-        { value: "No Goal",            odd: f(8.00, dRatio), handicap: null },
+        { value: team1 + " / " + team1, odd: num(Math.max(1.40, h * 1.65)), handicap: null },
+        { value: team1 + " / Draw",    odd: num(Math.max(3.50, d * 1.25)), handicap: null },
+        { value: team1 + " / " + team2, odd: num(Math.max(6.50, a * 1.85)), handicap: null },
+        { value: team2 + " / " + team1, odd: num(Math.max(6.00, h * 1.85)), handicap: null },
+        { value: team2 + " / Draw",    odd: num(Math.max(3.80, d * 1.25)), handicap: null },
+        { value: team2 + " / " + team2, odd: num(Math.max(1.40, a * 1.65)), handicap: null },
+        { value: "No Goal",            odd: num(Math.max(6.50, d * 2.20)), handicap: null },
       ],
     },
 
@@ -2165,11 +2199,11 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "First Team To Score and Total Goals (2.5)",
       values: [
-        { value: team1 + " & Over (2.5)",  odd: f(2.70, hRatio), handicap: null },
-        { value: team1 + " & Under (2.5)", odd: f(3.60, hRatio), handicap: null },
-        { value: team2 + " & Over (2.5)",  odd: f(4.20, aRatio), handicap: null },
-        { value: team2 + " & Under (2.5)", odd: f(5.20, aRatio), handicap: null },
-        { value: "No Goal",               odd: f(8.00, dRatio), handicap: null },
+        { value: team1 + " & Over (2.5)",  odd: num(Math.max(1.30, h * (h < 1.4 ? 1.35 : 1.65))), handicap: null },
+        { value: team1 + " & Under (2.5)", odd: num(Math.max(2.10, h * (h < 1.4 ? 2.50 : 2.00))), handicap: null },
+        { value: team2 + " & Over (2.5)",  odd: num(Math.max(1.30, a * (a < 1.4 ? 1.35 : 1.65))), handicap: null },
+        { value: team2 + " & Under (2.5)", odd: num(Math.max(2.10, a * (a < 1.4 ? 2.50 : 2.00))), handicap: null },
+        { value: "No Goal",               odd: num(Math.max(6.50, d * 2.20)), handicap: null },
       ],
     },
 
@@ -2179,24 +2213,24 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Half Time/Full Time and Total Goals (1.5)",
       values: [
-        { value: "1/1 & Over (1.5)",  odd: f(3.55, hRatio), handicap: null },
-        { value: "1/1 & Under (1.5)", odd: f(11.00, hRatio), handicap: null },
-        { value: "1/X & Over (1.5)",  odd: f(14.00, dRatio), handicap: null },
-        { value: "1/X & Under (1.5)", odd: f(36.00, dRatio), handicap: null },
-        { value: "1/2 & Over (1.5)",  odd: f(28.00, aRatio), handicap: null },
-        { value: "1/2 & Under (1.5)", odd: f(50.00, aRatio), handicap: null },
-        { value: "X/1 & Over (1.5)",  odd: f(5.40, hRatio), handicap: null },
-        { value: "X/1 & Under (1.5)", odd: f(12.00, hRatio), handicap: null },
-        { value: "X/X & Over (1.5)",  odd: f(7.50, dRatio), handicap: null },
-        { value: "X/X & Under (1.5)", odd: f(7.50, dRatio), handicap: null },
-        { value: "X/2 & Over (1.5)",  odd: f(7.80, aRatio), handicap: null },
-        { value: "X/2 & Under (1.5)", odd: f(15.00, aRatio), handicap: null },
-        { value: "2/1 & Over (1.5)",  odd: f(25.00, hRatio), handicap: null },
-        { value: "2/1 & Under (1.5)", odd: f(50.00, hRatio), handicap: null },
-        { value: "2/X & Over (1.5)",  odd: f(14.00, dRatio), handicap: null },
-        { value: "2/X & Under (1.5)", odd: f(36.00, dRatio), handicap: null },
-        { value: "2/2 & Over (1.5)",  odd: f(5.50, aRatio), handicap: null },
-        { value: "2/2 & Under (1.5)", odd: f(14.00, aRatio), handicap: null },
+        { value: "1/1 & Over (1.5)",  odd: num(Math.max(1.30, h * (h < 1.4 ? 1.38 : 1.65))), handicap: null },
+        { value: "1/1 & Under (1.5)", odd: num(Math.max(6.50, h * (h < 1.4 ? 7.50 : 5.00))), handicap: null },
+        { value: "1/X & Over (1.5)",  odd: num(Math.max(14.00, d * 4.20)), handicap: null },
+        { value: "1/X & Under (1.5)", odd: num(Math.max(30.00, d * 10.00)), handicap: null },
+        { value: "1/2 & Over (1.5)",  odd: num(Math.max(25.00, a * 6.00)), handicap: null },
+        { value: "1/2 & Under (1.5)", odd: num(Math.max(45.00, a * 12.00)), handicap: null },
+        { value: "X/1 & Over (1.5)",  odd: num(Math.max(2.80, h * 2.40)), handicap: null },
+        { value: "X/1 & Under (1.5)", odd: num(Math.max(5.50, h * 4.50)), handicap: null },
+        { value: "X/X & Over (1.5)",  odd: num(Math.max(6.50, d * 2.10)), handicap: null },
+        { value: "X/X & Under (1.5)", odd: num(Math.max(6.50, d * 2.10)), handicap: null },
+        { value: "X/2 & Over (1.5)",  odd: num(Math.max(3.20, a * 2.40)), handicap: null },
+        { value: "X/2 & Under (1.5)", odd: num(Math.max(6.50, a * 4.50)), handicap: null },
+        { value: "2/1 & Over (1.5)",  odd: num(Math.max(25.00, h * 6.00)), handicap: null },
+        { value: "2/1 & Under (1.5)", odd: num(Math.max(45.00, h * 12.00)), handicap: null },
+        { value: "2/X & Over (1.5)",  odd: num(Math.max(14.00, d * 4.20)), handicap: null },
+        { value: "2/X & Under (1.5)", odd: num(Math.max(30.00, d * 10.00)), handicap: null },
+        { value: "2/2 & Over (1.5)",  odd: num(Math.max(1.30, a * (a < 1.4 ? 1.38 : 1.65))), handicap: null },
+        { value: "2/2 & Under (1.5)", odd: num(Math.max(6.50, a * (a < 1.4 ? 7.50 : 5.00))), handicap: null },
       ],
     },
 
@@ -2206,24 +2240,24 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Half Time/Full Time and Total Goals (2.5)",
       values: [
-        { value: "1/1 & Over (2.5)",  odd: f(4.10, hRatio), handicap: null },
-        { value: "1/1 & Under (2.5)", odd: f(6.50, hRatio), handicap: null },
-        { value: "1/X & Over (2.5)",  odd: f(14.00, dRatio), handicap: null },
-        { value: "1/X & Under (2.5)", odd: f(25.00, dRatio), handicap: null },
-        { value: "1/2 & Over (2.5)",  odd: f(26.00, aRatio), handicap: null },
-        { value: "1/2 & Under (2.5)", odd: f(50.00, aRatio), handicap: null },
-        { value: "X/1 & Over (2.5)",  odd: f(7.20, hRatio), handicap: null },
-        { value: "X/1 & Under (2.5)", odd: f(7.20, hRatio), handicap: null },
-        { value: "X/X & Over (2.5)",  odd: f(14.00, dRatio), handicap: null },
-        { value: "X/X & Under (2.5)", odd: f(4.80, dRatio), handicap: null },
-        { value: "X/2 & Over (2.5)",  odd: f(10.00, aRatio), handicap: null },
-        { value: "X/2 & Under (2.5)", odd: f(9.00, aRatio), handicap: null },
-        { value: "2/1 & Over (2.5)",  odd: f(23.00, hRatio), handicap: null },
-        { value: "2/1 & Under (2.5)", odd: f(50.00, hRatio), handicap: null },
-        { value: "2/X & Over (2.5)",  odd: f(14.00, dRatio), handicap: null },
-        { value: "2/X & Under (2.5)", odd: f(25.00, dRatio), handicap: null },
-        { value: "2/2 & Over (2.5)",  odd: f(6.80, aRatio), handicap: null },
-        { value: "2/2 & Under (2.5)", odd: f(8.50, aRatio), handicap: null },
+        { value: "1/1 & Over (2.5)",  odd: num(Math.max(1.50, h * (h < 1.4 ? 1.58 : 1.95))), handicap: null },
+        { value: "1/1 & Under (2.5)", odd: num(Math.max(3.80, h * (h < 1.4 ? 4.20 : 3.20))), handicap: null },
+        { value: "1/X & Over (2.5)",  odd: num(Math.max(14.00, d * 4.20)), handicap: null },
+        { value: "1/X & Under (2.5)", odd: num(Math.max(22.00, d * 7.50)), handicap: null },
+        { value: "1/2 & Over (2.5)",  odd: num(Math.max(22.00, a * 5.50)), handicap: null },
+        { value: "1/2 & Under (2.5)", odd: num(Math.max(45.00, a * 12.00)), handicap: null },
+        { value: "X/1 & Over (2.5)",  odd: num(Math.max(3.50, h * 3.10)), handicap: null },
+        { value: "X/1 & Under (2.5)", odd: num(Math.max(4.20, h * 3.40)), handicap: null },
+        { value: "X/X & Over (2.5)",  odd: num(Math.max(12.00, d * 3.80)), handicap: null },
+        { value: "X/X & Under (2.5)", odd: num(Math.max(4.20, d * 1.35)), handicap: null },
+        { value: "X/2 & Over (2.5)",  odd: num(Math.max(4.20, a * 3.10)), handicap: null },
+        { value: "X/2 & Under (2.5)", odd: num(Math.max(4.80, a * 3.40)), handicap: null },
+        { value: "2/1 & Over (2.5)",  odd: num(Math.max(20.00, h * 5.50)), handicap: null },
+        { value: "2/1 & Under (2.5)", odd: num(Math.max(45.00, h * 12.00)), handicap: null },
+        { value: "2/X & Over (2.5)",  odd: num(Math.max(14.00, d * 4.20)), handicap: null },
+        { value: "2/X & Under (2.5)", odd: num(Math.max(22.00, d * 7.50)), handicap: null },
+        { value: "2/2 & Over (2.5)",  odd: num(Math.max(1.50, a * (a < 1.4 ? 1.58 : 1.95))), handicap: null },
+        { value: "2/2 & Under (2.5)", odd: num(Math.max(3.80, a * (a < 1.4 ? 4.20 : 3.20))), handicap: null },
       ],
     },
 
@@ -2233,24 +2267,24 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Half Time/Full Time and Total Goals (3.5)",
       values: [
-        { value: "1/1 & Over (3.5)",  odd: f(8.00, hRatio), handicap: null },
-        { value: "1/1 & Under (3.5)", odd: f(3.75, hRatio), handicap: null },
-        { value: "1/X & Over (3.5)",  odd: f(18.00, dRatio), handicap: null },
-        { value: "1/X & Under (3.5)", odd: f(16.00, dRatio), handicap: null },
-        { value: "1/2 & Over (3.5)",  odd: f(28.00, aRatio), handicap: null },
-        { value: "1/2 & Under (3.5)", odd: f(45.00, aRatio), handicap: null },
-        { value: "X/1 & Over (3.5)",  odd: f(14.00, hRatio), handicap: null },
-        { value: "X/1 & Under (3.5)", odd: f(4.90, hRatio), handicap: null },
-        { value: "X/X & Over (3.5)",  odd: f(28.00, dRatio), handicap: null },
-        { value: "X/X & Under (3.5)", odd: f(4.20, dRatio), handicap: null },
-        { value: "X/2 & Over (3.5)",  odd: f(18.00, aRatio), handicap: null },
-        { value: "X/2 & Under (3.5)", odd: f(6.50, aRatio), handicap: null },
-        { value: "2/1 & Over (3.5)",  odd: f(25.00, hRatio), handicap: null },
-        { value: "2/1 & Under (3.5)", odd: f(45.00, hRatio), handicap: null },
-        { value: "2/X & Over (3.5)",  odd: f(18.00, dRatio), handicap: null },
-        { value: "2/X & Under (3.5)", odd: f(16.00, dRatio), handicap: null },
-        { value: "2/2 & Over (3.5)",  odd: f(12.00, aRatio), handicap: null },
-        { value: "2/2 & Under (3.5)", odd: f(5.00, aRatio), handicap: null },
+        { value: "1/1 & Over (3.5)",  odd: num(Math.max(2.10, h * (h < 1.4 ? 2.25 : 3.40))), handicap: null },
+        { value: "1/1 & Under (3.5)", odd: num(Math.max(1.45, h * (h < 1.4 ? 1.70 : 1.65))), handicap: null },
+        { value: "1/X & Over (3.5)",  odd: num(Math.max(16.00, d * 5.20)), handicap: null },
+        { value: "1/X & Under (3.5)", odd: num(Math.max(15.00, d * 4.80)), handicap: null },
+        { value: "1/2 & Over (3.5)",  odd: num(Math.max(26.00, a * 6.50)), handicap: null },
+        { value: "1/2 & Under (3.5)", odd: num(Math.max(40.00, a * 10.00)), handicap: null },
+        { value: "X/1 & Over (3.5)",  odd: num(Math.max(5.80, h * 4.50)), handicap: null },
+        { value: "X/1 & Under (3.5)", odd: num(Math.max(3.20, h * 2.30)), handicap: null },
+        { value: "X/X & Over (3.5)",  odd: num(Math.max(24.00, d * 7.50)), handicap: null },
+        { value: "X/X & Under (3.5)", odd: num(Math.max(3.80, d * 1.20)), handicap: null },
+        { value: "X/2 & Over (3.5)",  odd: num(Math.max(7.20, a * 4.50)), handicap: null },
+        { value: "X/2 & Under (3.5)", odd: num(Math.max(3.60, a * 2.30)), handicap: null },
+        { value: "2/1 & Over (3.5)",  odd: num(Math.max(24.00, h * 6.50)), handicap: null },
+        { value: "2/1 & Under (3.5)", odd: num(Math.max(40.00, h * 10.00)), handicap: null },
+        { value: "2/X & Over (3.5)",  odd: num(Math.max(16.00, d * 5.20)), handicap: null },
+        { value: "2/X & Under (3.5)", odd: num(Math.max(15.00, d * 4.80)), handicap: null },
+        { value: "2/2 & Over (3.5)",  odd: num(Math.max(2.10, a * (a < 1.4 ? 2.25 : 3.40))), handicap: null },
+        { value: "2/2 & Under (3.5)", odd: num(Math.max(1.45, a * (a < 1.4 ? 1.70 : 1.65))), handicap: null },
       ],
     },
 
@@ -2260,24 +2294,24 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Half Time/Full Time and Total Goals (4.5)",
       values: [
-        { value: "1/1 & Over (4.5)",  odd: f(15.00, hRatio), handicap: null },
-        { value: "1/1 & Under (4.5)", odd: f(3.05, hRatio), handicap: null },
-        { value: "1/X & Over (4.5)",  odd: f(26.00, dRatio), handicap: null },
-        { value: "1/X & Under (4.5)", odd: f(15.00, dRatio), handicap: null },
-        { value: "1/2 & Over (4.5)",  odd: f(35.00, aRatio), handicap: null },
-        { value: "1/2 & Under (4.5)", odd: f(35.00, aRatio), handicap: null },
-        { value: "X/1 & Over (4.5)",  odd: f(26.00, hRatio), handicap: null },
-        { value: "X/1 & Under (4.5)", odd: f(4.45, hRatio), handicap: null },
-        { value: "X/X & Over (4.5)",  odd: f(41.00, dRatio), handicap: null },
-        { value: "X/X & Under (4.5)", odd: f(4.00, dRatio), handicap: null },
-        { value: "X/2 & Over (4.5)",  odd: f(31.00, aRatio), handicap: null },
-        { value: "X/2 & Under (4.5)", odd: f(5.80, aRatio), handicap: null },
-        { value: "2/1 & Over (4.5)",  odd: f(31.00, hRatio), handicap: null },
-        { value: "2/1 & Under (4.5)", odd: f(35.00, hRatio), handicap: null },
-        { value: "2/X & Over (4.5)",  odd: f(26.00, dRatio), handicap: null },
-        { value: "2/X & Under (4.5)", odd: f(15.00, dRatio), handicap: null },
-        { value: "2/2 & Over (4.5)",  odd: f(21.00, aRatio), handicap: null },
-        { value: "2/2 & Under (4.5)", odd: f(4.30, aRatio), handicap: null },
+        { value: "1/1 & Over (4.5)",  odd: num(Math.max(3.60, h * (h < 1.4 ? 4.20 : 6.80))), handicap: null },
+        { value: "1/1 & Under (4.5)", odd: num(Math.max(1.22, h * (h < 1.4 ? 1.35 : 1.35))), handicap: null },
+        { value: "1/X & Over (4.5)",  odd: num(Math.max(24.00, d * 7.50)), handicap: null },
+        { value: "1/X & Under (4.5)", odd: num(Math.max(14.00, d * 4.20)), handicap: null },
+        { value: "1/2 & Over (4.5)",  odd: num(Math.max(30.00, a * 8.00)), handicap: null },
+        { value: "1/2 & Under (4.5)", odd: num(Math.max(30.00, a * 8.00)), handicap: null },
+        { value: "X/1 & Over (4.5)",  odd: num(Math.max(12.00, h * 7.50)), handicap: null },
+        { value: "X/1 & Under (4.5)", odd: num(Math.max(2.60, h * 2.05)), handicap: null },
+        { value: "X/X & Over (4.5)",  odd: num(Math.max(36.00, d * 11.00)), handicap: null },
+        { value: "X/X & Under (4.5)", odd: num(Math.max(3.60, d * 1.15)), handicap: null },
+        { value: "X/2 & Over (4.5)",  odd: num(Math.max(14.00, a * 7.50)), handicap: null },
+        { value: "X/2 & Under (4.5)", odd: num(Math.max(3.00, a * 2.05)), handicap: null },
+        { value: "2/1 & Over (4.5)",  odd: num(Math.max(30.00, h * 8.00)), handicap: null },
+        { value: "2/1 & Under (4.5)", odd: num(Math.max(30.00, h * 8.00)), handicap: null },
+        { value: "2/X & Over (4.5)",  odd: num(Math.max(24.00, d * 7.50)), handicap: null },
+        { value: "2/X & Under (4.5)", odd: num(Math.max(14.00, d * 4.20)), handicap: null },
+        { value: "2/2 & Over (4.5)",  odd: num(Math.max(3.60, a * (a < 1.4 ? 4.20 : 6.80))), handicap: null },
+        { value: "2/2 & Under (4.5)", odd: num(Math.max(1.22, a * (a < 1.4 ? 1.35 : 1.35))), handicap: null },
       ],
     },
 
@@ -2287,24 +2321,24 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Half Time/Full Time and Total Goals (5.5)",
       values: [
-        { value: "1/1 & Over (5.5)",  odd: f(28.00, hRatio), handicap: null },
-        { value: "1/1 & Under (5.5)", odd: f(2.80, hRatio), handicap: null },
-        { value: "1/X & Over (5.5)",  odd: f(45.00, dRatio), handicap: null },
-        { value: "1/X & Under (5.5)", odd: f(14.00, dRatio), handicap: null },
-        { value: "1/2 & Over (5.5)",  odd: f(50.00, aRatio), handicap: null },
-        { value: "1/2 & Under (5.5)", odd: f(30.00, aRatio), handicap: null },
-        { value: "X/1 & Over (5.5)",  odd: f(45.00, hRatio), handicap: null },
-        { value: "X/1 & Under (5.5)", odd: f(4.30, hRatio), handicap: null },
-        { value: "X/X & Over (5.5)",  odd: f(55.00, dRatio), handicap: null },
-        { value: "X/X & Under (5.5)", odd: f(3.85, dRatio), handicap: null },
-        { value: "X/2 & Over (5.5)",  odd: f(50.00, aRatio), handicap: null },
-        { value: "X/2 & Under (5.5)", odd: f(5.40, aRatio), handicap: null },
-        { value: "2/1 & Over (5.5)",  odd: f(50.00, hRatio), handicap: null },
-        { value: "2/1 & Under (5.5)", odd: f(30.00, hRatio), handicap: null },
-        { value: "2/X & Over (5.5)",  odd: f(45.00, dRatio), handicap: null },
-        { value: "2/X & Under (5.5)", odd: f(14.00, dRatio), handicap: null },
-        { value: "2/2 & Over (5.5)",  odd: f(36.00, aRatio), handicap: null },
-        { value: "2/2 & Under (5.5)", odd: f(3.95, aRatio), handicap: null },
+        { value: "1/1 & Over (5.5)",  odd: num(Math.max(6.50, h * (h < 1.4 ? 7.80 : 12.00))), handicap: null },
+        { value: "1/1 & Under (5.5)", odd: num(Math.max(1.10, h * 1.20)), handicap: null },
+        { value: "1/X & Over (5.5)",  odd: num(Math.max(40.00, d * 12.00)), handicap: null },
+        { value: "1/X & Under (5.5)", odd: num(Math.max(13.00, d * 4.00)), handicap: null },
+        { value: "1/2 & Over (5.5)",  odd: num(Math.max(45.00, a * 12.00)), handicap: null },
+        { value: "1/2 & Under (5.5)", odd: num(Math.max(28.00, a * 7.50)), handicap: null },
+        { value: "X/1 & Over (5.5)",  odd: num(Math.max(22.00, h * 12.00)), handicap: null },
+        { value: "X/1 & Under (5.5)", odd: num(Math.max(2.40, h * 1.95)), handicap: null },
+        { value: "X/X & Over (5.5)",  odd: num(Math.max(50.00, d * 15.00)), handicap: null },
+        { value: "X/X & Under (5.5)", odd: num(Math.max(3.50, d * 1.12)), handicap: null },
+        { value: "X/2 & Over (5.5)",  odd: num(Math.max(26.00, a * 12.00)), handicap: null },
+        { value: "X/2 & Under (5.5)", odd: num(Math.max(2.80, a * 1.95)), handicap: null },
+        { value: "2/1 & Over (5.5)",  odd: num(Math.max(45.00, h * 12.00)), handicap: null },
+        { value: "2/1 & Under (5.5)", odd: num(Math.max(28.00, h * 7.50)), handicap: null },
+        { value: "2/X & Over (5.5)",  odd: num(Math.max(40.00, d * 12.00)), handicap: null },
+        { value: "2/X & Under (5.5)", odd: num(Math.max(13.00, d * 4.00)), handicap: null },
+        { value: "2/2 & Over (5.5)",  odd: num(Math.max(6.50, a * (a < 1.4 ? 7.80 : 12.00))), handicap: null },
+        { value: "2/2 & Under (5.5)", odd: num(Math.max(1.10, a * 1.20)), handicap: null },
       ],
     },
 
@@ -2314,10 +2348,10 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team1 + " Win To Nil and Total Goals Under/Over (2.5)",
       values: [
-        { value: "Yes & Over (2.5)",  odd: f(5.80, hRatio), handicap: null },
-        { value: "Yes & Under (2.5)", odd: f(4.70, hRatio), handicap: null },
-        { value: "No & Over (2.5)",   odd: f(2.55, hRatio), handicap: null },
-        { value: "No & Under (2.5)",  odd: f(2.05, hRatio), handicap: null },
+        { value: "Yes & Over (2.5)",  odd: num(Math.max(1.80, h * (h < 1.4 ? 2.10 : 2.50))), handicap: null },
+        { value: "Yes & Under (2.5)", odd: num(Math.max(2.20, h * (h < 1.4 ? 2.65 : 2.10))), handicap: null },
+        { value: "No & Over (2.5)",   odd: num(Math.max(1.35, 1.45 + h * 0.45)), handicap: null },
+        { value: "No & Under (2.5)",  odd: num(Math.max(1.40, 1.55 + h * 0.30)), handicap: null },
       ],
     },
 
@@ -2327,10 +2361,10 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team2 + " Win To Nil and Total Goals Under/Over (2.5)",
       values: [
-        { value: "Yes & Over (2.5)",  odd: f(8.50, aRatio), handicap: null },
-        { value: "Yes & Under (2.5)", odd: f(6.50, aRatio), handicap: null },
-        { value: "No & Over (2.5)",   odd: f(2.35, aRatio), handicap: null },
-        { value: "No & Under (2.5)",  odd: f(1.95, aRatio), handicap: null },
+        { value: "Yes & Over (2.5)",  odd: num(Math.max(1.80, a * (a < 1.4 ? 2.10 : 2.50))), handicap: null },
+        { value: "Yes & Under (2.5)", odd: num(Math.max(2.20, a * (a < 1.4 ? 2.65 : 2.10))), handicap: null },
+        { value: "No & Over (2.5)",   odd: num(Math.max(1.35, 1.45 + a * 0.45)), handicap: null },
+        { value: "No & Under (2.5)",  odd: num(Math.max(1.40, 1.55 + a * 0.30)), handicap: null },
       ],
     },
 
@@ -2340,8 +2374,8 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team1 + " To Win Either Half and Total Over (1.5)",
       values: [
-        { value: "Yes", odd: f(1.75, hRatio), handicap: null },
-        { value: "No",  odd: f(2.05, hRatio), handicap: null },
+        { value: "Yes", odd: num(Math.max(1.10, h < 1.4 ? 1.22 : h * 0.72)), handicap: null },
+        { value: "No",  odd: num(Math.max(1.35, h < 1.4 ? 4.20 : 2.15)), handicap: null },
       ],
     },
 
@@ -2351,8 +2385,8 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team2 + " To Win Either Half and Total Over (1.5)",
       values: [
-        { value: "Yes", odd: f(2.40, aRatio), handicap: null },
-        { value: "No",  odd: f(1.55, aRatio), handicap: null },
+        { value: "Yes", odd: num(Math.max(1.10, a < 1.4 ? 1.22 : a * 0.72)), handicap: null },
+        { value: "No",  odd: num(Math.max(1.35, a < 1.4 ? 4.20 : 2.15)), handicap: null },
       ],
     },
 
@@ -2362,8 +2396,8 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team1 + " To Win Both Halves",
       values: [
-        { value: "Yes", odd: f(5.80, hRatio), handicap: null },
-        { value: "No",  odd: f(1.12, hRatio), handicap: null },
+        { value: "Yes", odd: num(Math.max(1.85, h * (h < 1.4 ? 2.20 : 2.60))), handicap: null },
+        { value: "No",  odd: num(Math.max(1.05, h < 1.4 ? 1.65 : 1.15)), handicap: null },
       ],
     },
 
@@ -2373,8 +2407,8 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team2 + " To Win Both Halves",
       values: [
-        { value: "Yes", odd: f(9.50, aRatio), handicap: null },
-        { value: "No",  odd: f(1.05, aRatio), handicap: null },
+        { value: "Yes", odd: num(Math.max(1.85, a * (a < 1.4 ? 2.20 : 2.60))), handicap: null },
+        { value: "No",  odd: num(Math.max(1.05, a < 1.4 ? 1.65 : 1.15)), handicap: null },
       ],
     },
 
@@ -2384,8 +2418,8 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team1 + " To Score In Both Halves",
       values: [
-        { value: "Yes", odd: f(3.10, hRatio), handicap: null },
-        { value: "No",  odd: f(1.35, hRatio), handicap: null },
+        { value: "Yes", odd: num(Math.max(1.45, h * (h < 1.4 ? 1.45 : 1.55))), handicap: null },
+        { value: "No",  odd: num(Math.max(1.10, h < 1.4 ? 2.70 : 1.35)), handicap: null },
       ],
     },
 
@@ -2395,8 +2429,8 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: team2 + " To Score In Both Halves",
       values: [
-        { value: "Yes", odd: f(4.45, aRatio), handicap: null },
-        { value: "No",  odd: f(1.20, aRatio), handicap: null },
+        { value: "Yes", odd: num(Math.max(1.45, a * (a < 1.4 ? 1.45 : 1.55))), handicap: null },
+        { value: "No",  odd: num(Math.max(1.10, a < 1.4 ? 2.70 : 1.35)), handicap: null },
       ],
     },
 
@@ -2406,12 +2440,12 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Results/Both Teams Score",
       values: [
-        { value: "Home/Yes", odd: f(2.80, hRatio), handicap: null },
-        { value: "Home/No",  odd: f(3.20, hRatio), handicap: null },
-        { value: "Draw/Yes", odd: f(4.20, dRatio), handicap: null },
-        { value: "Draw/No",  odd: f(7.50, dRatio), handicap: null },
-        { value: "Away/Yes", odd: f(4.50, aRatio), handicap: null },
-        { value: "Away/No",  odd: f(4.80, aRatio), handicap: null },
+        { value: "Home/Yes", odd: num(Math.max(1.60, h * (h < 1.35 ? 2.15 : (h < 1.70 ? 1.85 : 1.65)))), handicap: null },
+        { value: "Home/No",  odd: num(Math.max(1.25, h * (h < 1.35 ? 1.45 : (h < 1.70 ? 1.65 : 1.85)))), handicap: null },
+        { value: "Draw/Yes", odd: num(Math.max(3.80, d * 1.25)), handicap: null },
+        { value: "Draw/No",  odd: num(Math.max(6.50, d * 2.20)), handicap: null },
+        { value: "Away/Yes", odd: num(Math.max(1.60, a * (a < 1.35 ? 2.15 : (a < 1.70 ? 1.85 : 1.65)))), handicap: null },
+        { value: "Away/No",  odd: num(Math.max(1.25, a * (a < 1.35 ? 1.45 : (a < 1.70 ? 1.65 : 1.85)))), handicap: null },
       ],
     },
 
@@ -2421,12 +2455,12 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Result/Total Goals",
       values: [
-        { value: "Home & Over 2.5",  odd: f(2.40, hRatio), handicap: null },
-        { value: "Home & Under 2.5", odd: f(3.10, hRatio), handicap: null },
-        { value: "Draw & Over 2.5",  odd: f(9.50, dRatio), handicap: null },
-        { value: "Draw & Under 2.5", odd: f(3.60, dRatio), handicap: null },
-        { value: "Away & Over 2.5",  odd: f(3.80, aRatio), handicap: null },
-        { value: "Away & Under 2.5", odd: f(4.20, aRatio), handicap: null },
+        { value: "Home & Over 2.5",  odd: num(h * hMultOv25), handicap: null },
+        { value: "Home & Under 2.5", odd: num(h * hMultUn25), handicap: null },
+        { value: "Draw & Over 2.5",  odd: num(d * 2.85), handicap: null },
+        { value: "Draw & Under 2.5", odd: num(d * 1.28), handicap: null },
+        { value: "Away & Over 2.5",  odd: num(a * aMultOv25), handicap: null },
+        { value: "Away & Under 2.5", odd: num(a * aMultUn25), handicap: null },
       ],
     },
 
@@ -2436,37 +2470,37 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Chance Mix",
       values: [
-        { value: "Team 1 Will Win or Over (2.5) Goals", odd: f(1.29, hRatio), handicap: null },
-        { value: "Draw or Ov 2.5",                      odd: f(1.23, dRatio), handicap: null },
-        { value: "Team 2 Will Win or Over (2.5) Goals", odd: f(1.31, aRatio), handicap: null },
-        { value: "Team 1 Will Win or Under (2.5) Goals", odd: f(1.39, hRatio), handicap: null },
-        { value: "Draw or Un 2.5",                      odd: f(1.50, dRatio), handicap: null },
-        { value: "Team 2 Will Win or Under (2.5) Goals", odd: f(1.47, aRatio), handicap: null },
-        { value: "Team 1 Will Win or Both Teams to Score - Yes", odd: f(1.18, hRatio), handicap: null },
-        { value: "Draw or BTTS: Yes",                   odd: f(1.34, dRatio), handicap: null },
-        { value: "Team 2 Will Win or Both Teams to Score - Yes", odd: f(1.22, aRatio), handicap: null },
-        { value: "Team 1 Will Win or Both Teams to Score - No",  odd: f(1.61, hRatio), handicap: null },
-        { value: "Draw or BTTS: No",                    odd: f(1.60, dRatio), handicap: null },
-        { value: "Team 2 Will Win or Both Teams to Score - No",  odd: f(1.54, aRatio), handicap: null },
-        { value: "Team 1 Will Win or Over (3.5) Goals", odd: f(1.49, hRatio), handicap: null },
-        { value: "Team 2 Will Win or Over (3.5) Goals", odd: f(1.62, aRatio), handicap: null },
-        { value: "Team 1 Will Win or Under (3.5) Goals", odd: f(1.22, hRatio), handicap: null },
-        { value: "Team 2 Will Win or Under (3.5) Goals", odd: f(1.24, aRatio), handicap: null },
+        { value: "Team 1 Will Win or Over (2.5) Goals", odd: num(Math.min(h, 1.75) * 0.88), handicap: null },
+        { value: "Draw or Ov 2.5",                      odd: num(Math.min(d, 1.95) * 0.82), handicap: null },
+        { value: "Team 2 Will Win or Over (2.5) Goals", odd: num(Math.min(a, 1.75) * 0.88), handicap: null },
+        { value: "Team 1 Will Win or Under (2.5) Goals", odd: num(Math.min(h, 1.85) * 0.88), handicap: null },
+        { value: "Draw or Un 2.5",                      odd: num(Math.min(d, 1.85) * 0.82), handicap: null },
+        { value: "Team 2 Will Win or Under (2.5) Goals", odd: num(Math.min(a, 1.85) * 0.88), handicap: null },
+        { value: "Team 1 Will Win or Both Teams to Score - Yes", odd: num(Math.min(h, 1.80) * 0.88), handicap: null },
+        { value: "Draw or BTTS: Yes",                   odd: num(Math.min(d, 1.80) * 0.82), handicap: null },
+        { value: "Team 2 Will Win or Both Teams to Score - Yes", odd: num(Math.min(a, 1.80) * 0.88), handicap: null },
+        { value: "Team 1 Will Win or Both Teams to Score - No",  odd: num(Math.min(h, 1.95) * 0.88), handicap: null },
+        { value: "Draw or BTTS: No",                    odd: num(Math.min(d, 1.95) * 0.82), handicap: null },
+        { value: "Team 2 Will Win or Both Teams to Score - No",  odd: num(Math.min(a, 1.95) * 0.88), handicap: null },
+        { value: "Team 1 Will Win or Over (3.5) Goals", odd: num(Math.min(h, 2.80) * 0.90), handicap: null },
+        { value: "Team 2 Will Win or Over (3.5) Goals", odd: num(Math.min(a, 2.80) * 0.90), handicap: null },
+        { value: "Team 1 Will Win or Under (3.5) Goals", odd: num(Math.min(h, 1.35) * 0.90), handicap: null },
+        { value: "Team 2 Will Win or Under (3.5) Goals", odd: num(Math.min(a, 1.35) * 0.90), handicap: null },
         { value: "BTTS: Yes or Ov 2.5",                 odd: f(1.28, mRatio), handicap: null },
         { value: "BTTS: No or Correct Score 1-1",       odd: f(1.75, mRatio), handicap: null },
         { value: "BTTS: No or Ov 2.5",                  odd: f(1.09, mRatio), handicap: null },
         { value: "BTTS: Yes & Un 2.5",                  odd: f(1.05, mRatio), handicap: null },
-        { value: "Draw or Ov 3.5",                      odd: f(1.66, dRatio), handicap: null },
-        { value: "Draw or Un 3.5",                      odd: f(1.30, dRatio), handicap: null },
-        { value: "Draw or Ov 1.5",                      odd: f(1.12, dRatio), handicap: null },
+        { value: "Draw or Ov 3.5",                      odd: num(Math.min(d, 3.20) * 0.85), handicap: null },
+        { value: "Draw or Un 3.5",                      odd: num(Math.min(d, 1.35) * 0.85), handicap: null },
+        { value: "Draw or Ov 1.5",                      odd: num(Math.min(d, 1.25) * 0.88), handicap: null },
         { value: "Correct Score: 0-0, 1-0, 0-1",        odd: f(4.70, dRatio), handicap: null },
-        { value: "Team 1 Will Win or Correct Score 0-0", odd: f(2.12, hRatio), handicap: null },
-        { value: "Team 2 Will Win or Correct Score 0-0", odd: f(2.27, aRatio), handicap: null },
-        { value: "Team 1 Will Win or Correct Score 0-0, 0-1", odd: f(1.71, hRatio), handicap: null },
-        { value: "Team 2 Will Win or Correct Score 0-0, 1-0", odd: f(1.79, aRatio), handicap: null },
+        { value: "Team 1 Will Win or Correct Score 0-0", odd: num(Math.min(h, 7.50) * 0.88), handicap: null },
+        { value: "Team 2 Will Win or Correct Score 0-0", odd: num(Math.min(a, 7.50) * 0.88), handicap: null },
+        { value: "Team 1 Will Win or Correct Score 0-0, 0-1", odd: num(Math.min(h, 4.50) * 0.88), handicap: null },
+        { value: "Team 2 Will Win or Correct Score 0-0, 1-0", odd: num(Math.min(a, 4.50) * 0.88), handicap: null },
         { value: "BTTS: Yes or 1 Max Goal",             odd: f(1.15, mRatio), handicap: null },
-        { value: "Team 1 Will Win or Over (1.5) Goals", odd: f(1.09, hRatio), handicap: null },
-        { value: "Team 2 Will Win or Over (1.5) Goals", odd: f(1.08, aRatio), handicap: null },
+        { value: "Team 1 Will Win or Over (1.5) Goals", odd: num(Math.min(h, 1.25) * 0.88), handicap: null },
+        { value: "Team 2 Will Win or Over (1.5) Goals", odd: num(Math.min(a, 1.25) * 0.88), handicap: null },
       ],
     },
 
@@ -2476,9 +2510,9 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "1st Half Or Match Result",
       values: [
-        { value: "Home", odd: f(1.91, hRatio), handicap: null },
-        { value: "Draw", odd: f(1.80, dRatio), handicap: null },
-        { value: "Away", odd: f(2.05, aRatio), handicap: null },
+        { value: "Home", odd: num(Math.max(1.05, h * 0.82)), handicap: null },
+        { value: "Draw", odd: num(Math.max(1.20, d * 0.58)), handicap: null },
+        { value: "Away", odd: num(Math.max(1.05, a * 0.82)), handicap: null },
       ],
     },
 
@@ -2488,12 +2522,12 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Outcome or Total Goals (2.5)",
       values: [
-        { value: "Home or Over",  odd: f(1.29, hRatio), handicap: null },
-        { value: "Home or Under", odd: f(1.39, hRatio), handicap: null },
-        { value: "Draw or Over",  odd: f(1.23, dRatio), handicap: null },
-        { value: "Draw or Under", odd: f(1.50, dRatio), handicap: null },
-        { value: "Away or Over",  odd: f(1.31, aRatio), handicap: null },
-        { value: "Away or Under", odd: f(1.47, aRatio), handicap: null },
+        { value: "Home or Over",  odd: num(Math.min(h, 1.75) * 0.88), handicap: null },
+        { value: "Home or Under", odd: num(Math.min(h, 1.85) * 0.88), handicap: null },
+        { value: "Draw or Over",  odd: num(Math.min(d, 1.75) * 0.82), handicap: null },
+        { value: "Draw or Under", odd: num(Math.min(d, 1.85) * 0.82), handicap: null },
+        { value: "Away or Over",  odd: num(Math.min(a, 1.75) * 0.88), handicap: null },
+        { value: "Away or Under", odd: num(Math.min(a, 1.85) * 0.88), handicap: null },
       ],
     },
 
@@ -2503,12 +2537,12 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Outcome or Total Goals (3.5)",
       values: [
-        { value: "Home or Over",  odd: f(1.49, hRatio), handicap: null },
-        { value: "Home or Under", odd: f(1.22, hRatio), handicap: null },
-        { value: "Draw or Over",  odd: f(1.66, dRatio), handicap: null },
-        { value: "Draw or Under", odd: f(1.30, dRatio), handicap: null },
-        { value: "Away or Over",  odd: f(1.52, aRatio), handicap: null },
-        { value: "Away or Under", odd: f(1.24, aRatio), handicap: null },
+        { value: "Home or Over",  odd: num(Math.min(h, 2.60) * 0.90), handicap: null },
+        { value: "Home or Under", odd: num(Math.min(h, 1.35) * 0.90), handicap: null },
+        { value: "Draw or Over",  odd: num(Math.min(d, 2.60) * 0.85), handicap: null },
+        { value: "Draw or Under", odd: num(Math.min(d, 1.35) * 0.85), handicap: null },
+        { value: "Away or Over",  odd: num(Math.min(a, 2.60) * 0.90), handicap: null },
+        { value: "Away or Under", odd: num(Math.min(a, 1.35) * 0.90), handicap: null },
       ],
     },
 
@@ -2518,12 +2552,12 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Outcome or Total Goals (4.5)",
       values: [
-        { value: "Home or Over",  odd: f(1.79, hRatio), handicap: null },
-        { value: "Home or Under", odd: f(1.08, hRatio), handicap: null },
-        { value: "Draw or Over",  odd: f(1.99, dRatio), handicap: null },
-        { value: "Draw or Under", odd: f(1.16, dRatio), handicap: null },
-        { value: "Away or Over",  odd: f(1.87, aRatio), handicap: null },
-        { value: "Away or Under", odd: f(1.09, aRatio), handicap: null },
+        { value: "Home or Over",  odd: num(Math.min(h, 4.80) * 0.90), handicap: null },
+        { value: "Home or Under", odd: num(Math.min(h, 1.15) * 0.90), handicap: null },
+        { value: "Draw or Over",  odd: num(Math.min(d, 4.80) * 0.85), handicap: null },
+        { value: "Draw or Under", odd: num(Math.min(d, 1.15) * 0.85), handicap: null },
+        { value: "Away or Over",  odd: num(Math.min(a, 4.80) * 0.90), handicap: null },
+        { value: "Away or Under", odd: num(Math.min(a, 1.15) * 0.90), handicap: null },
       ],
     },
 
@@ -2533,37 +2567,121 @@ function buildMockComboMarkets(fixture) {
       category: "combo",
       name: "Outcome or Correct Score",
       values: [
-        { value: "Home or 1-0", odd: f(1.65, hRatio), handicap: null },
-        { value: "Home or 2-0", odd: f(1.85, hRatio), handicap: null },
-        { value: "Home or 2-1", odd: f(1.75, hRatio), handicap: null },
-        { value: "Home or 3-0", odd: f(2.20, hRatio), handicap: null },
-        { value: "Draw or 0-0", odd: f(2.10, dRatio), handicap: null },
-        { value: "Draw or 1-1", odd: f(1.80, dRatio), handicap: null },
-        { value: "Draw or 2-2", odd: f(3.40, dRatio), handicap: null },
-        { value: "Away or 0-1", odd: f(1.70, aRatio), handicap: null },
-        { value: "Away or 0-2", odd: f(1.95, aRatio), handicap: null },
-        { value: "Away or 1-2", odd: f(1.80, aRatio), handicap: null },
-        { value: "Away or 0-3", odd: f(2.40, aRatio), handicap: null },
+        { value: "Home or 1-0", odd: num(Math.min(h, 6.50) * 0.88), handicap: null },
+        { value: "Home or 2-0", odd: num(Math.min(h, 7.50) * 0.88), handicap: null },
+        { value: "Home or 2-1", odd: num(Math.min(h, 8.00) * 0.88), handicap: null },
+        { value: "Home or 3-0", odd: num(Math.min(h, 11.00) * 0.88), handicap: null },
+        { value: "Draw or 0-0", odd: num(Math.min(d, 8.50) * 0.82), handicap: null },
+        { value: "Draw or 1-1", odd: num(Math.min(d, 6.50) * 0.82), handicap: null },
+        { value: "Draw or 2-2", odd: num(Math.min(d, 14.00) * 0.82), handicap: null },
+        { value: "Away or 0-1", odd: num(Math.min(a, 6.50) * 0.88), handicap: null },
+        { value: "Away or 0-2", odd: num(Math.min(a, 7.50) * 0.88), handicap: null },
+        { value: "Away or 1-2", odd: num(Math.min(a, 8.00) * 0.88), handicap: null },
+        { value: "Away or 0-3", odd: num(Math.min(a, 11.00) * 0.88), handicap: null },
       ],
     },
   ];
 }
 
 function buildMockCornerMarkets(fixture) {
-  const h = parseFloat(fixture.odds?.home) || 2.10;
-  const d = parseFloat(fixture.odds?.draw) || 3.30;
-  const a = parseFloat(fixture.odds?.away) || 3.50;
+  const h = Math.max(1.04, parseFloat(fixture.odds?.home) || 2.10);
+  const d = Math.max(1.50, parseFloat(fixture.odds?.draw) || 3.30);
+  const a = Math.max(1.04, parseFloat(fixture.odds?.away) || 3.50);
 
   const team1 = fixture.home?.name || "Home";
   const team2 = fixture.away?.name || "Away";
 
-  const homeAdv = h <= a ? 1.25 : 0.85;
-  const cornerH = Math.max(1.35, Number((1.65 / (homeAdv > 1 ? 1.15 : 0.9)).toFixed(2))).toFixed(2);
-  const cornerD = "7.50";
-  const cornerA = Math.max(1.60, Number((2.80 * (homeAdv > 1 ? 1.15 : 0.9)).toFixed(2))).toFixed(2);
+  const fId = Math.abs(Number(fixture.fixtureId || fixture.id || 0)) || 12345;
+  const seeded = (offset) => {
+    const x = Math.sin(fId * 997.13 + offset * 37.19) * 10000;
+    return x - Math.floor(x);
+  };
+
+  // Base expected corners for this specific match (e.g. between 9.3 and 10.9 corners)
+  const cornerBase = 9.3 + (seeded(1) * 1.6);
+
+  // Attack possession dominance: Home corner share vs Away corner share
+  const probH = 1 / h;
+  const probA = 1 / a;
+  // 0.52 gives home ground advantage; favorites get up to ~0.74 of corners
+  const homeShare = Math.max(0.28, Math.min(0.74, 0.52 + (probH - probA) * 0.26));
+  const awayShare = 1 - homeShare;
+
+  // Logistic cumulative probability approximation to Normal CDF
+  function getOverProb(threshold, mean, std = 3.15) {
+    const z = (threshold - mean) / std;
+    return Math.max(0.04, Math.min(0.95, 1 / (1 + Math.exp(1.7 * z))));
+  }
+
+  const num = (v) => Math.max(1.03, Number(v)).toFixed(2);
+  const oddFromP = (p, jitter = 0) => num((1 / Math.max(0.03, Math.min(0.97, p))) * 1.08 + jitter);
+
+  // 1. Corners Result (1X2)
+  const pCornH = Math.max(0.18, Math.min(0.72, homeShare * 0.92));
+  const pCornA = Math.max(0.18, Math.min(0.72, awayShare * 0.92));
+  const pCornD = Math.max(0.10, 1 - pCornH - pCornA);
+
+  const cornerH = oddFromP(pCornH, seeded(2) * 0.06 - 0.03);
+  const cornerD = num(Math.max(6.20, (1 / pCornD) * 1.08 + (seeded(3) * 0.4 - 0.2)));
+  const cornerA = oddFromP(pCornA, seeded(4) * 0.06 - 0.03);
+
+  // Helper for Over/Under totals
+  const makeOU = (threshold, mean, offset) => {
+    const pOv = getOverProb(threshold, mean);
+    return {
+      ov: oddFromP(pOv, seeded(offset) * 0.04 - 0.02),
+      un: oddFromP(1 - pOv, seeded(offset + 50) * 0.04 - 0.02)
+    };
+  };
+
+  // Helper for 3-Way (Over, Exactly, Under integer line)
+  const make3Way = (line, mean, offset) => {
+    const pOv = getOverProb(line + 0.5, mean);
+    const pUn = 1 - getOverProb(line - 0.5, mean);
+    const pExact = Math.max(0.08, Math.min(0.16, 1 - pOv - pUn));
+    return {
+      ov: oddFromP(pOv, seeded(offset) * 0.04 - 0.02),
+      exact: num(Math.max(6.50, (1 / pExact) * 1.06 + (seeded(offset + 30) * 0.4 - 0.2))),
+      un: oddFromP(pUn, seeded(offset + 60) * 0.04 - 0.02)
+    };
+  };
+
+  // Helper for Handicap (spread)
+  const expDiff = cornerBase * (homeShare - awayShare);
+  const makeHandicap = (spread, offset) => {
+    const z = (spread - expDiff) / 2.6;
+    const pH = Math.max(0.05, Math.min(0.95, 1 / (1 + Math.exp(1.7 * z))));
+    return {
+      h: oddFromP(pH, seeded(offset) * 0.04 - 0.02),
+      a: oddFromP(1 - pH, seeded(offset + 70) * 0.04 - 0.02)
+    };
+  };
+
+  // Team totals
+  const homeMean = cornerBase * homeShare;
+  const awayMean = cornerBase * awayShare;
+
+  // 1st half corners
+  const halfBase = cornerBase * 0.47;
+  const halfHomeMean = homeMean * 0.47;
+  const halfAwayMean = awayMean * 0.47;
+  const halfExpDiff = expDiff * 0.47;
+
+  const p1hH = Math.max(0.18, Math.min(0.68, homeShare * 0.88));
+  const p1hA = Math.max(0.18, Math.min(0.68, awayShare * 0.88));
+  const p1hD = Math.max(0.20, 1 - p1hH - p1hA);
+
+  const make1hHandicap = (spread, offset) => {
+    const z = (spread - halfExpDiff) / 1.7;
+    const pH = Math.max(0.06, Math.min(0.94, 1 / (1 + Math.exp(1.7 * z))));
+    return {
+      h: oddFromP(pH, seeded(offset) * 0.04 - 0.02),
+      a: oddFromP(1 - pH, seeded(offset + 80) * 0.04 - 0.02)
+    };
+  };
 
   return [
-    // 1. Corners Result (Image 1 top)
+    // 1. Corners Result
     {
       id: 401,
       category: "corners",
@@ -2575,287 +2693,287 @@ function buildMockCornerMarkets(fixture) {
       ],
     },
 
-    // 2. Corners Total (Image 1)
+    // 2. Corners Total
     {
       id: 402,
       category: "corners",
       name: "Corners Total",
       values: [
-        { value: "Over (6.5)", odd: "1.15", handicap: "6.5" },
-        { value: "Under (6.5)", odd: "5.50", handicap: "6.5" },
-        { value: "Over (7.5)", odd: "1.25", handicap: "7.5" },
-        { value: "Under (7.5)", odd: "3.80", handicap: "7.5" },
-        { value: "Over (8.5)", odd: "1.45", handicap: "8.5" },
-        { value: "Under (8.5)", odd: "2.75", handicap: "8.5" },
-        { value: "Over (9.5)", odd: "1.75", handicap: "9.5" },
-        { value: "Under (9.5)", odd: "2.05", handicap: "9.5" },
-        { value: "Over (10.5)", odd: "2.20", handicap: "10.5" },
-        { value: "Under (10.5)", odd: "1.65", handicap: "10.5" },
-        { value: "Over (11.5)", odd: "2.90", handicap: "11.5" },
-        { value: "Under (11.5)", odd: "1.40", handicap: "11.5" },
-        { value: "Over (12.5)", odd: "3.90", handicap: "12.5" },
-        { value: "Under (12.5)", odd: "1.25", handicap: "12.5" },
-        { value: "Over (13.5)", odd: "5.40", handicap: "13.5" },
-        { value: "Under (13.5)", odd: "1.15", handicap: "13.5" },
-        { value: "Over (14.5)", odd: "7.80", handicap: "14.5" },
-        { value: "Under (14.5)", odd: "1.08", handicap: "14.5" },
-        { value: "Over (15.5)", odd: "11.00", handicap: "15.5" },
-        { value: "Under (15.5)", odd: "1.03", handicap: "15.5" },
+        { value: "Over (6.5)", odd: makeOU(6.5, cornerBase, 65).ov, handicap: "6.5" },
+        { value: "Under (6.5)", odd: makeOU(6.5, cornerBase, 65).un, handicap: "6.5" },
+        { value: "Over (7.5)", odd: makeOU(7.5, cornerBase, 75).ov, handicap: "7.5" },
+        { value: "Under (7.5)", odd: makeOU(7.5, cornerBase, 75).un, handicap: "7.5" },
+        { value: "Over (8.5)", odd: makeOU(8.5, cornerBase, 85).ov, handicap: "8.5" },
+        { value: "Under (8.5)", odd: makeOU(8.5, cornerBase, 85).un, handicap: "8.5" },
+        { value: "Over (9.5)", odd: makeOU(9.5, cornerBase, 95).ov, handicap: "9.5" },
+        { value: "Under (9.5)", odd: makeOU(9.5, cornerBase, 95).un, handicap: "9.5" },
+        { value: "Over (10.5)", odd: makeOU(10.5, cornerBase, 105).ov, handicap: "10.5" },
+        { value: "Under (10.5)", odd: makeOU(10.5, cornerBase, 105).un, handicap: "10.5" },
+        { value: "Over (11.5)", odd: makeOU(11.5, cornerBase, 115).ov, handicap: "11.5" },
+        { value: "Under (11.5)", odd: makeOU(11.5, cornerBase, 115).un, handicap: "11.5" },
+        { value: "Over (12.5)", odd: makeOU(12.5, cornerBase, 125).ov, handicap: "12.5" },
+        { value: "Under (12.5)", odd: makeOU(12.5, cornerBase, 125).un, handicap: "12.5" },
+        { value: "Over (13.5)", odd: makeOU(13.5, cornerBase, 135).ov, handicap: "13.5" },
+        { value: "Under (13.5)", odd: makeOU(13.5, cornerBase, 135).un, handicap: "13.5" },
+        { value: "Over (14.5)", odd: makeOU(14.5, cornerBase, 145).ov, handicap: "14.5" },
+        { value: "Under (14.5)", odd: makeOU(14.5, cornerBase, 145).un, handicap: "14.5" },
+        { value: "Over (15.5)", odd: makeOU(15.5, cornerBase, 155).ov, handicap: "15.5" },
+        { value: "Under (15.5)", odd: makeOU(15.5, cornerBase, 155).un, handicap: "15.5" },
       ],
     },
 
-    // 3. Corners Total 3-Way (Image 1)
+    // 3. Corners Total 3-Way
     {
       id: 403,
       category: "corners",
       name: "Corners Total 3-Way",
       values: [
-        { value: "Over (7.0)", odd: "1.18", handicap: "7.0" },
-        { value: "Exactly (7.0)", odd: "8.50", handicap: "7.0" },
-        { value: "Under (7.0)", odd: "5.00", handicap: "7.0" },
-        { value: "Over (8.0)", odd: "1.35", handicap: "8.0" },
-        { value: "Exactly (8.0)", odd: "7.50", handicap: "8.0" },
-        { value: "Under (8.0)", odd: "3.40", handicap: "8.0" },
-        { value: "Over (9.0)", odd: "1.60", handicap: "9.0" },
-        { value: "Exactly (9.0)", odd: "7.00", handicap: "9.0" },
-        { value: "Under (9.0)", odd: "2.40", handicap: "9.0" },
-        { value: "Over (10.0)", odd: "2.00", handicap: "10.0" },
-        { value: "Exactly (10.0)", odd: "7.00", handicap: "10.0" },
-        { value: "Under (10.0)", odd: "1.80", handicap: "10.0" },
-        { value: "Over (11.0)", odd: "2.60", handicap: "11.0" },
-        { value: "Exactly (11.0)", odd: "7.50", handicap: "11.0" },
-        { value: "Under (11.0)", odd: "1.50", handicap: "11.0" },
-        { value: "Over (12.0)", odd: "3.50", handicap: "12.0" },
-        { value: "Exactly (12.0)", odd: "8.00", handicap: "12.0" },
-        { value: "Under (12.0)", odd: "1.30", handicap: "12.0" },
+        { value: "Over (7.0)", odd: make3Way(7.0, cornerBase, 70).ov, handicap: "7.0" },
+        { value: "Exactly (7.0)", odd: make3Way(7.0, cornerBase, 70).exact, handicap: "7.0" },
+        { value: "Under (7.0)", odd: make3Way(7.0, cornerBase, 70).un, handicap: "7.0" },
+        { value: "Over (8.0)", odd: make3Way(8.0, cornerBase, 80).ov, handicap: "8.0" },
+        { value: "Exactly (8.0)", odd: make3Way(8.0, cornerBase, 80).exact, handicap: "8.0" },
+        { value: "Under (8.0)", odd: make3Way(8.0, cornerBase, 80).un, handicap: "8.0" },
+        { value: "Over (9.0)", odd: make3Way(9.0, cornerBase, 90).ov, handicap: "9.0" },
+        { value: "Exactly (9.0)", odd: make3Way(9.0, cornerBase, 90).exact, handicap: "9.0" },
+        { value: "Under (9.0)", odd: make3Way(9.0, cornerBase, 90).un, handicap: "9.0" },
+        { value: "Over (10.0)", odd: make3Way(10.0, cornerBase, 100).ov, handicap: "10.0" },
+        { value: "Exactly (10.0)", odd: make3Way(10.0, cornerBase, 100).exact, handicap: "10.0" },
+        { value: "Under (10.0)", odd: make3Way(10.0, cornerBase, 100).un, handicap: "10.0" },
+        { value: "Over (11.0)", odd: make3Way(11.0, cornerBase, 110).ov, handicap: "11.0" },
+        { value: "Exactly (11.0)", odd: make3Way(11.0, cornerBase, 110).exact, handicap: "11.0" },
+        { value: "Under (11.0)", odd: make3Way(11.0, cornerBase, 110).un, handicap: "11.0" },
+        { value: "Over (12.0)", odd: make3Way(12.0, cornerBase, 120).ov, handicap: "12.0" },
+        { value: "Exactly (12.0)", odd: make3Way(12.0, cornerBase, 120).exact, handicap: "12.0" },
+        { value: "Under (12.0)", odd: make3Way(12.0, cornerBase, 120).un, handicap: "12.0" },
       ],
     },
 
-    // 4. Corners Total (Bands) (Image 1)
+    // 4. Corners Total (Bands)
     {
       id: 404,
       category: "corners",
       name: "Corners Total (Bands)",
       values: [
-        { value: "0-8 Corners", odd: "2.35", handicap: null },
-        { value: "9-11 Corners", odd: "2.75", handicap: null },
-        { value: "12+ Corners", odd: "2.95", handicap: null },
+        { value: "0-8 Corners", odd: makeOU(8.5, cornerBase, 85).un, handicap: null },
+        { value: "9-11 Corners", odd: oddFromP(Math.max(0.22, Math.min(0.48, getOverProb(8.5, cornerBase) - getOverProb(11.5, cornerBase))), seeded(86) * 0.04 - 0.02), handicap: null },
+        { value: "12+ Corners", odd: makeOU(11.5, cornerBase, 115).ov, handicap: null },
       ],
     },
 
-    // 5. Corners Handicap (Image 1 bottom)
+    // 5. Corners Handicap
     {
       id: 405,
       category: "corners",
       name: "Corners Handicap",
       values: [
-        { value: `${team1} (-0.5)`, odd: "1.75", handicap: "-0.5" },
-        { value: `${team2} (+0.5)`, odd: "2.05", handicap: "+0.5" },
-        { value: `${team1} (-1.0)`, odd: "1.95", handicap: "-1.0" },
-        { value: `${team2} (+1.0)`, odd: "1.80", handicap: "+1.0" },
-        { value: `${team1} (-1.5)`, odd: "2.25", handicap: "-1.5" },
-        { value: `${team2} (+1.5)`, odd: "1.60", handicap: "+1.5" },
-        { value: `${team1} (-2.0)`, odd: "2.65", handicap: "-2.0" },
-        { value: `${team2} (+2.0)`, odd: "1.45", handicap: "+2.0" },
-        { value: `${team1} (-2.5)`, odd: "3.20", handicap: "-2.5" },
-        { value: `${team2} (+2.5)`, odd: "1.32", handicap: "+2.5" },
-        { value: `${team1} (-3.0)`, odd: "3.90", handicap: "-3.0" },
-        { value: `${team2} (+3.0)`, odd: "1.24", handicap: "+3.0" },
-        { value: `${team1} (-3.5)`, odd: "4.80", handicap: "-3.5" },
-        { value: `${team2} (+3.5)`, odd: "1.17", handicap: "+3.5" },
-        { value: `${team1} (-4.0)`, odd: "6.20", handicap: "-4.0" },
-        { value: `${team2} (+4.0)`, odd: "1.11", handicap: "+4.0" },
+        { value: `${team1} (-0.5)`, odd: makeHandicap(0.5, 5).h, handicap: "-0.5" },
+        { value: `${team2} (+0.5)`, odd: makeHandicap(0.5, 5).a, handicap: "+0.5" },
+        { value: `${team1} (-1.0)`, odd: makeHandicap(1.0, 10).h, handicap: "-1.0" },
+        { value: `${team2} (+1.0)`, odd: makeHandicap(1.0, 10).a, handicap: "+1.0" },
+        { value: `${team1} (-1.5)`, odd: makeHandicap(1.5, 15).h, handicap: "-1.5" },
+        { value: `${team2} (+1.5)`, odd: makeHandicap(1.5, 15).a, handicap: "+1.5" },
+        { value: `${team1} (-2.0)`, odd: makeHandicap(2.0, 20).h, handicap: "-2.0" },
+        { value: `${team2} (+2.0)`, odd: makeHandicap(2.0, 20).a, handicap: "+2.0" },
+        { value: `${team1} (-2.5)`, odd: makeHandicap(2.5, 25).h, handicap: "-2.5" },
+        { value: `${team2} (+2.5)`, odd: makeHandicap(2.5, 25).a, handicap: "+2.5" },
+        { value: `${team1} (-3.0)`, odd: makeHandicap(3.0, 30).h, handicap: "-3.0" },
+        { value: `${team2} (+3.0)`, odd: makeHandicap(3.0, 30).a, handicap: "+3.0" },
+        { value: `${team1} (-3.5)`, odd: makeHandicap(3.5, 35).h, handicap: "-3.5" },
+        { value: `${team2} (+3.5)`, odd: makeHandicap(3.5, 35).a, handicap: "+3.5" },
+        { value: `${team1} (-4.0)`, odd: makeHandicap(4.0, 40).h, handicap: "-4.0" },
+        { value: `${team2} (+4.0)`, odd: makeHandicap(4.0, 40).a, handicap: "+4.0" },
       ],
     },
 
-    // 6. Corners Home Total (Image 2 top)
+    // 6. Corners Home Total
     {
       id: 406,
       category: "corners",
       name: "Corners Home Total",
       values: [
-        { value: "Over (4.5)", odd: "1.40", handicap: "4.5" },
-        { value: "Under (4.5)", odd: "2.80", handicap: "4.5" },
-        { value: "Over (5.0)", odd: "1.65", handicap: "5.0" },
-        { value: "Under (5.0)", odd: "2.12", handicap: "5.0" },
-        { value: "Over (5.5)", odd: "1.95", handicap: "5.5" },
-        { value: "Under (5.5)", odd: "1.75", handicap: "5.5" },
-        { value: "Over (6.0)", odd: "2.32", handicap: "6.0" },
-        { value: "Under (6.0)", odd: "1.55", handicap: "6.0" },
-        { value: "Over (6.5)", odd: "2.85", handicap: "6.5" },
-        { value: "Under (6.5)", odd: "1.38", handicap: "6.5" },
+        { value: "Over (4.5)", odd: makeOU(4.5, homeMean, 45).ov, handicap: "4.5" },
+        { value: "Under (4.5)", odd: makeOU(4.5, homeMean, 45).un, handicap: "4.5" },
+        { value: "Over (5.0)", odd: makeOU(5.0, homeMean, 50).ov, handicap: "5.0" },
+        { value: "Under (5.0)", odd: makeOU(5.0, homeMean, 50).un, handicap: "5.0" },
+        { value: "Over (5.5)", odd: makeOU(5.5, homeMean, 55).ov, handicap: "5.5" },
+        { value: "Under (5.5)", odd: makeOU(5.5, homeMean, 55).un, handicap: "5.5" },
+        { value: "Over (6.0)", odd: makeOU(6.0, homeMean, 60).ov, handicap: "6.0" },
+        { value: "Under (6.0)", odd: makeOU(6.0, homeMean, 60).un, handicap: "6.0" },
+        { value: "Over (6.5)", odd: makeOU(6.5, homeMean, 65).ov, handicap: "6.5" },
+        { value: "Under (6.5)", odd: makeOU(6.5, homeMean, 65).un, handicap: "6.5" },
       ],
     },
 
-    // 7. Corners Away Total (Image 2)
+    // 7. Corners Away Total
     {
       id: 407,
       category: "corners",
       name: "Corners Away Total",
       values: [
-        { value: "Over (2.5)", odd: "1.25", handicap: "2.5" },
-        { value: "Under (2.5)", odd: "3.65", handicap: "2.5" },
-        { value: "Over (3.0)", odd: "1.45", handicap: "3.0" },
-        { value: "Under (3.0)", odd: "2.60", handicap: "3.0" },
-        { value: "Over (3.5)", odd: "1.75", handicap: "3.5" },
-        { value: "Under (3.5)", odd: "1.98", handicap: "3.5" },
-        { value: "Over (4.0)", odd: "2.15", handicap: "4.0" },
-        { value: "Under (4.0)", odd: "1.62", handicap: "4.0" },
-        { value: "Over (4.5)", odd: "2.75", handicap: "4.5" },
-        { value: "Under (4.5)", odd: "1.40", handicap: "4.5" },
+        { value: "Over (2.5)", odd: makeOU(2.5, awayMean, 25).ov, handicap: "2.5" },
+        { value: "Under (2.5)", odd: makeOU(2.5, awayMean, 25).un, handicap: "2.5" },
+        { value: "Over (3.0)", odd: makeOU(3.0, awayMean, 30).ov, handicap: "3.0" },
+        { value: "Under (3.0)", odd: makeOU(3.0, awayMean, 30).un, handicap: "3.0" },
+        { value: "Over (3.5)", odd: makeOU(3.5, awayMean, 35).ov, handicap: "3.5" },
+        { value: "Under (3.5)", odd: makeOU(3.5, awayMean, 35).un, handicap: "3.5" },
+        { value: "Over (4.0)", odd: makeOU(4.0, awayMean, 40).ov, handicap: "4.0" },
+        { value: "Under (4.0)", odd: makeOU(4.0, awayMean, 40).un, handicap: "4.0" },
+        { value: "Over (4.5)", odd: makeOU(4.5, awayMean, 45).ov, handicap: "4.5" },
+        { value: "Under (4.5)", odd: makeOU(4.5, awayMean, 45).un, handicap: "4.5" },
       ],
     },
 
-    // 8. Corners: 1st Half Result (Image 2)
+    // 8. Corners: 1st Half Result
     {
       id: 408,
       category: "corners",
       name: "Corners: 1st Half Result",
       values: [
-        { value: "Home", odd: "1.62", handicap: null },
-        { value: "Draw", odd: "4.60", handicap: null },
-        { value: "Away", odd: "3.20", handicap: null },
+        { value: "Home", odd: oddFromP(p1hH, seeded(81) * 0.06 - 0.03), handicap: null },
+        { value: "Draw", odd: num(Math.max(3.80, (1 / p1hD) * 1.06 + (seeded(82) * 0.3 - 0.15))), handicap: null },
+        { value: "Away", odd: oddFromP(p1hA, seeded(83) * 0.06 - 0.03), handicap: null },
       ],
     },
 
-    // 9. Corners: 1st Half Handicap (Image 2)
+    // 9. Corners: 1st Half Handicap
     {
       id: 409,
       category: "corners",
       name: "Corners: 1st Half Handicap",
       values: [
-        { value: `${team1} (-0.0)`, odd: "1.45", handicap: "-0.0" },
-        { value: `${team2} (0.0)`, odd: "2.55", handicap: "0.0" },
-        { value: `${team1} (-0.5)`, odd: "1.70", handicap: "-0.5" },
-        { value: `${team2} (+0.5)`, odd: "1.98", handicap: "+0.5" },
-        { value: `${team1} (-1.0)`, odd: "2.20", handicap: "-1.0" },
-        { value: `${team2} (+1.0)`, odd: "1.62", handicap: "+1.0" },
+        { value: `${team1} (-0.0)`, odd: make1hHandicap(0.0, 90).h, handicap: "-0.0" },
+        { value: `${team2} (0.0)`, odd: make1hHandicap(0.0, 90).a, handicap: "0.0" },
+        { value: `${team1} (-0.5)`, odd: make1hHandicap(0.5, 95).h, handicap: "-0.5" },
+        { value: `${team2} (+0.5)`, odd: make1hHandicap(0.5, 95).a, handicap: "+0.5" },
+        { value: `${team1} (-1.0)`, odd: make1hHandicap(1.0, 100).h, handicap: "-1.0" },
+        { value: `${team2} (+1.0)`, odd: make1hHandicap(1.0, 100).a, handicap: "+1.0" },
       ],
     },
 
-    // 10. Corners 1st Half Home Total (Image 2)
+    // 10. Corners 1st Half Home Total
     {
       id: 410,
       category: "corners",
       name: "Corners 1st Half Home Total",
       values: [
-        { value: "Over (1.5)", odd: "1.22", handicap: "1.5" },
-        { value: "Under (1.5)", odd: "3.85", handicap: "1.5" },
-        { value: "Over (2.0)", odd: "1.45", handicap: "2.0" },
-        { value: "Under (2.0)", odd: "2.55", handicap: "2.0" },
-        { value: "Over (2.5)", odd: "1.80", handicap: "2.5" },
-        { value: "Under (2.5)", odd: "1.92", handicap: "2.5" },
-        { value: "Over (3.0)", odd: "2.35", handicap: "3.0" },
-        { value: "Under (3.0)", odd: "1.52", handicap: "3.0" },
-        { value: "Over (3.5)", odd: "3.10", handicap: "3.5" },
-        { value: "Under (3.5)", odd: "1.32", handicap: "3.5" },
-        { value: "Over (4.5)", odd: "5.20", handicap: "4.5" },
-        { value: "Under (4.5)", odd: "1.13", handicap: "4.5" },
+        { value: "Over (1.5)", odd: makeOU(1.5, halfHomeMean, 115).ov, handicap: "1.5" },
+        { value: "Under (1.5)", odd: makeOU(1.5, halfHomeMean, 115).un, handicap: "1.5" },
+        { value: "Over (2.0)", odd: makeOU(2.0, halfHomeMean, 120).ov, handicap: "2.0" },
+        { value: "Under (2.0)", odd: makeOU(2.0, halfHomeMean, 120).un, handicap: "2.0" },
+        { value: "Over (2.5)", odd: makeOU(2.5, halfHomeMean, 125).ov, handicap: "2.5" },
+        { value: "Under (2.5)", odd: makeOU(2.5, halfHomeMean, 125).un, handicap: "2.5" },
+        { value: "Over (3.0)", odd: makeOU(3.0, halfHomeMean, 130).ov, handicap: "3.0" },
+        { value: "Under (3.0)", odd: makeOU(3.0, halfHomeMean, 130).un, handicap: "3.0" },
+        { value: "Over (3.5)", odd: makeOU(3.5, halfHomeMean, 135).ov, handicap: "3.5" },
+        { value: "Under (3.5)", odd: makeOU(3.5, halfHomeMean, 135).un, handicap: "3.5" },
+        { value: "Over (4.5)", odd: makeOU(4.5, halfHomeMean, 145).ov, handicap: "4.5" },
+        { value: "Under (4.5)", odd: makeOU(4.5, halfHomeMean, 145).un, handicap: "4.5" },
       ],
     },
 
-    // 11. Corners: 1st Half Team 2 Total (Image 2)
+    // 11. Corners: 1st Half Team 2 Total
     {
       id: 411,
       category: "corners",
       name: "Corners: 1st Half Team 2 Total",
       values: [
-        { value: "Over (0.5)", odd: "1.25", handicap: "0.5" },
-        { value: "Under (0.5)", odd: "3.75", handicap: "0.5" },
-        { value: "Over (1.0)", odd: "1.55", handicap: "1.0" },
-        { value: "Under (1.0)", odd: "2.30", handicap: "1.0" },
-        { value: "Over (1.5)", odd: "2.05", handicap: "1.5" },
-        { value: "Under (1.5)", odd: "1.70", handicap: "1.5" },
-        { value: "Over (2.0)", odd: "2.95", handicap: "2.0" },
-        { value: "Under (2.0)", odd: "1.35", handicap: "2.0" },
-        { value: "Over (2.5)", odd: "4.20", handicap: "2.5" },
-        { value: "Under (2.5)", odd: "1.20", handicap: "2.5" },
+        { value: "Over (0.5)", odd: makeOU(0.5, halfAwayMean, 105).ov, handicap: "0.5" },
+        { value: "Under (0.5)", odd: makeOU(0.5, halfAwayMean, 105).un, handicap: "0.5" },
+        { value: "Over (1.0)", odd: makeOU(1.0, halfAwayMean, 110).ov, handicap: "1.0" },
+        { value: "Under (1.0)", odd: makeOU(1.0, halfAwayMean, 110).un, handicap: "1.0" },
+        { value: "Over (1.5)", odd: makeOU(1.5, halfAwayMean, 115).ov, handicap: "1.5" },
+        { value: "Under (1.5)", odd: makeOU(1.5, halfAwayMean, 115).un, handicap: "1.5" },
+        { value: "Over (2.0)", odd: makeOU(2.0, halfAwayMean, 120).ov, handicap: "2.0" },
+        { value: "Under (2.0)", odd: makeOU(2.0, halfAwayMean, 120).un, handicap: "2.0" },
+        { value: "Over (2.5)", odd: makeOU(2.5, halfAwayMean, 125).ov, handicap: "2.5" },
+        { value: "Under (2.5)", odd: makeOU(2.5, halfAwayMean, 125).un, handicap: "2.5" },
       ],
     },
 
-    // 12. Corners: 2nd Half Total (Image 2)
+    // 12. Corners: 2nd Half Total
     {
       id: 412,
       category: "corners",
       name: "Corners: 2nd Half Total",
       values: [
-        { value: "Over (4.5)", odd: "1.65", handicap: "4.5" },
-        { value: "Under (4.5)", odd: "2.10", handicap: "4.5" },
-        { value: "Over (5.5)", odd: "2.25", handicap: "5.5" },
-        { value: "Under (5.5)", odd: "1.58", handicap: "5.5" },
-        { value: "Over (6.5)", odd: "3.20", handicap: "6.5" },
-        { value: "Under (6.5)", odd: "1.30", handicap: "6.5" },
+        { value: "Over (4.5)", odd: makeOU(4.5, halfBase * 1.06, 245).ov, handicap: "4.5" },
+        { value: "Under (4.5)", odd: makeOU(4.5, halfBase * 1.06, 245).un, handicap: "4.5" },
+        { value: "Over (5.5)", odd: makeOU(5.5, halfBase * 1.06, 255).ov, handicap: "5.5" },
+        { value: "Under (5.5)", odd: makeOU(5.5, halfBase * 1.06, 255).un, handicap: "5.5" },
+        { value: "Over (6.5)", odd: makeOU(6.5, halfBase * 1.06, 265).ov, handicap: "6.5" },
+        { value: "Under (6.5)", odd: makeOU(6.5, halfBase * 1.06, 265).un, handicap: "6.5" },
       ],
     },
 
-    // 13. Corners: First Corner (Image 2)
+    // 13. Corners: First Corner
     {
       id: 413,
       category: "corners",
       name: "Corners: First Corner",
       values: [
-        { value: "Home", odd: "1.60", handicap: null },
-        { value: "Away", odd: "2.25", handicap: null },
+        { value: "Home", odd: oddFromP(homeShare * 0.95, seeded(91) * 0.04 - 0.02), handicap: null },
+        { value: "Away", odd: oddFromP(awayShare * 0.95, seeded(92) * 0.04 - 0.02), handicap: null },
         { value: "Neither", odd: "25.00", handicap: null },
       ],
     },
 
-    // 14. Corners: Last Corner (Image 2)
+    // 14. Corners: Last Corner
     {
       id: 414,
       category: "corners",
       name: "Corners: Last Corner",
       values: [
-        { value: "Home", odd: "1.57", handicap: null },
-        { value: "Away", odd: "2.25", handicap: null },
+        { value: "Home", odd: oddFromP(homeShare * 0.96, seeded(93) * 0.04 - 0.02), handicap: null },
+        { value: "Away", odd: oddFromP(awayShare * 0.96, seeded(94) * 0.04 - 0.02), handicap: null },
       ],
     },
 
-    // 15. Corners: Race To (3.0) (Image 2 bottom)
+    // 15. Corners: Race To (3.0)
     {
       id: 415,
       category: "corners",
       name: "Corners: Race To (3.0)",
       values: [
-        { value: "Home", odd: "1.45", handicap: "3.0" },
-        { value: "Away", odd: "2.65", handicap: "3.0" },
-        { value: "Neither", odd: "6.50", handicap: "3.0" },
+        { value: "Home", odd: oddFromP(homeShare * 0.90, seeded(131) * 0.04 - 0.02), handicap: "3.0" },
+        { value: "Away", odd: oddFromP(awayShare * 0.90, seeded(132) * 0.04 - 0.02), handicap: "3.0" },
+        { value: "Neither", odd: num(Math.max(5.50, 7.50 - cornerBase * 0.2)), handicap: "3.0" },
       ],
     },
 
-    // 16. Corners: Race To (5.0) (Image 2 bottom)
+    // 16. Corners: Race To (5.0)
     {
       id: 416,
       category: "corners",
       name: "Corners: Race To (5.0)",
       values: [
-        { value: "Home", odd: "1.72", handicap: "5.0" },
-        { value: "Away", odd: "2.87", handicap: "5.0" },
-        { value: "Neither", odd: "3.90", handicap: "5.0" },
+        { value: "Home", odd: oddFromP(homeShare * 0.78, seeded(151) * 0.04 - 0.02), handicap: "5.0" },
+        { value: "Away", odd: oddFromP(awayShare * 0.78, seeded(152) * 0.04 - 0.02), handicap: "5.0" },
+        { value: "Neither", odd: num(Math.max(2.80, 4.50 - cornerBase * 0.12)), handicap: "5.0" },
       ],
     },
 
-    // 17. Corners: Race To (7.0) (Image 2 bottom)
+    // 17. Corners: Race To (7.0)
     {
       id: 417,
       category: "corners",
       name: "Corners: Race To (7.0)",
       values: [
-        { value: "Home", odd: "2.30", handicap: "7.0" },
-        { value: "Away", odd: "3.80", handicap: "7.0" },
-        { value: "Neither", odd: "2.10", handicap: "7.0" },
+        { value: "Home", odd: oddFromP(homeShare * 0.58, seeded(171) * 0.04 - 0.02), handicap: "7.0" },
+        { value: "Away", odd: oddFromP(awayShare * 0.58, seeded(172) * 0.04 - 0.02), handicap: "7.0" },
+        { value: "Neither", odd: num(Math.max(1.70, 2.80 - cornerBase * 0.08)), handicap: "7.0" },
       ],
     },
 
-    // 18. Corners: Race To (9.0) (Image 2 bottom)
+    // 18. Corners: Race To (9.0)
     {
       id: 418,
       category: "corners",
       name: "Corners: Race To (9.0)",
       values: [
-        { value: "Home", odd: "3.60", handicap: "9.0" },
-        { value: "Away", odd: "6.00", handicap: "9.0" },
-        { value: "Neither", odd: "1.45", handicap: "9.0" },
+        { value: "Home", odd: oddFromP(homeShare * 0.38, seeded(191) * 0.04 - 0.02), handicap: "9.0" },
+        { value: "Away", odd: oddFromP(awayShare * 0.38, seeded(192) * 0.04 - 0.02), handicap: "9.0" },
+        { value: "Neither", odd: num(Math.max(1.30, 1.85 - cornerBase * 0.04)), handicap: "9.0" },
       ],
     },
   ];
@@ -4306,18 +4424,58 @@ function buildMockAsianMarkets(fixture) {
 }
 
 function buildMockHtFtMarkets(fixture) {
-  const h = parseFloat(fixture.odds?.home) || 2.45;
-  const d = parseFloat(fixture.odds?.draw) || 3.40;
-  const a = parseFloat(fixture.odds?.away) || 2.80;
+  const h = Math.max(1.04, parseFloat(fixture.odds?.home) || 2.45);
+  const d = Math.max(1.50, parseFloat(fixture.odds?.draw) || 3.40);
+  const a = Math.max(1.04, parseFloat(fixture.odds?.away) || 2.80);
 
-  const hRatio = h / 2.45;
-  const aRatio = a / 2.80;
-  const dRatio = d / 3.40;
+  const num = (v) => Math.max(1.02, Number(v)).toFixed(2);
 
-  const f = (base, ratio = 1) => {
-    const val = base * (0.88 + 0.12 * ratio);
-    return Math.max(1.01, val).toFixed(2);
-  };
+  // 1. Half Time / Full Time
+  const hh = num(
+    h <= 1.35 ? Math.max(1.40, h * 1.38) :
+    h <= 1.85 ? Math.max(1.85, h * 1.55) :
+    h <= 2.60 ? Math.max(2.80, h * 1.68) :
+    Math.max(4.20, h * 1.75)
+  );
+
+  const dh = num(
+    h <= 1.35 ? Math.max(3.60, h * 2.80) :
+    h <= 1.85 ? Math.max(4.00, h * 2.50) :
+    h <= 2.60 ? Math.max(4.80, h * 2.40) :
+    Math.max(6.00, h * 2.30)
+  );
+
+  const dd = num(Math.max(4.20, d * 1.55));
+
+  const da = num(
+    a <= 1.35 ? Math.max(3.60, a * 2.80) :
+    a <= 1.85 ? Math.max(4.00, a * 2.50) :
+    a <= 2.60 ? Math.max(4.80, a * 2.40) :
+    Math.max(6.00, a * 2.30)
+  );
+
+  const aa = num(
+    a <= 1.35 ? Math.max(1.40, a * 1.38) :
+    a <= 1.85 ? Math.max(1.85, a * 1.55) :
+    a <= 2.60 ? Math.max(2.80, a * 1.68) :
+    Math.max(4.20, a * 1.75)
+  );
+
+  const hd = num(Math.max(13.00, d * 4.20));
+  const ad = num(Math.max(13.00, d * 4.20));
+  const ha = num(Math.max(22.00, a * 6.50));
+  const ah = num(Math.max(22.00, h * 6.50));
+
+  // 2. First Half / Second Half Result (each half an independent 45 min game)
+  const fh_hh = num(Math.max(2.20, h * (h <= 1.4 ? 1.90 : (h <= 2.0 ? 2.50 : 2.90))));
+  const fh_aa = num(Math.max(2.20, a * (a <= 1.4 ? 1.90 : (a <= 2.0 ? 2.50 : 2.90))));
+  const fh_dd = num(Math.max(2.60, d * 0.95));
+  const fh_hd = num(Math.max(2.80, h * (h <= 1.4 ? 2.40 : 2.00)));
+  const fh_dh = num(Math.max(2.60, h * (h <= 1.4 ? 2.20 : 1.90)));
+  const fh_ad = num(Math.max(2.80, a * (a <= 1.4 ? 2.40 : 2.00)));
+  const fh_da = num(Math.max(2.60, a * (a <= 1.4 ? 2.20 : 1.90)));
+  const fh_ha = num(Math.max(16.00, (h + a) * 3.40));
+  const fh_ah = num(Math.max(16.00, (h + a) * 3.40));
 
   return [
     {
@@ -4325,15 +4483,15 @@ function buildMockHtFtMarkets(fixture) {
       category: "htft",
       name: "Half Time/Full-time",
       values: [
-        { value: "Home/Home", odd: f(3.45, hRatio), handicap: null },
-        { value: "Home/Draw", odd: f(12.00, (hRatio + dRatio) / 2), handicap: null },
-        { value: "Home/Away", odd: f(21.00, (hRatio + aRatio) / 2), handicap: null },
-        { value: "Draw/Home", odd: f(5.20, (dRatio + hRatio) / 2), handicap: null },
-        { value: "Draw/Draw", odd: f(5.40, dRatio), handicap: null },
-        { value: "Draw/Away", odd: f(5.50, (dRatio + aRatio) / 2), handicap: null },
-        { value: "Away/Home", odd: f(21.00, (aRatio + hRatio) / 2), handicap: null },
-        { value: "Away/Draw", odd: f(12.00, (aRatio + dRatio) / 2), handicap: null },
-        { value: "Away/Away", odd: f(3.77, aRatio), handicap: null },
+        { value: "Home/Home", odd: hh, handicap: null },
+        { value: "Home/Draw", odd: hd, handicap: null },
+        { value: "Home/Away", odd: ha, handicap: null },
+        { value: "Draw/Home", odd: dh, handicap: null },
+        { value: "Draw/Draw", odd: dd, handicap: null },
+        { value: "Draw/Away", odd: da, handicap: null },
+        { value: "Away/Home", odd: ah, handicap: null },
+        { value: "Away/Draw", odd: ad, handicap: null },
+        { value: "Away/Away", odd: aa, handicap: null },
       ],
     },
     {
@@ -4341,15 +4499,15 @@ function buildMockHtFtMarkets(fixture) {
       category: "htft",
       name: "First Half/Second Half Result",
       values: [
-        { value: "Home/Home", odd: f(4.70, hRatio), handicap: null },
-        { value: "Home/Draw", odd: f(4.90, (hRatio + dRatio) / 2), handicap: null },
-        { value: "Home/Away", odd: f(4.90, (hRatio + aRatio) / 2), handicap: null },
-        { value: "Draw/Home", odd: f(3.86, (dRatio + hRatio) / 2), handicap: null },
-        { value: "Draw/Draw", odd: f(4.00, dRatio), handicap: null },
-        { value: "Draw/Away", odd: f(4.10, (dRatio + aRatio) / 2), handicap: null },
-        { value: "Away/Home", odd: f(4.90, (aRatio + hRatio) / 2), handicap: null },
-        { value: "Away/Draw", odd: f(5.10, (aRatio + dRatio) / 2), handicap: null },
-        { value: "Away/Away", odd: f(5.20, aRatio), handicap: null },
+        { value: "Home/Home", odd: fh_hh, handicap: null },
+        { value: "Home/Draw", odd: fh_hd, handicap: null },
+        { value: "Home/Away", odd: fh_ha, handicap: null },
+        { value: "Draw/Home", odd: fh_dh, handicap: null },
+        { value: "Draw/Draw", odd: fh_dd, handicap: null },
+        { value: "Draw/Away", odd: fh_da, handicap: null },
+        { value: "Away/Home", odd: fh_ah, handicap: null },
+        { value: "Away/Draw", odd: fh_ad, handicap: null },
+        { value: "Away/Away", odd: fh_aa, handicap: null },
       ],
     },
   ];
@@ -4366,8 +4524,8 @@ function buildMockMarkets(fixture) {
   const u15 = fixture.odds?.totals?.under15 || "3.75";
   const o35 = fixture.odds?.totals?.over35 || "3.10";
   const u35 = fixture.odds?.totals?.under35 || "1.34";
-  const bttsY = fixture.odds?.btts?.yes || "1.72";
-  const bttsN = fixture.odds?.btts?.no || "2.05";
+  const bttsY = getMarketOdds(fixture, "btts", "yes");
+  const bttsN = getMarketOdds(fixture, "btts", "no");
   const dnbH = fixture.odds?.dnb?.home || (h > 1.2 ? (h * 0.72).toFixed(2) : "1.08");
   const dnbA = fixture.odds?.dnb?.away || (a > 1.2 ? (a * 0.72).toFixed(2) : "1.08");
 
@@ -4385,6 +4543,7 @@ function buildMockMarkets(fixture) {
     {
       id: 8,
       name: "Both Teams Score",
+      category: "main",
       values: [
         { value: "Yes", odd: String(bttsY), handicap: null },
         { value: "No", odd: String(bttsN), handicap: null },
@@ -5041,6 +5200,36 @@ async function fetchFixtureMarkets(fixtureId) {
     }
   } catch (_) {}
 
+  const bttsMarkets = [
+    {
+      id: 8,
+      name: "Both Teams Score",
+      category: "main",
+      values: [
+        { value: "Yes", odd: String(getMarketOdds(fixture, "btts", "yes")), handicap: null },
+        { value: "No", odd: String(getMarketOdds(fixture, "btts", "no")), handicap: null },
+      ],
+    },
+    {
+      id: 108,
+      name: "Both Teams To Score - 1st Half",
+      category: "half1",
+      values: [
+        { value: "Yes", odd: String(getMarketOdds(fixture, "half1_btts", "yes")), handicap: null },
+        { value: "No", odd: String(getMarketOdds(fixture, "half1_btts", "no")), handicap: null },
+      ],
+    },
+    {
+      id: 208,
+      name: "Both Teams To Score - 2nd Half",
+      category: "half2",
+      values: [
+        { value: "Yes", odd: String(getMarketOdds(fixture, "half2_btts", "yes")), handicap: null },
+        { value: "No", odd: String(getMarketOdds(fixture, "half2_btts", "no")), handicap: null },
+      ],
+    },
+  ];
+
   const extended = buildExtendedMarkets(fixture, lineupPlayers);
   const combo = buildMockComboMarkets(fixture);
   const corners = buildMockCornerMarkets(fixture);
@@ -5053,9 +5242,16 @@ async function fetchFixtureMarkets(fixtureId) {
   const home = buildMockHomeMarkets(fixture);
   const away = buildMockAwayMarkets(fixture);
   const htft = buildMockHtFtMarkets(fixture);
-  const addOns = [...extended, ...combo, ...corners, ...minutes, ...shots, ...cards, ...specials, ...saves, ...asian, ...home, ...away, ...htft];
+  const addOns = [...bttsMarkets, ...extended, ...combo, ...corners, ...minutes, ...shots, ...cards, ...specials, ...saves, ...asian, ...home, ...away, ...htft];
 
-
+  function marketAlreadyPresent(list, candidate) {
+    if (!Array.isArray(list)) return false;
+    const cNorm = (candidate.name || "").toLowerCase().replace(/to /g, "").trim();
+    return list.some((m) => {
+      const mNorm = (m.name || "").toLowerCase().replace(/to /g, "").trim();
+      return mNorm === cNorm || m.id === candidate.id;
+    });
+  }
 
   try {
     const res = await fetch(
@@ -5068,7 +5264,7 @@ async function fetchFixtureMarkets(fixtureId) {
       if (data.ok && Array.isArray(data.markets) && data.markets.length) {
         const merged = [
           ...data.markets,
-          ...addOns.filter((c) => !data.markets.some((m) => m.name.toLowerCase() === c.name.toLowerCase())),
+          ...addOns.filter((c) => !marketAlreadyPresent(data.markets, c)),
         ];
         state.fixtureMarkets[fixtureId] = merged;
         return merged;
@@ -5079,7 +5275,7 @@ async function fetchFixtureMarkets(fixtureId) {
   const baseMarkets = fixture?.markets?.length > 3 ? fixture.markets : buildMockMarkets(fixture);
   const merged = [
     ...baseMarkets,
-    ...addOns.filter((c) => !baseMarkets.some((m) => m.name.toLowerCase() === c.name.toLowerCase())),
+    ...addOns.filter((c) => !marketAlreadyPresent(baseMarkets, c)),
   ];
   state.fixtureMarkets[fixtureId] = merged;
   return merged;
@@ -5241,6 +5437,8 @@ function getMarketCategories(market) {
     name.includes("winner") ||
     name.includes("double chance") ||
     name.includes("both teams") ||
+    name.includes("btts") ||
+    name.includes("gg/ng") ||
     name.includes("draw no bet") ||
     name.includes("score draw")
   ) {
@@ -5260,6 +5458,9 @@ function getMarketCategories(market) {
       name.includes("goals") ||
       name.includes("total") ||
       name.includes("odd/even") ||
+      name.includes("both teams") ||
+      name.includes("btts") ||
+      name.includes("gg/ng") ||
       name.includes("clean sheet"))
   ) {
     cats.push("goals");
@@ -5421,7 +5622,6 @@ function applySubNav(id) {
   state.leaguePageIds = [];
   state.detailFixtureId = null;
   state.upcomingActiveDropdown = null;
-  state.upcomingMatchLimit = 40;
   updateSubNavHighlight();
 
   if (id === "my-bets") {
@@ -5444,7 +5644,16 @@ function applySubNav(id) {
   }
 
   if (id === "check-bet") {
+    if (document.body.classList.contains("is-admin-mode")) {
+      state.adminTab = "check-bet";
+      document.querySelectorAll(".admin-nav-item").forEach((b) => b.classList.toggle("is-active", b.dataset.adminTab === "check-bet"));
+      document.querySelectorAll(".admin-mob-tab").forEach((b) => b.classList.toggle("is-active", b.dataset.adminTab === "check-bet"));
+    }
     setView("check-bet");
+    setTimeout(() => {
+      const el = $("page-check-bet-id") || $("check-bet-id");
+      if (el) el.focus();
+    }, 100);
     return;
   }
 
@@ -5475,7 +5684,7 @@ function applySubNav(id) {
       state.upcomingDateFilter = state.dailyDateFilter;
       break;
     case "upcoming":
-      state.timeFilter = "24h";
+      state.timeFilter = "all";
       state.leagueFilter = "all";
       state.countryFilter = null;
       state.upcomingDateFilter = "all";
@@ -5745,6 +5954,11 @@ async function loadTicketToSlip(rawId) {
   }
 
   if (!ticket || !ticket.bets || !ticket.bets.length) {
+    const rawDigits = cleanId.replace(/\D/g, "");
+    if (rawDigits.length === 5 || cleanId.toUpperCase().startsWith("BOOK-")) {
+      await loadBookedBetByCode(rawDigits.length === 5 ? rawDigits : cleanId);
+      return;
+    }
     toast(`Ticket "${cleanId}" not found`, "err");
     return;
   }
@@ -5784,11 +5998,14 @@ async function loadTicketToSlip(rawId) {
 
   save();
   renderSlip();
-  if (state.view !== "sports") setView("sports");
   syncMobileSlipCount();
 
+  if (typeof renderCheckBetLoadedSlip === "function") {
+    renderCheckBetLoadedSlip(ticket, "ticket");
+  }
+
   const slipList = $("slip-list");
-  if (slipList) {
+  if (slipList && !slipList.hidden) {
     slipList.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -6082,106 +6299,377 @@ function renderBetResultBadge(result) {
   return "";
 }
 
+function extractFixtureCards(fixtureData, fid, homeName, awayName) {
+  const cards = {
+    homeYellow: 0,
+    awayYellow: 0,
+    totalYellow: 0,
+    htHomeYellow: 0,
+    htAwayYellow: 0,
+    htTotalYellow: 0,
+    shHomeYellow: 0,
+    shAwayYellow: 0,
+    shTotalYellow: 0,
+    homeRed: 0,
+    awayRed: 0,
+    totalRed: 0,
+    firstYellow: null,
+    lastYellow: null,
+  };
+
+  const hNorm = String(homeName || fixtureData.home?.name || fixtureData.teams?.home?.name || "").trim().toLowerCase();
+  const aNorm = String(awayName || fixtureData.away?.name || fixtureData.teams?.away?.name || "").trim().toLowerCase();
+
+  // 1. Direct cards object on fixtureData
+  if (fixtureData.cards) {
+    const c = fixtureData.cards;
+    cards.homeYellow = Number(c.homeYellow ?? c.home_yellow ?? c.home ?? 0);
+    cards.awayYellow = Number(c.awayYellow ?? c.away_yellow ?? c.away ?? 0);
+    cards.totalYellow = cards.homeYellow + cards.awayYellow;
+
+    cards.htHomeYellow = Number(c.htHomeYellow ?? c.ht_home_yellow ?? c.halftime?.home ?? (cards.homeYellow === 0 ? 0 : Math.floor(cards.homeYellow / 2)));
+    cards.htAwayYellow = Number(c.htAwayYellow ?? c.ht_away_yellow ?? c.halftime?.away ?? (cards.awayYellow === 0 ? 0 : Math.floor(cards.awayYellow / 2)));
+    cards.htTotalYellow = cards.htHomeYellow + cards.htAwayYellow;
+
+    cards.shHomeYellow = Math.max(0, cards.homeYellow - cards.htHomeYellow);
+    cards.shAwayYellow = Math.max(0, cards.awayYellow - cards.htAwayYellow);
+    cards.shTotalYellow = cards.shHomeYellow + cards.shAwayYellow;
+
+    cards.homeRed = Number(c.homeRed ?? c.home_red ?? 0);
+    cards.awayRed = Number(c.awayRed ?? c.away_red ?? 0);
+    cards.totalRed = cards.homeRed + cards.awayRed;
+
+    cards.firstYellow = c.firstYellow || (cards.homeYellow > 0 && cards.awayYellow === 0 ? "home" : (cards.awayYellow > 0 && cards.homeYellow === 0 ? "away" : "home"));
+    cards.lastYellow = c.lastYellow || (cards.awayYellow > 0 ? "away" : (cards.homeYellow > 0 ? "home" : null));
+    return cards;
+  }
+
+  // 2. API-Sports events list
+  if (Array.isArray(fixtureData.events) && fixtureData.events.length > 0) {
+    let foundAnyCard = false;
+    for (const ev of fixtureData.events) {
+      if (String(ev.type).toLowerCase() === "card") {
+        const detail = String(ev.detail || "").toLowerCase();
+        const teamName = String(ev.team?.name || "").toLowerCase();
+        const isHome = (hNorm && (teamName.includes(hNorm) || hNorm.includes(teamName))) || ev.team?.id === fixtureData.teams?.home?.id;
+        const elapsed = Number(ev.time?.elapsed || 0);
+        const isHT = elapsed <= 45;
+
+        if (detail.includes("yellow") || detail === "yellow card" || detail === "yellow/red") {
+          foundAnyCard = true;
+          if (isHome) {
+            cards.homeYellow++;
+            if (isHT) cards.htHomeYellow++;
+            else cards.shHomeYellow++;
+          } else {
+            cards.awayYellow++;
+            if (isHT) cards.htAwayYellow++;
+            else cards.shAwayYellow++;
+          }
+          if (!cards.firstYellow) {
+            cards.firstYellow = isHome ? "home" : "away";
+          }
+          cards.lastYellow = isHome ? "home" : "away";
+        }
+        if (detail.includes("red")) {
+          if (isHome) cards.homeRed++;
+          else cards.awayRed++;
+        }
+      }
+    }
+    cards.totalYellow = cards.homeYellow + cards.awayYellow;
+    cards.htTotalYellow = cards.htHomeYellow + cards.htAwayYellow;
+    cards.shTotalYellow = cards.shHomeYellow + cards.shAwayYellow;
+    cards.totalRed = cards.homeRed + cards.awayRed;
+    if (foundAnyCard) {
+      return cards;
+    }
+  }
+
+  // 3. API-Sports statistics
+  if (Array.isArray(fixtureData.statistics) && fixtureData.statistics.length >= 2) {
+    const homeStats = fixtureData.statistics[0]?.statistics || [];
+    const awayStats = fixtureData.statistics[1]?.statistics || [];
+    const hYellow = Number(homeStats.find((s) => s.type === "Yellow Cards")?.value || 0);
+    const aYellow = Number(awayStats.find((s) => s.type === "Yellow Cards")?.value || 0);
+    const hRed = Number(homeStats.find((s) => s.type === "Red Cards")?.value || 0);
+    const aRed = Number(awayStats.find((s) => s.type === "Red Cards")?.value || 0);
+
+    if (hYellow > 0 || aYellow > 0 || hRed > 0 || aRed > 0) {
+      cards.homeYellow = hYellow;
+      cards.awayYellow = aYellow;
+      cards.totalYellow = hYellow + aYellow;
+      cards.htHomeYellow = Math.floor(hYellow / 2);
+      cards.htAwayYellow = Math.floor(aYellow / 2);
+      cards.htTotalYellow = cards.htHomeYellow + cards.htAwayYellow;
+      cards.shHomeYellow = hYellow - cards.htHomeYellow;
+      cards.shAwayYellow = aYellow - cards.htAwayYellow;
+      cards.shTotalYellow = cards.shHomeYellow + cards.shAwayYellow;
+      cards.homeRed = hRed;
+      cards.awayRed = aRed;
+      cards.totalRed = hRed + aRed;
+      cards.firstYellow = hYellow >= aYellow ? "home" : "away";
+      cards.lastYellow = aYellow > 0 ? "away" : "home";
+      return cards;
+    }
+  }
+
+  // 4. Deterministic fallback based on match fixture ID / team names
+  const seedStr = `${fid || ""}_${hNorm}_${aNorm}`;
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
+  }
+  const htH = hash % 2;
+  const htA = (hash >> 2) % 2;
+  const shH = 1 + ((hash >> 4) % 2);
+  const shA = 1 + ((hash >> 6) % 2);
+
+  cards.htHomeYellow = htH;
+  cards.htAwayYellow = htA;
+  cards.htTotalYellow = htH + htA;
+  cards.shHomeYellow = shH;
+  cards.shAwayYellow = shA;
+  cards.shTotalYellow = shH + shA;
+  cards.homeYellow = htH + shH;
+  cards.awayYellow = htA + shA;
+  cards.totalYellow = cards.homeYellow + cards.awayYellow;
+  cards.homeRed = ((hash >> 8) % 10 === 0) ? 1 : 0;
+  cards.awayRed = ((hash >> 10) % 12 === 0) ? 1 : 0;
+  cards.totalRed = cards.homeRed + cards.awayRed;
+  cards.firstYellow = htH > 0 ? "home" : (htA > 0 ? "away" : "home");
+  cards.lastYellow = shA > 0 ? "away" : "home";
+
+  return cards;
+}
+
 function evaluateFixtureBetResult(fixture, b) {
   if (!fixture) return null;
+  const fid = Number(b.fixtureId || fixture.fixtureId || fixture.id);
   const gh = Number(fixture.goals?.home ?? fixture.score?.fulltime?.home ?? fixture.score?.home ?? 0);
   const ga = Number(fixture.goals?.away ?? fixture.score?.fulltime?.away ?? fixture.score?.away ?? 0);
-  const mKey = String(b.market || b.marketKey || "").toLowerCase();
-  const mName = String(b.marketName || "").toLowerCase();
-  const sVal = String(b.selection || b.value || "").toLowerCase();
-  const sName = String(b.selectionName || "").toLowerCase();
-  const mCombined = `${mKey} ${mName}`.toLowerCase();
-  const sCombined = `${sVal} ${sName}`.toLowerCase();
+  const market = String(b.marketName || b.market || b.marketKey || "").toLowerCase();
+  const k = String(b.marketKey || b.market || "").toLowerCase();
+  const sel = String(b.selection || b.value || b.selectionName || "").toLowerCase();
   const hName = String(b.homeName || fixture.home?.name || "").toLowerCase();
   const aName = String(b.awayName || fixture.away?.name || "").toLowerCase();
 
-  // 1. Over / Under (Total Goals) - evaluate FIRST
-  const isOuMarket = (
-    mKey.startsWith("ou") ||
-    mKey === "ou" ||
-    mCombined.includes("over/under") ||
-    mCombined.includes("over / under") ||
-    mCombined.includes("total goals") ||
-    mCombined.includes("goals over") ||
-    mCombined.includes("totals") ||
-    sCombined.includes("over") ||
-    sCombined.includes("under") ||
-    /^[ou]\d/.test(mKey) ||
-    /^[ou]\s*\d/i.test(sCombined)
-  );
+  // ── SPECIALIZED HANDLER: CARDS & YELLOW CARDS ─────────────────────────────
+  const isCardsMarket = market.includes("yellow card") || market.includes("cards:") || market.includes("card:") ||
+    (market.includes("card") && !market.includes("handicap") && !market.includes("score")) ||
+    (k.startsWith("m7") && Number(k.replace("m", "")) >= 710 && Number(k.replace("m", "")) <= 730);
 
-  if (isOuMarket && !mCombined.includes("1st half") && !mKey.includes("half1")) {
-    const total = gh + ga;
-    let line = 2.5;
-    if (mKey === "ou15") line = 1.5;
-    else if (mKey === "ou" || mKey === "ou25") line = 2.5;
-    else if (mKey === "ou35") line = 3.5;
-    else if (mKey === "ou45") line = 4.5;
-    else if (mKey === "ou05") line = 0.5;
-    else {
-      const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
-      if (numMatch) line = parseFloat(numMatch[1]);
+  if (isCardsMarket) {
+    const cards = extractFixtureCards(fixture, fid, hName, aName);
+    let won = false;
+
+    // 1. 1st Half Yellow Cards Total / Over / Under
+    if (market.includes("1st half") && (market.includes("total") || market.includes("over") || market.includes("under"))) {
+      if (market.includes("home")) {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.htHomeYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.htHomeYellow < line;
+      } else if (market.includes("away")) {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.htAwayYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.htAwayYellow < line;
+      } else {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.htTotalYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.htTotalYellow < line;
+      }
+    }
+    // 2. 1st Half Yellow Cards Result
+    else if (market.includes("1st half") && market.includes("result")) {
+      let htOutcome = "draw";
+      if (cards.htHomeYellow > cards.htAwayYellow) htOutcome = "home";
+      else if (cards.htAwayYellow > cards.htHomeYellow) htOutcome = "away";
+      if (htOutcome === "home" && (sel === "home" || sel === "1" || sel === "w1")) won = true;
+      if (htOutcome === "draw" && (sel === "draw" || sel === "x")) won = true;
+      if (htOutcome === "away" && (sel === "away" || sel === "2" || sel === "w2")) won = true;
+    }
+    // 3. 1st Half Yellow Cards Handicap
+    else if (market.includes("1st half") && market.includes("handicap")) {
+      const matchHd = sel.match(/([+-]?\d+(?:\.\d+)?)/);
+      const hd = matchHd ? parseFloat(matchHd[1]) : 0;
+      const isHome = sel.includes("home") || sel.includes("1") || sel.includes("w1") || (hName && sel.includes(hName));
+      if (isHome) {
+        won = (cards.htHomeYellow + hd) > cards.htAwayYellow;
+      } else {
+        won = (cards.htAwayYellow + hd) > cards.htHomeYellow;
+      }
+    }
+    // 4. 2nd Half Yellow Cards Total
+    else if (market.includes("2nd half") && (market.includes("total") || market.includes("over") || market.includes("under"))) {
+      if (market.includes("home")) {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.shHomeYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.shHomeYellow < line;
+      } else if (market.includes("away")) {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 0.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.shAwayYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.shAwayYellow < line;
+      } else {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.shTotalYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.shTotalYellow < line;
+      }
+    }
+    // 5. 2nd Half Yellow Cards Result
+    else if (market.includes("2nd half") && market.includes("result")) {
+      let shOutcome = "draw";
+      if (cards.shHomeYellow > cards.shAwayYellow) shOutcome = "home";
+      else if (cards.shAwayYellow > cards.shHomeYellow) shOutcome = "away";
+      if (shOutcome === "home" && (sel === "home" || sel === "1" || sel === "w1")) won = true;
+      if (shOutcome === "draw" && (sel === "draw" || sel === "x")) won = true;
+      if (shOutcome === "away" && (sel === "away" || sel === "2" || sel === "w2")) won = true;
+    }
+    // 6. First Yellow Card
+    else if (market.includes("first yellow")) {
+      if (cards.totalYellow === 0 && (sel === "neither" || sel === "none")) won = true;
+      else if (cards.firstYellow === "home" && (sel === "home" || sel === "1" || sel === "w1" || (hName && sel.includes(hName)))) won = true;
+      else if (cards.firstYellow === "away" && (sel === "away" || sel === "2" || sel === "w2" || (aName && sel.includes(aName)))) won = true;
+    }
+    // 7. Last Yellow Card
+    else if (market.includes("last yellow")) {
+      if (cards.totalYellow === 0 && (sel === "neither" || sel === "none")) won = true;
+      else if (cards.lastYellow === "home" && (sel === "home" || sel === "1" || sel === "w1" || (hName && sel.includes(hName)))) won = true;
+      else if (cards.lastYellow === "away" && (sel === "away" || sel === "2" || sel === "w2" || (aName && sel.includes(aName)))) won = true;
+    }
+    // 8. Both Teams to Receive a Card
+    else if (market.includes("both teams to receive a card")) {
+      const bothReceived = (cards.homeYellow > 0 || cards.homeRed > 0) && (cards.awayYellow > 0 || cards.awayRed > 0);
+      if (sel === "yes" && bothReceived) won = true;
+      if (sel === "no" && !bothReceived) won = true;
+    }
+    // 9. Both Teams to Receive 2 or More Card Points (1 pt yellow, 2 pt red)
+    else if (market.includes("2 or more card points")) {
+      const ptsH = cards.homeYellow + cards.homeRed * 2;
+      const ptsA = cards.awayYellow + cards.awayRed * 2;
+      const both2Pts = ptsH >= 2 && ptsA >= 2;
+      if (sel === "yes" && both2Pts) won = true;
+      if (sel === "no" && !both2Pts) won = true;
+    }
+    // 10. A Card in Both Halves
+    else if (market.includes("card in both halves")) {
+      const inBoth = cards.htTotalYellow > 0 && cards.shTotalYellow > 0;
+      if (sel === "yes" && inBoth) won = true;
+      if (sel === "no" && !inBoth) won = true;
+    }
+    // 11. Red Card / Sending Off
+    else if (market.includes("red card") || market.includes("sending off")) {
+      const hasRed = cards.totalRed > 0;
+      if (sel === "yes" && hasRed) won = true;
+      if (sel === "no" && !hasRed) won = true;
+    }
+    // 12. Full-Time Yellow Cards Total / Over / Under
+    else if (market.includes("total") || market.includes("over") || market.includes("under")) {
+      if (market.includes("home")) {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.homeYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.homeYellow < line;
+      } else if (market.includes("away")) {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 1.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.awayYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.awayYellow < line;
+      } else {
+        const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || market.match(/(\d+(?:\.\d+)?)/);
+        const line = numMatch ? parseFloat(numMatch[1]) : 3.5;
+        if (sel.includes("over") || sel.startsWith("o")) won = cards.totalYellow > line;
+        else if (sel.includes("under") || sel.startsWith("u")) won = cards.totalYellow < line;
+      }
+    }
+    // 13. Full-Time Yellow Cards Result
+    else if (market.includes("result") || market.includes("winner")) {
+      let ftOutcome = "draw";
+      if (cards.homeYellow > cards.awayYellow) ftOutcome = "home";
+      else if (cards.awayYellow > cards.homeYellow) ftOutcome = "away";
+      if (ftOutcome === "home" && (sel === "home" || sel === "1" || sel === "w1")) won = true;
+      if (ftOutcome === "draw" && (sel === "draw" || sel === "x")) won = true;
+      if (ftOutcome === "away" && (sel === "away" || sel === "2" || sel === "w2")) won = true;
+    }
+    // 14. Full-Time Yellow Cards Handicap
+    else if (market.includes("handicap")) {
+      const matchHd = sel.match(/([+-]?\d+(?:\.\d+)?)/);
+      const hd = matchHd ? parseFloat(matchHd[1]) : 0;
+      const isHome = sel.includes("home") || sel.includes("1") || sel.includes("w1") || (hName && sel.includes(hName));
+      if (isHome) {
+        won = (cards.homeYellow + hd) > cards.awayYellow;
+      } else {
+        won = (cards.awayYellow + hd) > cards.homeYellow;
+      }
     }
 
-    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o") || sCombined.includes(">");
-    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u") || sCombined.includes("<");
-
-    if (isOver) return total > line ? "won" : "lost";
-    if (isUnder) return total < line ? "won" : "lost";
+    return {
+      finished: true,
+      won,
+      score: `Cards: ${cards.homeYellow}-${cards.awayYellow}`,
+      htScore: `${cards.htHomeYellow}:${cards.htAwayYellow}`,
+      ftScore: `${cards.homeYellow}:${cards.awayYellow}`,
+      cards,
+    };
   }
 
-  // 2. 1st Half Over / Under
-  if (isOuMarket && (mCombined.includes("1st half") || mKey.includes("half1") || mKey === "half1_ou15")) {
-    const hth = Number(fixture.score?.halftime?.home ?? fixture.score?.htHome ?? (gh === 0 ? 0 : Math.floor(gh / 2)));
-    const hta = Number(fixture.score?.halftime?.away ?? fixture.score?.htAway ?? (ga === 0 ? 0 : Math.floor(ga / 2)));
-    const htTotal = hth + hta;
-    let line = 1.5;
-    const numMatch = sCombined.match(/(\d+(?:\.\d+)?)/) || mCombined.match(/(\d+(?:\.\d+)?)/);
-    if (numMatch) line = parseFloat(numMatch[1]);
-    const isOver = sCombined.includes("over") || sVal === "over" || sCombined.startsWith("o");
-    const isUnder = sCombined.includes("under") || sVal === "under" || sCombined.startsWith("u");
-    if (isOver) return htTotal > line ? "won" : "lost";
-    if (isUnder) return htTotal < line ? "won" : "lost";
+  // 1. Match Result / 1X2 / Winner
+  if (market === "1x2" || market.includes("match") || market.includes("winner") || String(b.marketName || "").toLowerCase().includes("match result") || !market) {
+    if (gh > ga) {
+      return (sel === "home" || sel === "1" || sel === "w1" || (hName && (sel === hName || hName.includes(sel)))) ? "won" : "lost";
+    } else if (ga > gh) {
+      return (sel === "away" || sel === "2" || sel === "w2" || (aName && (sel === aName || aName.includes(sel)))) ? "won" : "lost";
+    } else {
+      return (sel === "draw" || sel === "x") ? "won" : "lost";
+    }
+  }
+
+  // 2. Over / Under (Total Goals)
+  if (market.includes("over") || market.includes("under") || String(b.marketName || "").toLowerCase().includes("over/under") || market.includes("total")) {
+    const total = gh + ga;
+    const isOver = sel.includes("over") || sel.startsWith("o");
+    const numMatch = sel.match(/(\d+(?:\.\d+)?)/) || String(b.marketName || "").match(/(\d+(?:\.\d+)?)/);
+    const line = numMatch ? parseFloat(numMatch[1]) : 2.5;
+    if (isOver) return total > line ? "won" : "lost";
+    return total < line ? "won" : "lost";
   }
 
   // 3. Both Teams to Score (GG/NG)
-  if (mKey === "btts" || mCombined.includes("btts") || mCombined.includes("both") || mCombined.includes("gg")) {
+  if (market.includes("btts") || market.includes("gg") || String(b.marketName || "").toLowerCase().includes("both teams")) {
     const bothScored = gh > 0 && ga > 0;
-    const wantsYes = sCombined.includes("yes") || sCombined.includes("gg");
+    const wantsYes = sel === "yes" || sel === "gg";
     return (wantsYes && bothScored) || (!wantsYes && !bothScored) ? "won" : "lost";
   }
 
-  // 4. Double Chance (1X, 12, X2)
-  if (mKey === "dc" || mCombined.includes("double") || mCombined.includes("dc")) {
-    if (sCombined.includes("1x") || sCombined.includes("1/x")) return gh >= ga ? "won" : "lost";
-    if (sCombined.includes("x2") || sCombined.includes("x/2")) return ga >= gh ? "won" : "lost";
-    if (sCombined.includes("12") || sCombined.includes("1/2")) return gh !== ga ? "won" : "lost";
+  // 4. Double Chance
+  if (market.includes("double") || String(b.marketName || "").toLowerCase().includes("double chance") || market.includes("dc")) {
+    if (sel === "1x" || sel === "1/x") return gh >= ga ? "won" : "lost";
+    if (sel === "x2" || sel === "x/2") return ga >= gh ? "won" : "lost";
+    if (sel === "12" || sel === "1/2") return gh !== ga ? "won" : "lost";
   }
 
-  // 5. Draw No Bet (DNB)
-  if (mKey === "dnb" || mCombined.includes("dnb") || mCombined.includes("draw no bet")) {
-    if (gh === ga) return "won"; // push
-    if (gh > ga) return (sCombined.includes("home") || sCombined === "1" || (hName && sCombined.includes(hName))) ? "won" : "lost";
-    return (sCombined.includes("away") || sCombined === "2" || (aName && sCombined.includes(aName))) ? "won" : "lost";
-  }
-
-  // 6. Half Time 1X2
-  if (mKey === "half1_1x2" || (mCombined.includes("1st half") || mCombined.includes("half")) && (mCombined.includes("1x2") || mCombined.includes("winner") || mCombined.includes("result"))) {
+  // 5. Half Time 1X2
+  if (market.includes("half") || market.includes("ht")) {
     const hth = Number(fixture.score?.halftime?.home ?? fixture.score?.htHome ?? (gh === 0 ? 0 : Math.floor(gh / 2)));
     const hta = Number(fixture.score?.halftime?.away ?? fixture.score?.htAway ?? (ga === 0 ? 0 : Math.floor(ga / 2)));
-    if (hth > hta) return (sCombined.includes("home") || sCombined === "1" || sCombined === "w1") ? "won" : "lost";
-    if (hta > hth) return (sCombined.includes("away") || sCombined === "2" || sCombined === "w2") ? "won" : "lost";
-    return (sCombined.includes("draw") || sCombined === "x") ? "won" : "lost";
+    if (hth > hta) return (sel === "home" || sel === "1" || sel === "w1") ? "won" : "lost";
+    if (hta > hth) return (sel === "away" || sel === "2" || sel === "w2") ? "won" : "lost";
+    return (sel === "draw" || sel === "x") ? "won" : "lost";
   }
 
-  // 7. Match Result / 1X2 / Winner (Default)
-  if (gh > ga) {
-    return (sCombined.includes("home") || sCombined === "1" || sCombined === "w1" || (hName && (sCombined === hName || hName.includes(sCombined)))) ? "won" : "lost";
-  } else if (ga > gh) {
-    return (sCombined.includes("away") || sCombined === "2" || sCombined === "w2" || (aName && (sCombined === aName || aName.includes(sCombined)))) ? "won" : "lost";
-  } else {
-    return (sCombined.includes("draw") || sCombined === "x") ? "won" : "lost";
+  // 6. Draw No Bet (DNB)
+  if (market.includes("dnb") || market.includes("draw no bet")) {
+    if (gh === ga) return "won";
+    if (gh > ga) return (sel === "home" || sel === "1" || sel === "w1") ? "won" : "lost";
+    return (sel === "away" || sel === "2" || sel === "w2") ? "won" : "lost";
   }
+
+  return null;
 }
 
 function resolveMatchFinishedResult(b) {
@@ -6207,15 +6695,23 @@ function resolveMatchFinishedResult(b) {
         const htAway = Number(live.score?.halftime?.away ?? (ga === 0 ? 0 : Math.floor(ga / 2)));
         const fixtureObj = {
           goals: { home: gh, away: ga },
-          score: { halftime: { home: htHome, away: htAway }, fulltime: { home: gh, away: ga } }
+          score: { halftime: { home: htHome, away: htAway }, fulltime: { home: gh, away: ga } },
+          events: live.events || [],
+          statistics: live.statistics || [],
+          cards: live.cards,
         };
         const outcome = evaluateFixtureBetResult(fixtureObj, b);
+        const won = typeof outcome === "object" ? outcome.won : outcome === "won";
+        const resHt = (typeof outcome === "object" && outcome.htScore) || `${htHome}:${htAway}`;
+        const resFt = (typeof outcome === "object" && outcome.ftScore) || `${gh}:${ga}`;
+        const resScore = (typeof outcome === "object" && outcome.score) || `${gh}:${ga}`;
         return {
           finished: true,
-          won: outcome === "won",
-          htScore: `${htHome}:${htAway}`,
-          ftScore: `${gh}:${ga}`,
-          score: `${gh}:${ga}`,
+          won,
+          htScore: resHt,
+          ftScore: resFt,
+          score: resScore,
+          cards: typeof outcome === "object" ? outcome.cards : null,
         };
       } else {
         // Actively live / ongoing (HT, 1H, 2H) -> NOT finished!
@@ -6241,15 +6737,23 @@ function resolveMatchFinishedResult(b) {
           const htAway = Number(match.score?.halftime?.away ?? 0);
           const fixtureObj = {
             goals: { home: gh, away: ga },
-            score: { halftime: { home: htHome, away: htAway }, fulltime: { home: gh, away: ga } }
+            score: { halftime: { home: htHome, away: htAway }, fulltime: { home: gh, away: ga } },
+            events: match.events || [],
+            statistics: match.statistics || [],
+            cards: match.cards,
           };
           const outcome = evaluateFixtureBetResult(fixtureObj, b);
+          const won = typeof outcome === "object" ? outcome.won : outcome === "won";
+          const resHt = (typeof outcome === "object" && outcome.htScore) || `${htHome}:${htAway}`;
+          const resFt = (typeof outcome === "object" && outcome.ftScore) || `${gh}:${ga}`;
+          const resScore = (typeof outcome === "object" && outcome.score) || `${gh}:${ga}`;
           return {
             finished: true,
-            won: outcome === "won",
-            htScore: `${htHome}:${htAway}`,
-            ftScore: `${gh}:${ga}`,
-            score: `${gh}:${ga}`,
+            won,
+            htScore: resHt,
+            ftScore: resFt,
+            score: resScore,
+            cards: typeof outcome === "object" ? outcome.cards : null,
           };
         } else {
           return { finished: false };
@@ -6270,15 +6774,21 @@ function resolveMatchFinishedResult(b) {
       const htAway = Number(htParts[1] || 0);
       const fixtureObj = {
         goals: { home: gh, away: ga },
-        score: { halftime: { home: htHome, away: htAway }, fulltime: { home: gh, away: ga } }
+        score: { halftime: { home: htHome, away: htAway }, fulltime: { home: gh, away: ga } },
+        cards: fs.cards,
       };
       const outcome = evaluateFixtureBetResult(fixtureObj, b);
+      const won = typeof outcome === "object" ? outcome.won : outcome === "won";
+      const resHt = (typeof outcome === "object" && outcome.htScore) || `${htHome}:${htAway}`;
+      const resFt = (typeof outcome === "object" && outcome.ftScore) || `${gh}:${ga}`;
+      const resScore = (typeof outcome === "object" && outcome.score) || `${gh}:${ga}`;
       return {
         finished: true,
-        won: outcome === "won",
-        htScore: `${htHome}:${htAway}`,
-        ftScore: `${gh}:${ga}`,
-        score: `${gh}:${ga}`,
+        won,
+        htScore: resHt,
+        ftScore: resFt,
+        score: resScore,
+        cards: typeof outcome === "object" ? outcome.cards : null,
       };
     } else {
       // If fixtureScores exists but is not finished (e.g. NS or HT), it's NOT finished!
@@ -6292,12 +6802,17 @@ function resolveMatchFinishedResult(b) {
     const outcome = evaluateFixtureBetResult(f, b);
     const gh = Number(f.goals?.home ?? 0);
     const ga = Number(f.goals?.away ?? 0);
+    const won = typeof outcome === "object" ? outcome.won : outcome === "won";
+    const resHt = (typeof outcome === "object" && outcome.htScore) || `${Math.floor(gh / 2)}:${Math.floor(ga / 2)}`;
+    const resFt = (typeof outcome === "object" && outcome.ftScore) || `${gh}:${ga}`;
+    const resScore = (typeof outcome === "object" && outcome.score) || `${gh}:${ga}`;
     return {
       finished: true,
-      won: outcome === "won",
-      htScore: `${Math.floor(gh / 2)}:${Math.floor(ga / 2)}`,
-      ftScore: `${gh}:${ga}`,
-      score: `${gh}:${ga}`,
+      won,
+      htScore: resHt,
+      ftScore: resFt,
+      score: resScore,
+      cards: typeof outcome === "object" ? outcome.cards : null,
     };
   }
 
@@ -6829,7 +7344,8 @@ async function settleEndedTickets(targetTicketId = null) {
         b.status = res.won ? "won" : "lost";
         b.htScore = res.htScore || b.htScore;
         b.ftScore = res.ftScore || b.ftScore;
-        b.score = res.ftScore || b.score;
+        b.score = res.score || res.ftScore || b.score;
+        if (res.cards) b.cards = res.cards;
         if (!res.won) anyLost = true;
       } else {
         allFinished = false;
@@ -6914,6 +7430,13 @@ async function checkAndShowTicket(ticketId) {
     return;
   }
 
+  // 1. Check if 5-digit booking code or starts with BOOK-
+  const rawDigits = cleanId.replace(/\D/g, "");
+  if (rawDigits.length === 5 || cleanId.toUpperCase().startsWith("BOOK-")) {
+    await loadBookedBetByCode(rawDigits.length === 5 ? rawDigits : cleanId);
+    return;
+  }
+
   await settleEndedTickets(cleanId);
 
   let ticket = findTicketByIdOrCashier(cleanId);
@@ -6934,15 +7457,45 @@ async function checkAndShowTicket(ticketId) {
     } catch (_) {}
   }
 
+  // If ticket is marked as a booked bet from API
+  if (ticket && (ticket.isBookedBet || ticket.status === "booked")) {
+    const bets = ticket.bets || ticket.slip || [];
+    loadItemsIntoSlip(bets, ticket.stake || 20);
+    renderCheckBetLoadedSlip(ticket, "booked");
+    toast(`✓ Loaded booked bet *${cleanId}* (${bets.length} teams)`, "ok");
+    return;
+  }
+
+  // If not found as ticket, check if it is a booked bet in API
+  if (!ticket && useApi() && api().fetchBookedBet) {
+    try {
+      const resBook = await api().fetchBookedBet(cleanId);
+      if (resBook && resBook.ok && resBook.booking) {
+        const bookedItem = {
+          code: resBook.booking.code,
+          slip: resBook.booking.selections,
+          stake: resBook.booking.stake,
+          totalOdds: resBook.booking.totalOdds,
+          potentialWin: resBook.booking.potentialWin,
+          createdAt: resBook.booking.createdAt,
+        };
+        loadItemsIntoSlip(bookedItem.slip, bookedItem.stake || 20);
+        renderCheckBetLoadedSlip(bookedItem, "booked");
+        toast(`✓ Loaded booked bet *${resBook.booking.code}* (${bookedItem.slip.length} teams)`, "ok");
+        return;
+      }
+    } catch (_) {}
+  }
+
   if (!ticket) {
     const panel = $("check-bet-result-panel");
     if (panel) {
       panel.hidden = false;
       panel.innerHTML = `
-        <div style="padding: 24px; text-align: center; color: #d32f2f;">
+        <div style="padding: 24px; text-align: center; color: #d32f2f; background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; margin: 16px auto; max-width: 600px;">
           <div style="font-size: 24px; margin-bottom: 8px;">✕</div>
           <div style="font-size: 15px; font-weight: 800;">Ticket Not Found</div>
-          <div style="font-size: 12px; color: #666; margin-top: 4px;">No ticket found matching ID or Cashier Code "${escapeHtml(cleanId)}". Please check the code and try again.</div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">No ticket or booking code found matching "${escapeHtml(cleanId)}". Please check the code and try again.</div>
         </div>`;
     }
     toast(`Ticket ID / Cashier Code ${cleanId} not found`, "err");
@@ -6964,24 +7517,11 @@ async function checkAndShowTicket(ticketId) {
     }
   }
 
-  // 1. Show the ticket check modal popup on screen (with matches passed/failed just like in Image 2!)
+  // 1. Show the ticket check modal popup on screen
   showTicketCheckModal(ticket);
 
-  // 2. Also render into check-bet-result-panel on the check-bet page
-  const panel = $("check-bet-result-panel");
-  if (panel) {
-    panel.hidden = false;
-    panel.innerHTML = `
-      <div class="cb-receipt-panel-wrap" style="max-width: 390px; margin: 0 auto 24px auto;">
-        <div class="cb-ticket-actions" style="margin-bottom: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-          <button type="button" class="btn-load-tool" data-repeat-ticket="${ticket.id}" style="background: #059669; padding: 9px 18px; color: white;">➕ Load into Betslip</button>
-          <button type="button" class="btn-load-tool" data-print-ticket="${ticket.id}" style="background: #2563eb; padding: 9px 18px; color: white;">🖨️ Print Ticket</button>
-        </div>
-        <div class="receipt-paper" style="box-shadow: 0 4px 18px rgba(0,0,0,0.15); border-radius: 4px; margin: 0 auto;">
-          ${buildTicketReceiptHtml(ticket, { forceReprint: true, markPrinted: false })}
-        </div>
-      </div>`;
-  }
+  // 2. Also render loaded matches card directly into check-bet-result-panel on the check-bet page!
+  renderCheckBetLoadedSlip(ticket, "ticket");
 
   // Toast status
   const allBets = ticket.bets || [];
@@ -7097,7 +7637,9 @@ function renderMyBetsPage() {
           : `<span>${oddVal}</span>`;
         const resultBadgeHtml = renderBetResultBadge(res);
         const scores = getMatchExactScores(b, t, res);
-        const scoresHtml = (res && scores) ? `<span class="mb-event-scores">HT ${scores.ht} FT ${scores.ft}</span>` : "";
+        const isCardBet = String(b.marketName || b.market || "").toLowerCase().includes("card");
+        const cardPrefix = isCardBet ? "Cards: " : "";
+        const scoresHtml = (res && scores) ? `<span class="mb-event-scores">${cardPrefix}HT ${scores.ht} FT ${scores.ft}</span>` : "";
 
         return `
         <div class="mb-event-row">
@@ -9137,6 +9679,9 @@ function renderFlashscoreModal() {
         <span>${escapeHtml(lgName)}</span>
       </div>
       <div class="fs-topbar-actions">
+        <button type="button" class="fs-enter-result-btn" id="fs-enter-result-btn" title="Enter / Settle Match Result with Yellow Cards" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#e60028;color:#fff;border:none;border-radius:4px;font-size:11.5px;font-weight:700;cursor:pointer;">
+          <span>📝 Enter Result</span>
+        </button>
         <button type="button" class="fs-new-window-btn" title="Open in new window">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           <span>New window</span>
@@ -9220,6 +9765,13 @@ function renderFlashscoreModal() {
   const closeBtn = $("fs-modal-close-btn");
   if (closeBtn) closeBtn.addEventListener("click", closeFlashscoreMatchModal);
 
+  const enterResBtn = $("fs-enter-result-btn");
+  if (enterResBtn) {
+    enterResBtn.addEventListener("click", () => {
+      openEnterResultModal(m);
+    });
+  }
+
   container.querySelectorAll("[data-fs-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.fsModalTab = btn.dataset.fsTab;
@@ -9284,9 +9836,103 @@ function renderFlashscoreModal() {
   });
 }
 
+function renderFlashscoreOddsTable(m) {
+  const pill = state.fsOddsPill || "1x2";
+  if (pill === "btts") {
+    const yOdd = getMarketOdds(m, "btts", "yes");
+    const nOdd = getMarketOdds(m, "btts", "no");
+    const yTrend = getOddTrend(`${m?.fixtureId || m?.id}_btts_yes`, yOdd);
+    const nTrend = getOddTrend(`${m?.fixtureId || m?.id}_btts_no`, nOdd);
+    return `
+      <div class="fs-odds-table">
+        <div class="fs-odds-head" style="display:grid;grid-template-columns:1fr 1fr;">
+          <span>YES (GG)</span>
+          <span>NO (NG)</span>
+        </div>
+        <div class="fs-odds-row" style="display:grid;grid-template-columns:1fr 1fr;">
+          <button type="button" class="fs-odd-cell">
+            <span class="${yTrend === "up" ? "trend-up" : (yTrend ? "trend-down" : "")}">${yTrend === "up" ? "↑" : (yTrend ? "↓" : "")}</span>
+            <span>${yOdd}</span>
+          </button>
+          <button type="button" class="fs-odd-cell">
+            <span class="${nTrend === "up" ? "trend-up" : (nTrend ? "trend-down" : "")}">${nTrend === "up" ? "↑" : (nTrend ? "↓" : "")}</span>
+            <span>${nOdd}</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  if (pill === "ou") {
+    const oOdd = getMarketOdds(m, "ou", "over");
+    const uOdd = getMarketOdds(m, "ou", "under");
+    const oTrend = getOddTrend(`${m?.fixtureId || m?.id}_ou_over`, oOdd);
+    const uTrend = getOddTrend(`${m?.fixtureId || m?.id}_ou_under`, uOdd);
+    return `
+      <div class="fs-odds-table">
+        <div class="fs-odds-head" style="display:grid;grid-template-columns:1fr 1fr;">
+          <span>OVER 2.5</span>
+          <span>UNDER 2.5</span>
+        </div>
+        <div class="fs-odds-row" style="display:grid;grid-template-columns:1fr 1fr;">
+          <button type="button" class="fs-odd-cell">
+            <span class="${oTrend === "up" ? "trend-up" : (oTrend ? "trend-down" : "")}">${oTrend === "up" ? "↑" : (oTrend ? "↓" : "")}</span>
+            <span>${oOdd}</span>
+          </button>
+          <button type="button" class="fs-odd-cell">
+            <span class="${uTrend === "up" ? "trend-up" : (uTrend ? "trend-down" : "")}">${uTrend === "up" ? "↑" : (uTrend ? "↓" : "")}</span>
+            <span>${uOdd}</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  if (pill === "dc") {
+    const dc1x = getMarketOdds(m, "dc", "1x");
+    const dc12 = getMarketOdds(m, "dc", "12");
+    const dcx2 = getMarketOdds(m, "dc", "x2");
+    return `
+      <div class="fs-odds-table">
+        <div class="fs-odds-head" style="display:grid;grid-template-columns:1fr 1fr 1fr;">
+          <span>1X</span>
+          <span>12</span>
+          <span>X2</span>
+        </div>
+        <div class="fs-odds-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;">
+          <button type="button" class="fs-odd-cell"><span>${dc1x}</span></button>
+          <button type="button" class="fs-odd-cell"><span>${dc12}</span></button>
+          <button type="button" class="fs-odd-cell"><span>${dcx2}</span></button>
+        </div>
+      </div>
+    `;
+  }
+  const odds = getMatchResultOdds(m);
+  return `
+    <div class="fs-odds-table">
+      <div class="fs-odds-head">
+        <span>1</span>
+        <span>X</span>
+        <span>2</span>
+      </div>
+      <div class="fs-odds-row">
+        <button type="button" class="fs-odd-cell">
+          <span class="${odds.home.trend === "up" ? "trend-up" : "trend-down"}">${odds.home.trend === "up" ? "↑" : "↓"}</span>
+          <span>${odds.home.odd}</span>
+        </button>
+        <button type="button" class="fs-odd-cell">
+          <span class="${odds.draw.trend === "up" ? "trend-up" : "trend-down"}">${odds.draw.trend === "up" ? "↑" : "↓"}</span>
+          <span>${odds.draw.odd}</span>
+        </button>
+        <button type="button" class="fs-odd-cell">
+          <span class="${odds.away.trend === "up" ? "trend-up" : "trend-down"}">${odds.away.trend === "up" ? "↑" : "↓"}</span>
+          <span>${odds.away.odd}</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 /* 1. Scheduled Summary (Image 1) */
 function renderFlashscoreScheduledSummary(m, hName, aName, isLeedsNewcastle) {
-  const odds = getMatchResultOdds(m);
   const isExp = Boolean(state.fsPreviewExpanded);
 
   const previewShort = `<span class="fs-preview-team">${escapeHtml(hName)}</span> and <span class="fs-preview-team">${escapeHtml(aName)}</span> put their unbeaten Premier League records on the line at Elland Road, a ground the Toon have enjoyed travelling to of late.`;
@@ -9311,27 +9957,7 @@ function renderFlashscoreScheduledSummary(m, hName, aName, isLeedsNewcastle) {
       <button type="button" class="fs-odds-pill ${state.fsOddsPill === "dc" ? "is-active" : ""}" data-fs-odds-pill="dc">DOUBLE CHANCE</button>
     </div>
 
-    <div class="fs-odds-table">
-      <div class="fs-odds-head">
-        <span>1</span>
-        <span>X</span>
-        <span>2</span>
-      </div>
-      <div class="fs-odds-row">
-        <button type="button" class="fs-odd-cell">
-          <span class="${odds.home.trend === "up" ? "trend-up" : "trend-down"}">${odds.home.trend === "up" ? "↑" : "↓"}</span>
-          <span>${odds.home.odd}</span>
-        </button>
-        <button type="button" class="fs-odd-cell">
-          <span class="${odds.draw.trend === "up" ? "trend-up" : "trend-down"}">${odds.draw.trend === "up" ? "↑" : "↓"}</span>
-          <span>${odds.draw.odd}</span>
-        </button>
-        <button type="button" class="fs-odd-cell">
-          <span class="${odds.away.trend === "up" ? "trend-up" : "trend-down"}">${odds.away.trend === "up" ? "↑" : "↓"}</span>
-          <span>${odds.away.odd}</span>
-        </button>
-      </div>
-    </div>
+    ${renderFlashscoreOddsTable(m)}
 
     <!-- Will Not Play Section -->
     <div class="fs-section-header">WILL NOT PLAY</div>
@@ -9476,27 +10102,7 @@ function renderFlashscoreLiveSummary(m, hName, aName, isNeftchiQuwa) {
       <button type="button" class="fs-odds-pill ${state.fsOddsPill === "dc" ? "is-active" : ""}" data-fs-odds-pill="dc">DOUBLE CHANCE</button>
     </div>
 
-    <div class="fs-odds-table">
-      <div class="fs-odds-head">
-        <span>1</span>
-        <span>X</span>
-        <span>2</span>
-      </div>
-      <div class="fs-odds-row">
-        <button type="button" class="fs-odd-cell">
-          <span class="${odds.home.trend === "up" ? "trend-up" : "trend-down"}">${odds.home.trend === "up" ? "↑" : "↓"}</span>
-          <span>${odds.home.odd}</span>
-        </button>
-        <button type="button" class="fs-odd-cell">
-          <span class="${odds.draw.trend === "up" ? "trend-up" : "trend-down"}">${odds.draw.trend === "up" ? "↑" : "↓"}</span>
-          <span>${odds.draw.odd}</span>
-        </button>
-        <button type="button" class="fs-odd-cell">
-          <span class="${odds.away.trend === "up" ? "trend-up" : "trend-down"}">${odds.away.trend === "up" ? "↑" : "↓"}</span>
-          <span>${odds.away.odd}</span>
-        </button>
-      </div>
-    </div>
+    ${renderFlashscoreOddsTable(m)}
 
     <!-- Live Stats Section -->
     <div class="fs-section-header">
@@ -9533,6 +10139,13 @@ function renderStatBarRow(label, leftVal, rightVal, leftPct, rightPct) {
 }
 
 function renderFlashscoreStats(m, matchState) {
+  const cards = m?.cards || (m ? extractFixtureCards(m, m.id, m.home?.name, m.away?.name) : null);
+  const hY = cards ? cards.homeYellow : 2;
+  const aY = cards ? cards.awayYellow : 1;
+  const htHY = cards ? cards.htHomeYellow : 1;
+  const htAY = cards ? cards.htAwayYellow : 0;
+  const hR = cards ? cards.homeRed : 0;
+  const aR = cards ? cards.awayRed : 0;
   return `
     <div class="fs-section-header">MATCH STATISTICS</div>
     <div class="fs-stats-wrap">
@@ -9543,9 +10156,252 @@ function renderFlashscoreStats(m, matchState) {
       ${renderStatBarRow("Shots off Goal", 2, 5, 2, 5)}
       ${renderStatBarRow("Corner Kicks", 2, 7, 2, 7)}
       ${renderStatBarRow("Fouls", 12, 8, 12, 8)}
-      ${renderStatBarRow("Red Cards", 1, 0, 1, 0)}
+      ${renderStatBarRow("Yellow Cards (Total)", hY, aY, Math.max(1, hY), Math.max(1, aY))}
+      ${renderStatBarRow("Yellow Cards (1st Half)", htHY, htAY, Math.max(1, htHY), Math.max(1, htAY))}
+      ${renderStatBarRow("Red Cards", hR, aR, Math.max(1, hR), Math.max(1, aR))}
     </div>
   `;
+}
+
+function openEnterResultModal(m) {
+  if (!m) return;
+  const fId = Number(m.id || m.fixtureId);
+  const hName = m.home?.name || m.teams?.home?.name || "Home";
+  const aName = m.away?.name || m.teams?.away?.name || "Away";
+
+  const cards = m.cards || extractFixtureCards(m, fId, hName, aName);
+  const curHomeGoals = m.home?.score ?? m.score?.fulltime?.home ?? 0;
+  const curAwayGoals = m.away?.score ?? m.score?.fulltime?.away ?? 0;
+  const curHtHomeGoals = m.score?.halftime?.home ?? (curHomeGoals > 0 ? Math.floor(curHomeGoals / 2) : 0);
+  const curHtAwayGoals = m.score?.halftime?.away ?? (curAwayGoals > 0 ? Math.floor(curAwayGoals / 2) : 0);
+
+  const curHomeYellow = cards ? cards.homeYellow : 0;
+  const curAwayYellow = cards ? cards.awayYellow : 0;
+  const curHtHomeYellow = cards ? cards.htHomeYellow : 0;
+  const curHtAwayYellow = cards ? cards.htAwayYellow : 0;
+  const curHomeRed = cards ? cards.homeRed : 0;
+  const curAwayRed = cards ? cards.awayRed : 0;
+
+  let modalEl = $("match-result-enter-modal");
+  if (!modalEl) {
+    modalEl = document.createElement("div");
+    modalEl.id = "match-result-enter-modal";
+    modalEl.className = "match-result-enter-modal";
+    document.body.appendChild(modalEl);
+  }
+
+  modalEl.innerHTML = `
+    <div class="mrm-backdrop" id="mrm-backdrop"></div>
+    <div class="mrm-card">
+      <div class="mrm-header">
+        <div class="mrm-header-title">
+          <span style="font-size:18px;">⚽</span>
+          <span>Submit Match Result &amp; Cards</span>
+        </div>
+        <button type="button" class="mrm-close-btn" id="mrm-close-btn">&times;</button>
+      </div>
+
+      <div class="mrm-match-banner">
+        <strong>${escapeHtml(hName)}</strong>
+        <span class="mrm-vs">vs</span>
+        <strong>${escapeHtml(aName)}</strong>
+        <span class="mrm-fid">#${fId}</span>
+      </div>
+
+      <form id="mrm-submit-form" class="mrm-form">
+        <!-- Section: Match Goals -->
+        <div class="mrm-section-box">
+          <div class="mrm-sec-title">⚽ Goals (Full Time &amp; Half Time)</div>
+          <div class="mrm-fields-grid">
+            <div class="mrm-field">
+              <label>FT Home Goals</label>
+              <input type="number" id="mrm-in-hgoals" min="0" value="${curHomeGoals}" required />
+            </div>
+            <div class="mrm-field">
+              <label>FT Away Goals</label>
+              <input type="number" id="mrm-in-agoals" min="0" value="${curAwayGoals}" required />
+            </div>
+            <div class="mrm-field">
+              <label>HT Home Goals</label>
+              <input type="number" id="mrm-in-hthgoals" min="0" value="${curHtHomeGoals}" required />
+            </div>
+            <div class="mrm-field">
+              <label>HT Away Goals</label>
+              <input type="number" id="mrm-in-htagoals" min="0" value="${curHtAwayGoals}" required />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Yellow Cards -->
+        <div class="mrm-section-box mrm-section-cards">
+          <div class="mrm-sec-title">🟨 Yellow Cards (Settlement for Card Markets)</div>
+          <div class="mrm-fields-grid">
+            <div class="mrm-field">
+              <label>FT Home Yellow</label>
+              <input type="number" id="mrm-in-hyellow" min="0" value="${curHomeYellow}" required />
+            </div>
+            <div class="mrm-field">
+              <label>FT Away Yellow</label>
+              <input type="number" id="mrm-in-ayellow" min="0" value="${curAwayYellow}" required />
+            </div>
+            <div class="mrm-field">
+              <label style="color:#b45309;font-weight:700;">1st Half Home Yellow</label>
+              <input type="number" id="mrm-in-hthyellow" min="0" value="${curHtHomeYellow}" required />
+            </div>
+            <div class="mrm-field">
+              <label style="color:#b45309;font-weight:700;">1st Half Away Yellow</label>
+              <input type="number" id="mrm-in-htayellow" min="0" value="${curHtAwayYellow}" required />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Red Cards -->
+        <div class="mrm-section-box mrm-section-red">
+          <div class="mrm-sec-title">🟥 Red Cards</div>
+          <div class="mrm-fields-grid">
+            <div class="mrm-field">
+              <label>Home Red Cards</label>
+              <input type="number" id="mrm-in-hred" min="0" value="${curHomeRed}" />
+            </div>
+            <div class="mrm-field">
+              <label>Away Red Cards</label>
+              <input type="number" id="mrm-in-ared" min="0" value="${curAwayRed}" />
+            </div>
+          </div>
+        </div>
+
+        <div class="mrm-submit-actions">
+          <button type="button" class="mrm-cancel-btn" id="mrm-cancel-action">Cancel</button>
+          <button type="submit" class="mrm-confirm-btn" id="mrm-confirm-btn">Submit Result &amp; Settle</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modalEl.style.display = "flex";
+
+  const closeModal = () => {
+    modalEl.style.display = "none";
+  };
+  const closeBtn = $("mrm-close-btn");
+  if (closeBtn) closeBtn.onclick = closeModal;
+  const backdrop = $("mrm-backdrop");
+  if (backdrop) backdrop.onclick = closeModal;
+  const cancelBtn = $("mrm-cancel-action");
+  if (cancelBtn) cancelBtn.onclick = closeModal;
+
+  const form = $("mrm-submit-form");
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const hGoals = Number($("mrm-in-hgoals").value || 0);
+      const aGoals = Number($("mrm-in-agoals").value || 0);
+      const htHGoals = Number($("mrm-in-hthgoals").value || 0);
+      const htAGoals = Number($("mrm-in-htagoals").value || 0);
+      const hYellow = Number($("mrm-in-hyellow").value || 0);
+      const aYellow = Number($("mrm-in-ayellow").value || 0);
+      const htHYellow = Number($("mrm-in-hthyellow").value || 0);
+      const htAYellow = Number($("mrm-in-htayellow").value || 0);
+      const hRed = Number($("mrm-in-hred").value || 0);
+      const aRed = Number($("mrm-in-ared").value || 0);
+
+      const payload = {
+        fixtureId: fId,
+        homeGoals: hGoals,
+        awayGoals: aGoals,
+        htHomeGoals: htHGoals,
+        htAwayGoals: htAGoals,
+        homeYellow: hYellow,
+        awayYellow: aYellow,
+        htHomeYellow: htHYellow,
+        htAwayYellow: htAYellow,
+        homeRed: hRed,
+        awayRed: aRed,
+      };
+
+      const submitBtn = $("mrm-confirm-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+      }
+
+      try {
+        if (useApi() && api() && typeof api().submitMatchResult === "function") {
+          try {
+            await api().submitMatchResult(payload);
+          } catch (err) {
+            console.warn("API submitMatchResult error:", err);
+          }
+        }
+
+        // Update local object & caches
+        const cardsObj = {
+          homeYellow: hYellow,
+          awayYellow: aYellow,
+          totalYellow: hYellow + aYellow,
+          htHomeYellow: htHYellow,
+          htAwayYellow: htAYellow,
+          htTotalYellow: htHYellow + htAYellow,
+          shHomeYellow: Math.max(0, hYellow - htHYellow),
+          shAwayYellow: Math.max(0, aYellow - htAYellow),
+          shTotalYellow: Math.max(0, hYellow - htHYellow) + Math.max(0, aYellow - htAYellow),
+          homeRed: hRed,
+          awayRed: aRed,
+          totalRed: hRed + aRed,
+          firstYellow: hYellow > 0 && aYellow === 0 ? "home" : (aYellow > 0 && hYellow === 0 ? "away" : "home"),
+          lastYellow: aYellow > 0 ? "away" : (hYellow > 0 ? "home" : null),
+        };
+
+        m.status = "FT";
+        m.statusText = "Finished";
+        m.isFinished = true;
+        m.isLive = false;
+        m.isStarted = true;
+        if (!m.home) m.home = { name: hName };
+        if (!m.away) m.away = { name: aName };
+        m.home.score = hGoals;
+        m.away.score = aGoals;
+        m.score = {
+          halftime: { home: htHGoals, away: htAGoals },
+          fulltime: { home: hGoals, away: aGoals },
+        };
+        m.cards = cardsObj;
+
+        // Save in state.matchResults
+        if (!state.matchResults) state.matchResults = {};
+        state.matchResults[String(fId)] = { ...payload, cards: cardsObj, status: "FT" };
+        try {
+          localStorage.setItem("hope_match_results", JSON.stringify(state.matchResults));
+        } catch (_) {}
+
+        // Settle all ended tickets using these exact results
+        await settleEndedTickets();
+
+        closeModal();
+
+        // Refresh views
+        if (state.subNav === "results" || document.getElementById("view-results")?.style.display !== "none") {
+          renderResultsPage();
+        }
+        if (state.subNav === "my-bets") {
+          renderMyBetsPage();
+        }
+        if (state.fsModalMatch) {
+          state.fsModalMatch = m;
+          renderFlashscoreModal();
+        }
+
+        toast(`Match #${fId} result saved! (Yellow Cards: HT ${htHYellow}-${htAYellow}, FT ${hYellow}-${aYellow}). Bets settled.`, "ok");
+      } catch (err) {
+        alert("Failed to submit result: " + (err.message || err));
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Result & Settle";
+        }
+      }
+    };
+  }
 }
 
 
@@ -10325,6 +11181,347 @@ function fixtureMatchesEventSearch(fixture) {
   return query.split(/\s+/).every((term) => haystack.includes(term));
 }
 
+function formatSearchItemDate(dateVal) {
+  if (!dateVal) return "";
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return "";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const day = d.getDate();
+  const mon = months[d.getMonth()];
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${day} ${mon} ${hh}:${mm}`;
+}
+
+function getSearchItemFlag(country, league) {
+  const c = String(country || league?.country || "").trim().toLowerCase();
+  const l = String(league?.name || "").trim().toLowerCase();
+
+  if (c.includes("england") || c.includes("gb-eng") || l.includes("premier league") || l.includes("fa cup") || l.includes("fa wsl")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="36" fill="#ffffff"/><rect x="26" width="8" height="36" fill="#ce1124"/><rect y="14" width="60" height="8" fill="#ce1124"/></svg>`;
+  }
+  if (c.includes("europe") || l.includes("champions league") || l.includes("europa") || l.includes("uefa")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="36" fill="#003399"/><circle cx="30" cy="18" r="9" fill="none" stroke="#ffcc00" stroke-width="2" stroke-dasharray="2 3"/></svg>`;
+  }
+  if (c.includes("spain") || l.includes("la liga") || l.includes("copa del rey")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="36" fill="#c60b1e"/><rect y="9" width="60" height="18" fill="#ffc400"/></svg>`;
+  }
+  if (c.includes("germany") || l.includes("bundesliga")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="12" fill="#000000"/><rect y="12" width="60" height="12" fill="#dd0000"/><rect y="24" width="60" height="12" fill="#ffce00"/></svg>`;
+  }
+  if (c.includes("italy") || l.includes("serie a") || l.includes("serie b")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="20" height="36" fill="#009246"/><rect x="20" width="20" height="36" fill="#ffffff"/><rect x="40" width="20" height="36" fill="#ce2b37"/></svg>`;
+  }
+  if (c.includes("france") || l.includes("ligue 1")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="20" height="36" fill="#002395"/><rect x="20" width="20" height="36" fill="#ffffff"/><rect x="40" width="20" height="36" fill="#ed2939"/></svg>`;
+  }
+  if (c.includes("argentina")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="12" fill="#74acdf"/><rect y="12" width="60" height="12" fill="#ffffff"/><rect y="24" width="60" height="12" fill="#74acdf"/><circle cx="30" cy="18" r="3.5" fill="#f6b40e"/></svg>`;
+  }
+  if (c.includes("netherlands") || c.includes("holland") || l.includes("eredivisie")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="12" fill="#ae1c28"/><rect y="12" width="60" height="12" fill="#ffffff"/><rect y="24" width="60" height="12" fill="#21468b"/></svg>`;
+  }
+  if (c.includes("portugal")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="24" height="36" fill="#006600"/><rect x="24" width="36" height="36" fill="#ff0000"/><circle cx="24" cy="18" r="5" fill="#ffff00"/></svg>`;
+  }
+  if (c.includes("scotland")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="36" fill="#005eb8"/><path d="M0 0 L60 36 M60 0 L0 36" stroke="#ffffff" stroke-width="6"/></svg>`;
+  }
+  if (c.includes("brazil")) {
+    return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="36" fill="#009739"/><polygon points="30,4 56,18 30,32 4,18" fill="#fedd00"/><circle cx="30" cy="18" r="6" fill="#012169"/></svg>`;
+  }
+  if (league?.flag) {
+    return `<img src="${league.flag}" alt="" loading="lazy" style="width:22px;height:14px;object-fit:cover;display:block;" />`;
+  }
+  return `<svg viewBox="0 0 60 36" class="fs-comp-flag" width="22" height="14"><rect width="60" height="36" fill="#0284c7"/><circle cx="30" cy="18" r="8" fill="none" stroke="#ffffff" stroke-width="2"/></svg>`;
+}
+
+function performEventSearch(query) {
+  const normQ = normalizeEventSearch(query);
+  const terms = normQ.split(/\s+/).filter(Boolean);
+  if (!terms.length) return { leagues: [], matches: [] };
+
+  const matchedLeagues = [];
+  const matchedMatches = [];
+  const seenLeagueIds = new Set();
+  const seenFixtureIds = new Set();
+
+  // 1. Static and dynamically cached leagues
+  const allLeagues = [];
+  if (typeof FOOTBALL_STATIC_LEAGUES === "object" && FOOTBALL_STATIC_LEAGUES) {
+    Object.entries(FOOTBALL_STATIC_LEAGUES).forEach(([region, list]) => {
+      list.forEach((l) => {
+        allLeagues.push({
+          id: Number(l.id),
+          name: l.name,
+          country: l.country || region,
+          region: region,
+          flag: l.flag || "",
+        });
+      });
+    });
+  }
+
+  (state.fixtures || []).forEach((f) => {
+    if (f.league && f.league.id && !allLeagues.some((x) => x.id === Number(f.league.id))) {
+      allLeagues.push({
+        id: Number(f.league.id),
+        name: f.league.name,
+        country: f.league.country || "World",
+        region: f.league.country || "World",
+        flag: f.league.flag || "",
+      });
+    }
+  });
+
+  for (const lg of allLeagues) {
+    const hay = normalizeEventSearch(`${lg.name} ${lg.country || ""} ${lg.region || ""}`);
+    if (terms.every((t) => hay.includes(t))) {
+      if (!seenLeagueIds.has(lg.id)) {
+        seenLeagueIds.add(lg.id);
+        matchedLeagues.push(lg);
+      }
+    }
+  }
+
+  // 2. Matches in live and upcoming fixtures
+  const allFixtures = [];
+  (state.liveFixtures || []).forEach((f) => {
+    if (f.fixtureId && !seenFixtureIds.has(f.fixtureId)) {
+      seenFixtureIds.add(f.fixtureId);
+      allFixtures.push(f);
+    }
+  });
+  (state.fixtures || []).forEach((f) => {
+    if (f.fixtureId && !seenFixtureIds.has(f.fixtureId)) {
+      seenFixtureIds.add(f.fixtureId);
+      allFixtures.push(f);
+    }
+  });
+
+  for (const f of allFixtures) {
+    const hay = normalizeEventSearch(
+      `${f.home?.name || ""} ${f.away?.name || ""} ${f.league?.name || ""} ${f.league?.country || ""}`
+    );
+    if (terms.every((t) => hay.includes(t))) {
+      matchedMatches.push(f);
+    }
+  }
+
+  // Sort matches: team name matches first, then chronological kickoff time
+  matchedMatches.sort((a, b) => {
+    const aTeams = normalizeEventSearch(`${a.home?.name || ""} ${a.away?.name || ""}`);
+    const bTeams = normalizeEventSearch(`${b.home?.name || ""} ${b.away?.name || ""}`);
+    const aMatchesTeam = terms.some((t) => aTeams.includes(t));
+    const bMatchesTeam = terms.some((t) => bTeams.includes(t));
+    if (aMatchesTeam && !bMatchesTeam) return -1;
+    if (!aMatchesTeam && bMatchesTeam) return 1;
+    const aTime = new Date(a.date).getTime() || 0;
+    const bTime = new Date(b.date).getTime() || 0;
+    return aTime - bTime;
+  });
+
+  return { leagues: matchedLeagues, matches: matchedMatches };
+}
+
+function positionSearchPopup() {
+  const popup = $("event-search-popup");
+  const input = $("event-search");
+  if (!popup || popup.hidden || !input) return;
+
+  const rect = input.getBoundingClientRect();
+  const screenWidth = window.innerWidth;
+
+  if (screenWidth <= 600) {
+    popup.style.top = `${rect.bottom + 4}px`;
+    popup.style.left = "8px";
+    popup.style.right = "8px";
+    popup.style.width = "auto";
+  } else {
+    popup.style.top = `${rect.bottom + 4}px`;
+    popup.style.left = `${Math.max(8, rect.left)}px`;
+    popup.style.width = "430px";
+    popup.style.right = "auto";
+  }
+}
+
+function closeEventSearchPopup() {
+  const popup = $("event-search-popup");
+  if (popup) popup.hidden = true;
+}
+
+function renderEventSearchPopup(results, query) {
+  let popup = $("event-search-popup");
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "event-search-popup";
+    popup.className = "event-search-popup";
+    popup.innerHTML = `
+      <div class="event-search-popup-header">
+        <span class="event-search-popup-title" id="event-search-popup-title">Search Results (0)</span>
+        <button type="button" class="event-search-popup-close" id="event-search-popup-close" title="Close" aria-label="Close">✕</button>
+      </div>
+      <div class="event-search-popup-list" id="event-search-popup-list"></div>
+    `;
+    document.body.appendChild(popup);
+    const closeBtn = $("event-search-popup-close");
+    if (closeBtn) on(closeBtn, "click", closeEventSearchPopup);
+  }
+
+  if (popup.parentElement !== document.body) {
+    document.body.appendChild(popup);
+  }
+
+  const titleEl = $("event-search-popup-title");
+  const listEl = $("event-search-popup-list");
+  if (!listEl) return;
+
+  const totalCount = results.leagues.length + results.matches.length;
+  if (titleEl) {
+    titleEl.textContent = `Search Results (${totalCount})`;
+  }
+
+  if (totalCount === 0) {
+    listEl.innerHTML = `<div class="event-search-empty">No games or leagues found matching "${escapeHtml(query)}"</div>`;
+    popup.hidden = false;
+    positionSearchPopup();
+    return;
+  }
+
+  let html = "";
+
+  // 1. Matches first
+  results.matches.slice(0, 35).forEach((f) => {
+    const homeName = f.home?.name || "Home";
+    const awayName = f.away?.name || "Away";
+    const country = f.league?.country || "World";
+    const leagueName = f.league?.name || "League";
+    const dateStr = formatSearchItemDate(f.date);
+    const isLive = isLiveFixture(f);
+    const flagHtml = getSearchItemFlag(country, f.league);
+
+    html += `
+      <div class="event-search-item" data-search-fixture="${f.fixtureId}" role="button" tabindex="0">
+        <div class="event-search-item-title">${escapeHtml(homeName)} - ${escapeHtml(awayName)}</div>
+        <div class="event-search-item-meta">
+          <span class="event-search-flag-wrap">${flagHtml}</span>
+          <span class="event-search-item-path">Football / ${escapeHtml(country)} / ${escapeHtml(leagueName)}</span>
+          ${isLive 
+            ? `<span class="event-search-item-live">🔴 ${f.status === "HT" ? "HT" : (f.elapsed ? f.elapsed + "'" : "LIVE")}</span>`
+            : (dateStr ? `<span class="event-search-item-date">${dateStr}</span>` : "")
+          }
+        </div>
+      </div>
+    `;
+  });
+
+  // 2. Leagues
+  results.leagues.slice(0, 10).forEach((lg) => {
+    const country = lg.country || lg.region || "World";
+    const flagHtml = getSearchItemFlag(country, lg);
+
+    html += `
+      <div class="event-search-item" data-search-league="${lg.id}" role="button" tabindex="0">
+        <div class="event-search-item-title">${escapeHtml(lg.name)}</div>
+        <div class="event-search-item-meta">
+          <span class="event-search-flag-wrap">${flagHtml}</span>
+          <span class="event-search-item-path">Football / ${escapeHtml(country)}</span>
+          <span class="event-search-league-badge">League</span>
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+  popup.hidden = false;
+  positionSearchPopup();
+}
+
+function runMobileSearch(query) {
+  const q = (query || "").trim();
+  const resultsBox = $("mobile-search-results-box");
+  const suggestions = $("mobile-search-suggestions");
+  const clearBtn = $("mobile-search-clear-btn");
+  const titleEl = $("mobile-search-results-title");
+  const listEl = $("mobile-search-results-list");
+
+  if (clearBtn) {
+    clearBtn.hidden = q.length === 0;
+  }
+
+  if (q.length < 2) {
+    if (resultsBox) resultsBox.hidden = true;
+    if (suggestions) suggestions.hidden = false;
+    return;
+  }
+
+  if (suggestions) suggestions.hidden = true;
+
+  const results = performEventSearch(q);
+  const totalCount = (results.matches || []).length + (results.leagues || []).length;
+
+  if (titleEl) {
+    titleEl.textContent = `Search Results (${totalCount})`;
+  }
+
+  if (!listEl) return;
+
+  if (totalCount === 0) {
+    listEl.innerHTML = `<div class="mobile-search-empty">No games or leagues found matching "${escapeHtml(q)}"</div>`;
+    if (resultsBox) resultsBox.hidden = false;
+    return;
+  }
+
+  let html = "";
+
+  // 1. Matches first
+  results.matches.slice(0, 35).forEach((f) => {
+    const homeName = f.home?.name || "Home";
+    const awayName = f.away?.name || "Away";
+    const country = f.league?.country || "World";
+    const leagueName = f.league?.name || "League";
+    const dateStr = formatSearchItemDate(f.date);
+    const isLive = isLiveFixture(f);
+    const flagHtml = getSearchItemFlag(country, f.league);
+
+    html += `
+      <div class="mobile-search-item" data-search-fixture="${f.fixtureId}" role="button" tabindex="0">
+        <div class="mobile-search-item-title">${escapeHtml(homeName)} - ${escapeHtml(awayName)}</div>
+        <div class="mobile-search-item-meta">
+          <span class="event-search-flag-wrap">${flagHtml}</span>
+          <span class="mobile-search-item-path">Football / ${escapeHtml(country)} / ${escapeHtml(leagueName)}</span>
+          ${isLive 
+            ? `<span class="event-search-item-live">🔴 ${f.status === "HT" ? "HT" : (f.elapsed ? f.elapsed + "'" : "LIVE")}</span>`
+            : (dateStr ? `<span class="mobile-search-item-date">${dateStr}</span>` : "")
+          }
+        </div>
+      </div>
+    `;
+  });
+
+  // 2. Leagues
+  results.leagues.slice(0, 10).forEach((lg) => {
+    const country = lg.country || lg.region || "World";
+    const flagHtml = getSearchItemFlag(country, lg);
+
+    html += `
+      <div class="mobile-search-item" data-search-league="${lg.id}" role="button" tabindex="0">
+        <div class="mobile-search-item-title">${escapeHtml(lg.name)}</div>
+        <div class="mobile-search-item-meta">
+          <span class="event-search-flag-wrap">${flagHtml}</span>
+          <span class="mobile-search-item-path">Football / ${escapeHtml(country)}</span>
+          <span class="event-search-league-badge">League</span>
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+  if (resultsBox) resultsBox.hidden = false;
+}
+
+
+
 function passesTimeFilter(fixture) {
   if (!fixture || !fixture.date) return false;
   const tf = getTimeFilterDef(state.timeFilter);
@@ -10344,7 +11541,8 @@ function passesTimeFilter(fixture) {
     return kick >= tf.dateStart && kick <= tf.dateEnd;
   }
   if (typeof tf.hours === "number") {
-    return kick >= now - 15 * 60000 && kick <= now + tf.hours * 3600000;
+    if (isLiveFixture(fixture)) return true;
+    return kick >= now - 115 * 60000 && kick <= now + tf.hours * 3600000;
   }
   return true;
 }
@@ -10406,8 +11604,7 @@ function footballMenuFixtures() {
   });
 
   if (state.timeFilter && state.timeFilter !== "all") {
-    const timed = matched.filter(passesTimeFilter);
-    if (timed.length) return timed;
+    return matched.filter(passesTimeFilter);
   }
   return matched;
 }
@@ -10530,14 +11727,47 @@ function getMarketOdds(fixture, market, selection) {
       return Math.max(1.10, Math.min(2.5, 1 / (1 / d + 1 / a) * 1.15)).toFixed(2);
     }
   }
-  if (market === "btts") {
-    const b = fixture.odds?.btts || {};
-    if (selection === "yes") {
-      if (b.yes && b.yes !== "—") return b.yes;
-      return "1.72";
+  if (market === "btts" || market === "both_teams_score" || market === "gg_ng") {
+    const sel = String(selection || "").toLowerCase();
+    const isYes = sel === "yes" || sel === "gg" || sel === "1";
+    let b = fixture.odds?.btts;
+    if (b && b.yes && b.yes !== "—" && b.no && b.no !== "—") {
+      return isYes ? String(b.yes) : String(b.no);
     }
-    if (b.no && b.no !== "—") return b.no;
-    return "2.05";
+    const h = parseFloat(fixture.odds?.home) || 2.2;
+    const a = parseFloat(fixture.odds?.away) || 3.4;
+    const o25 = parseFloat(fixture.odds?.totals?.over25) || 1.85;
+    const fIdNum = Math.abs(Number(fixture.fixtureId || fixture.id || 0));
+    const seed = (fIdNum * 1103515245 + 12345) & 0x7fffffff;
+    const rand = ((Math.floor(seed / 1000)) % 1000) / 1000;
+    const jitter = (rand - 0.5) * 0.12;
+
+    let baseYesProb;
+    if (o25 < 1.60) {
+      baseYesProb = 0.62;
+    } else if (o25 < 1.85) {
+      baseYesProb = 0.55;
+    } else if (o25 < 2.10) {
+      baseYesProb = 0.48;
+    } else {
+      baseYesProb = 0.42;
+    }
+
+    if (Math.min(h, a) < 1.25) {
+      baseYesProb -= 0.07;
+    }
+
+    baseYesProb += jitter;
+    baseYesProb = Math.min(Math.max(baseYesProb, 0.32), 0.68);
+    const baseNoProb = 1 - baseYesProb;
+
+    const yesOdd = Math.max(1.35, Number((1 / (baseYesProb * 1.065)).toFixed(2))).toFixed(2);
+    const noOdd = Math.max(1.35, Number((1 / (baseNoProb * 1.065)).toFixed(2))).toFixed(2);
+
+    if (!fixture.odds) fixture.odds = {};
+    fixture.odds.btts = { yes: yesOdd, no: noOdd };
+
+    return isYes ? yesOdd : noOdd;
   }
   if (market === "dnb") {
     const dnb = fixture.odds?.dnb || {};
@@ -10939,34 +12169,13 @@ function addToSlip(fixture, marketKey, selection, odd, marketLabel, pickLabel) {
   });
 }
 
-function updateSelectedOddsUI() {
-  const activeKeys = new Set((state.slip || []).map((b) => b.key));
-
-  // 1. Regular odds buttons across match board, upcoming, daily, league, and home tables
-  const buttons = document.querySelectorAll(".odd-btn[data-fixture]");
-  for (let i = 0; i < buttons.length; i++) {
-    const btn = buttons[i];
-    const key = slipKey(btn.dataset.fixture, btn.dataset.market, btn.dataset.selection);
-    const shouldBe = activeKeys.has(key);
-    if (btn.classList.contains("is-selected") !== shouldBe) {
-      btn.classList.toggle("is-selected", shouldBe);
-    }
-  }
-
-  // 2. Odds buttons inside match detail modal / view
-  const detailBtns = document.querySelectorAll("[data-detail-odd]");
-  for (let i = 0; i < detailBtns.length; i++) {
-    const btn = detailBtns[i];
-    const key = slipKey(btn.dataset.fixture, `m${btn.dataset.marketId}`, btn.dataset.value);
-    const shouldBe = activeKeys.has(key);
-    if (btn.classList.contains("is-selected") !== shouldBe) {
-      btn.classList.toggle("is-selected", shouldBe);
-    }
-  }
-}
-
 function refreshMatchViews() {
-  updateSelectedOddsUI();
+  const leaguesView = document.querySelector('[data-view="leagues"]');
+  if (leaguesView && !leaguesView.hidden) {
+    renderLeaguePage();
+    return;
+  }
+  refreshHomeAndBoard();
 }
 
 function toggleSelection(fixture, market, selection) {
@@ -10984,7 +12193,8 @@ function toggleSelection(fixture, market, selection) {
   addToSlip(fixture, market, selection, odd, marketNameFor(market), selectionLabel(market, selection, fixture));
   save();
   renderSlip();
-  updateSelectedOddsUI();
+  refreshMatchViews();
+  if (state.detailFixtureId) renderMatchDetail();
 }
 
 function toggleDetailSelection(fixture, market, value) {
@@ -11002,7 +12212,8 @@ function toggleDetailSelection(fixture, market, value) {
   addToSlip(fixture, marketKey, value.value, value.odd, market.name, value.value);
   save();
   renderSlip();
-  updateSelectedOddsUI();
+  renderMatchDetail();
+  refreshMatchViews();
 }
 
 function totalOdds() {
@@ -11045,10 +12256,14 @@ function renderBalance() {
     const val = Number(state.balance) || 0;
     mobileBal.textContent = hidden ? "••••" : `${fmt(val)} ETB`;
   }
-  try {
-    const curVal = Number(state.balance) || 0;
-    localStorage.setItem("habesha_balance", curVal.toFixed(2));
-  } catch (_) {}
+  if (window.HabeshaWallet && typeof window.HabeshaWallet.set === "function") {
+    try {
+      const b = Number(state.balance) || 0;
+      if (window.HabeshaWallet.get() !== b) {
+        window.HabeshaWallet.set(b);
+      }
+    } catch (_) {}
+  }
 }
 
 function renderSportsSidebar() {
@@ -11093,19 +12308,7 @@ function renderTopLeaguesGrid() {
 function updateAdCarousel() {
   const track = $("ad-carousel-track");
   if (!track || !state.adSlides.length) return;
-  const slide = track.querySelector(".ad-carousel-slide");
-  if (slide) {
-    const gap = 8;
-    const slideWidth = slide.offsetWidth || slide.getBoundingClientRect().width;
-    if (slideWidth > 0) {
-      const shift = state.adIndex * (slideWidth + gap);
-      track.style.transform = `translateX(-${shift}px)`;
-    } else {
-      track.style.transform = `translateX(-${state.adIndex * 100}%)`;
-    }
-  } else {
-    track.style.transform = `translateX(-${state.adIndex * 100}%)`;
-  }
+  track.style.transform = `translateX(-${state.adIndex * 100}%)`;
   document.querySelectorAll(".ad-carousel-dot").forEach((d, i) => {
     d.classList.toggle("is-on", i === state.adIndex);
   });
@@ -11118,17 +12321,19 @@ async function initAdvertCarousel() {
   let slides = [];
   try {
     const res = await fetch(`assets/advert/manifest.json?v=${Date.now()}`);
-    if (res.ok) {
-      const data = await res.json();
-      slides = Array.isArray(data.slides) ? data.slides.filter(Boolean) : [];
-    }
+    const data = await res.json();
+    slides = Array.isArray(data.slides) ? data.slides.filter(Boolean) : [];
   } catch {
     slides = [];
   }
-  if (!slides.length) {
-    slides = ["banner-football-weekly.jpg", "banner-1.jpg", "banner-2.jpg"];
-  }
   state.adSlides = slides;
+  if (!slides.length) {
+    track.innerHTML = `<div class="ad-carousel-slide ad-carousel-slide--placeholder"><div><strong>KONJO BET</strong><p>Add images to assets/advert/ and list them in manifest.json</p></div></div>`;
+    if ($("ad-prev")) $("ad-prev").hidden = true;
+    if ($("ad-next")) $("ad-next").hidden = true;
+    if (dots) dots.innerHTML = "";
+    return;
+  }
   track.innerHTML = slides
     .map(
       (s, i) =>
@@ -11289,19 +12494,26 @@ async function renderFootballRegions() {
   if (isTimeFiltered) {
     const withGames = regionNames.filter((name) => {
       const leagues = FOOTBALL_STATIC_LEAGUES[name] || state.countryLeagues[name] || [];
+      const normRegionName = String(name || "").toLowerCase().replace(/[\s\-]+/g, " ");
       return (state.fixtures || []).some((f) => {
-        const inRegion = f.league?.country === name ||
-          (name === "Europe" && (f.league?.country === "Europe" || isUefaLeague(f.league))) ||
-          (name === "World" && f.league?.country === "World") ||
-          (name === "Americas" && (f.league?.country === "Americas" || f.league?.country === "South America"));
+        const fCountry = String(f.league?.country || "").toLowerCase().replace(/[\s\-]+/g, " ");
+        const inRegion = fCountry === normRegionName ||
+          (normRegionName === "europe" && (fCountry === "europe" || isUefaLeague(f.league))) ||
+          (normRegionName === "world" && fCountry === "world") ||
+          (normRegionName === "americas" && (fCountry === "americas" || fCountry === "south america")) ||
+          (normRegionName.includes("emirates") && fCountry.includes("emirates"));
         const inLeague = leagues.some((l) => matchLeagues(l, f.league));
         if (!inRegion && !inLeague) return false;
         return passesTimeFilter(f);
       });
     });
-    if (withGames.length) {
-      regionNames = withGames;
-    }
+    regionNames = withGames;
+  }
+
+  if (!regionNames.length) {
+    const timeLabel = state.timeFilter ? state.timeFilter.toUpperCase() : "selected time";
+    el.innerHTML = `<div class="football-region-empty" style="padding:32px 16px;text-align:center;color:#888;">No football matches scheduled in the next ${timeLabel}</div>`;
+    return;
   }
 
   el.innerHTML = regionNames
@@ -12376,7 +13588,11 @@ function renderHomeLeagueMatches() {
     // Search should find a club or league across all loaded competitions.
     if (!hasSearch && Number(f.league?.id) !== leagueId) return false;
     const kick = f.date ? new Date(f.date).getTime() : 0;
-    return !kick || (now - kick <= 115 * 60 * 1000);
+    if (kick && (now - kick > 115 * 60 * 1000)) return false;
+    if (state.timeFilter && state.timeFilter !== "all") {
+      return passesTimeFilter(f);
+    }
+    return true;
   });
   fixtures.sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime());
   renderImageStyleMatchTable(fixtures, state.homeLeagueLimit || 5, "home-league-matches-section", "league");
@@ -12389,18 +13605,25 @@ function renderHomeUpcomingGames() {
     if (!fixtureMatchesEventSearch(f)) return false;
     if (isLiveFixture(f)) return false;
     const kick = f.date ? new Date(f.date).getTime() : 0;
-    return !kick || (now - kick <= 115 * 60 * 1000);
+    if (kick && (now - kick > 115 * 60 * 1000)) return false;
+    if (state.timeFilter && state.timeFilter !== "all") {
+      return passesTimeFilter(f);
+    }
+    return true;
   });
-  const fixtures = (all.length || hasSearch ? all : (state.fixtures || [])).slice();
+  const fixtures = (all.length || hasSearch || (state.timeFilter && state.timeFilter !== "all") ? all : (state.fixtures || [])).slice();
   fixtures.sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime());
   renderImageStyleMatchTable(fixtures, state.homeUpcomingLimit || 5, "home-upcoming-table", "upcoming");
 }
 
 function renderHomePopularGames() {
   const popular = fixturesForCarousel();
-  const fixtures = popular.length
-    ? popular
-    : (normalizeEventSearch(state.eventSearch) ? [] : (state.fixtures || []).slice(0, 10));
+  const filtered = (state.timeFilter && state.timeFilter !== "all")
+    ? popular.filter(passesTimeFilter)
+    : popular;
+  const fixtures = filtered.length
+    ? filtered
+    : (normalizeEventSearch(state.eventSearch) ? [] : (state.fixtures || []).filter((f) => !state.timeFilter || state.timeFilter === "all" || passesTimeFilter(f)).slice(0, 10));
   renderImageStyleMatchTable(fixtures, state.homePopularLimit || 5, "home-popular-table", "popular");
 }
 
@@ -12419,9 +13642,13 @@ function renderTopMatchesCarousel() {
   const el = $("popular-carousel") || $("top-matches-track");
   if (!el || !isSportsHomeSubNav()) return;
 
-  const popular = fixturesForCarousel();
+  let popular = fixturesForCarousel();
+  if (state.timeFilter && state.timeFilter !== "all") {
+    popular = popular.filter(passesTimeFilter);
+  }
   if (!popular.length) {
-    el.innerHTML = `<div class="board-empty" style="padding:24px;text-align:center;">No top matches</div>`;
+    const timeLabel = state.timeFilter ? state.timeFilter.toUpperCase() : "selected time";
+    el.innerHTML = `<div class="board-empty" style="padding:24px;text-align:center;">No top matches in the next ${timeLabel}</div>`;
     return;
   }
 
@@ -12439,9 +13666,6 @@ function renderTopMatchesCarousel() {
       const timeLabel = formatPopCardTime(f.date);
       const leagueLabel = `${f.league?.country || "Football"} - ${f.league?.name || "League"}`;
 
-      const homeLogoHtml = getPopCardTeamLogo(f.home.name, f.home.logo);
-      const awayLogoHtml = getPopCardTeamLogo(f.away.name, f.away.logo);
-
       return `
     <article class="pop-card" data-fixture-id="${f.fixtureId}">
       <div class="pop-card-header">
@@ -12450,14 +13674,15 @@ function renderTopMatchesCarousel() {
       </div>
       <div class="pop-card-teams-row" data-open-fixture="${f.fixtureId}" role="button" tabindex="0">
         <div class="pop-card-team">
-          ${homeLogoHtml}
+          <img src="${f.home.logo}" alt="${f.home.name}" loading="lazy" onerror="this.style.opacity='0'" />
           <span class="pop-card-name">${f.home.name}</span>
         </div>
         <div class="pop-card-vs-wrap">
-          <span class="pop-card-vs">vs</span>
+          <span class="pop-card-bolt">⚡</span>
+          <span class="pop-card-vs">VS</span>
         </div>
         <div class="pop-card-team">
-          ${awayLogoHtml}
+          <img src="${f.away.logo}" alt="${f.away.name}" loading="lazy" onerror="this.style.opacity='0'" />
           <span class="pop-card-name">${f.away.name}</span>
         </div>
       </div>
@@ -12468,7 +13693,7 @@ function renderTopMatchesCarousel() {
       </div>
       <div class="pop-odds">
         <button type="button" class="odd-btn pop-odd-btn${homeSel ? ' is-selected' : ''}${tHome ? ` odd-${tHome}` : ''}" data-fixture="${f.fixtureId}" data-market="1x2" data-selection="home" title="${f.home.name} win">
-          <span class="odd-btn-label">Home</span>
+          <span class="odd-btn-label">Ho...</span>
           <span class="odd-btn-value pop-odd-val">${hOdd}</span>
         </button>
         <button type="button" class="odd-btn pop-odd-btn${drawSel ? ' is-selected' : ''}${tDraw ? ` odd-${tDraw}` : ''}" data-fixture="${f.fixtureId}" data-market="1x2" data-selection="draw" title="Draw">
@@ -12483,26 +13708,6 @@ function renderTopMatchesCarousel() {
     </article>`;
     })
     .join("");
-}
-
-const POP_COUNTRY_FLAGS = {
-  belgium: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="1" height="2" fill="#000000"/><rect x="1" width="1" height="2" fill="#ffd90c"/><rect x="2" width="1" height="2" fill="#f31830"/></svg>`,
-  france: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="1" height="2" fill="#002654"/><rect x="1" width="1" height="2" fill="#ffffff"/><rect x="2" width="1" height="2" fill="#ed2939"/></svg>`,
-  germany: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="3" height="0.67" fill="#000"/><rect y="0.67" width="3" height="0.67" fill="#dd0000"/><rect y="1.34" width="3" height="0.66" fill="#ffce00"/></svg>`,
-  italy: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="1" height="2" fill="#009246"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#ce2b37"/></svg>`,
-  spain: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="3" height="0.5" fill="#aa151b"/><rect y="0.5" width="3" height="1" fill="#f1bf00"/><rect y="1.5" width="3" height="0.5" fill="#aa151b"/></svg>`,
-  portugal: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="1.2" height="2" fill="#046a38"/><rect x="1.2" width="1.8" height="2" fill="#da291c"/></svg>`,
-  netherlands: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="3" height="0.67" fill="#ae1c28"/><rect y="0.67" width="3" height="0.67" fill="#fff"/><rect y="1.34" width="3" height="0.66" fill="#21468b"/></svg>`,
-  england: `<svg viewBox="0 0 5 3" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="5" height="3" fill="#fff"/><rect x="2.1" width="0.8" height="3" fill="#cf081f"/><rect y="1.1" width="5" height="0.8" fill="#cf081f"/></svg>`,
-  brazil: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="3" height="2" fill="#009c3b"/><polygon points="1.5,0.2 2.8,1 1.5,1.8 0.2,1" fill="#ffdf00"/><circle cx="1.5" cy="1" r="0.45" fill="#002776"/></svg>`,
-  argentina: `<svg viewBox="0 0 3 2" class="pop-team-flag" style="width:32px;height:22px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.15);display:inline-block;"><rect width="3" height="0.67" fill="#75aadb"/><rect y="0.67" width="3" height="0.67" fill="#fff"/><rect y="1.34" width="3" height="0.66" fill="#75aadb"/></svg>`,
-};
-
-function getPopCardTeamLogo(teamName, logoUrl) {
-  const key = (teamName || "").toLowerCase().trim();
-  if (POP_COUNTRY_FLAGS[key]) return POP_COUNTRY_FLAGS[key];
-  if (logoUrl) return `<img src="${logoUrl}" alt="${teamName}" loading="lazy" onerror="this.style.opacity='0'" />`;
-  return `<span class="football-region-flag" style="font-size:20px;">⚽</span>`;
 }
 
 function renderHomeSportsView() {
@@ -12599,6 +13804,8 @@ function getDailyDayChips() {
       return state.upcomingCheckedLeagues.has(lid);
     });
   }
+
+  // Note: all days should be counted accurately across the entire upcoming fixture calendar
 
   const chips = [
     { id: "all", label: "All Days", count: baseList.length }
@@ -12731,6 +13938,8 @@ function getUpcomingFixturesList() {
       }
       return true;
     });
+  } else if (state.timeFilter && state.timeFilter !== "all") {
+    list = list.filter(passesTimeFilter);
   }
 
   list.sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime());
@@ -12796,13 +14005,7 @@ function ensureUpcomingEventsAttached() {
         });
         return;
       }
-      if (action === "load-more-matches") {
-        state.upcomingMatchLimit = (state.upcomingMatchLimit || 40) + 40;
-        renderBoard();
-        return;
-      }
       if (action === "apply-calendar") {
-        state.upcomingMatchLimit = 40;
         state.upcomingDateFilter = state.upcomingTempDateFilter || "all";
         if (state.subNav === "daily") {
           state.dailyDateFilter = state.upcomingDateFilter;
@@ -12820,7 +14023,6 @@ function ensureUpcomingEventsAttached() {
         return;
       }
       if (action === "apply-leagues") {
-        state.upcomingMatchLimit = 40;
         const allLeagues = getUpcomingAvailableLeagues();
         if (state.upcomingTempCheckedLeagues.size >= allLeagues.length) {
           state.upcomingCheckedLeagues = new Set();
@@ -12865,7 +14067,6 @@ function ensureUpcomingEventsAttached() {
     if (marketItem) {
       e.preventDefault();
       e.stopPropagation();
-      state.upcomingMatchLimit = 40;
       state.upcomingMarket = marketItem.dataset.ufMarket;
       state.upcomingActiveDropdown = null;
       renderBoard();
@@ -12877,7 +14078,6 @@ function ensureUpcomingEventsAttached() {
     if (sportItem) {
       e.preventDefault();
       e.stopPropagation();
-      state.upcomingMatchLimit = 40;
       state.upcomingSport = sportItem.dataset.ufSport;
       state.upcomingActiveDropdown = null;
       renderBoard();
@@ -12889,7 +14089,6 @@ function ensureUpcomingEventsAttached() {
     if (dayChip) {
       e.preventDefault();
       e.stopPropagation();
-      state.upcomingMatchLimit = 40;
       const dayId = dayChip.dataset.ufDayChip;
       state.dailyDateFilter = dayId;
       state.upcomingDateFilter = dayId;
@@ -13105,14 +14304,14 @@ function renderUpcomingFeature(board) {
   let matchesHtml = "";
 
   if (!fixtures.length) {
-    const emptyText = isDaily ? "No daily events available for this filter" : "No upcoming matches available for this filter";
+    const timeLabel = state.timeFilter && state.timeFilter !== "all" ? ` in the next ${state.timeFilter.toUpperCase()}` : "";
+    const emptyText = isDaily
+      ? `No daily events available${timeLabel}`
+      : `No upcoming matches available${timeLabel}`;
     matchesHtml = `<div class="uf-empty">${emptyText}</div>`;
   } else {
-    const matchLimit = state.upcomingMatchLimit || 40;
-    const visibleFixtures = fixtures.slice(0, matchLimit);
-
     const bannerGroups = new Map();
-    for (const f of visibleFixtures) {
+    for (const f of fixtures) {
       const bKey = isDaily ? formatDailyEventsBanner(f.date) : formatUpcomingDateBanner(f.date);
       if (!bannerGroups.has(bKey)) bannerGroups.set(bKey, []);
       bannerGroups.get(bKey).push(f);
@@ -13174,17 +14373,6 @@ function renderUpcomingFeature(board) {
         ${rows}
       `;
     }).join("");
-
-    if (fixtures.length > matchLimit) {
-      const remaining = fixtures.length - matchLimit;
-      matchesHtml += `
-        <div class="uf-load-more-wrap" style="text-align:center; padding:18px 12px 28px;">
-          <button type="button" class="uf-btn-load-more" data-uf-action="load-more-matches" style="background:#ffd200; color:#111; font-weight:700; border:none; padding:10px 24px; border-radius:6px; cursor:pointer; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-            Load More Matches (+${Math.min(40, remaining)}) · ${remaining} remaining
-          </button>
-        </div>
-      `;
-    }
   }
 
   const isDropdownOpen = Boolean(activeDropdown);
@@ -14712,44 +15900,78 @@ function formatAuthPhone(rawPhone) {
   return `+251${digits}`;
 }
 
+function openRegUnavailableModal() {
+  closeAuthModal();
+  const el = $("reg-unavail-modal");
+  if (!el) return;
+  el.hidden = false;
+  document.body.classList.add("reg-unavail-open");
+}
+
+function closeRegUnavailableModal() {
+  const el = $("reg-unavail-modal");
+  if (!el) return;
+  el.hidden = true;
+  document.body.classList.remove("reg-unavail-open");
+}
+
+function openAppInstallModal() {
+  const el = $("app-install-modal");
+  if (!el) return;
+  el.hidden = false;
+  document.body.classList.add("app-modal-open");
+}
+
+function closeAppInstallModal() {
+  const el = $("app-install-modal");
+  if (!el) return;
+  el.hidden = true;
+  document.body.classList.remove("app-modal-open");
+}
+
+function triggerAppDownload() {
+  try {
+    const link = document.createElement("a");
+    link.href = "/download/KonjoBet.apk?v=1.0.1";
+    link.download = "KonjoBet.apk";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (_) {}
+  openAppInstallModal();
+}
+
 function openAuthModal(tab) {
+  if (tab === "register") {
+    openRegUnavailableModal();
+    return;
+  }
+  closeRegUnavailableModal();
   state.authTab = tab || "login";
-  const isReg = state.authTab === "register";
+  const isReg = false;
   $("auth-modal").hidden = false;
-  $("auth-card")?.classList.toggle("is-register", isReg);
+  $("auth-card")?.classList.remove("is-register");
   if ($("auth-title")) {
-    $("auth-title").hidden = !isReg;
-    $("auth-title").textContent = "Register";
+    $("auth-title").hidden = true;
+    $("auth-title").textContent = "Login";
   }
   document.querySelectorAll(".auth-label--reg, #auth-phone-label").forEach((el) => {
-    el.hidden = !isReg;
+    el.hidden = true;
   });
-  if ($("auth-confirm-wrap")) $("auth-confirm-wrap").hidden = !isReg;
-  if ($("auth-referral-wrap")) {
-    $("auth-referral-wrap").hidden = !isReg;
-    if (isReg && !$("auth-referral-code")?.value) {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const refParam = urlParams.get("promoter_code") || urlParams.get("ref") || urlParams.get("promoter") || "";
-        if (refParam && $("auth-referral-code")) {
-          $("auth-referral-code").value = refParam;
-        }
-      } catch (_) {}
-    }
-  }
-  if ($("auth-checks")) $("auth-checks").hidden = !isReg;
-  if ($("auth-footer-login")) $("auth-footer-login").hidden = isReg;
-  if ($("auth-footer-register")) $("auth-footer-register").hidden = !isReg;
-  if ($("auth-phone")) $("auth-phone").placeholder = isReg ? "Phone number" : "Phone or Username";
+  if ($("auth-confirm-wrap")) $("auth-confirm-wrap").hidden = true;
+  if ($("auth-checks")) $("auth-checks").hidden = true;
+  if ($("auth-footer-login")) $("auth-footer-login").hidden = false;
+  if ($("auth-footer-register")) $("auth-footer-register").hidden = true;
+  if ($("auth-phone")) $("auth-phone").placeholder = "Phone or Username";
   if ($("auth-password")) {
-    $("auth-password").placeholder = isReg ? "" : "Password";
-    $("auth-password").autocomplete = isReg ? "new-password" : "current-password";
+    $("auth-password").placeholder = "Password";
+    $("auth-password").autocomplete = "current-password";
   }
   if ($("auth-password2")) {
-    $("auth-password2").required = isReg;
-    $("auth-password2").value = isReg ? $("auth-password2").value : "";
+    $("auth-password2").required = false;
+    $("auth-password2").value = "";
   }
-  if ($("auth-submit")) $("auth-submit").textContent = isReg ? "REGISTER" : "LOGIN";
+  if ($("auth-submit")) $("auth-submit").textContent = "LOGIN";
 
   // Server URL status pill
   const serverLabel = $("auth-server-label");
@@ -14805,17 +16027,8 @@ async function syncFromApi() {
 
   try {
     state.sessionUser = api().getUser();
-    const role = state.sessionUser?.role;
-    if (role === "super_admin" || role === "sys_core") {
-      state.balance = 0;
-      state.history = [];
-      renderSession();
-      renderBalance();
-      return;
-    }
-
     const bal = await api().fetchBalance();
-    state.balance = bal ? bal.balance : 0;
+    state.balance = bal.balance;
     const hist = await api().fetchHistory();
     const apiTickets = (hist.tickets || []).map((t) => {
       const bets = (t.bets || []).map((b, idx) => {
@@ -14850,7 +16063,7 @@ async function syncFromApi() {
       api().clearSession();
       state.sessionUser = null;
     }
-    if (err.status !== 401 && err.status !== 404 && err.status !== 0) {
+    if (err.status !== 401) {
       toast(err.message || "Could not sync account", "err");
     }
   }
@@ -14886,8 +16099,8 @@ function settleTicketLocal(ticket) {
 async function placeBet() {
   if (!state.slip.length) return;
   if (!isLoggedIn() || !api().getToken()) {
-    openAuthModal("register");
-    toast("Please register or log in to place bets", "err");
+    openAuthModal("login");
+    toast("Please log in to place bets", "err");
     return;
   }
   const finishedBets = state.slip.filter((b) => getSlipBetStatus(b).isFinished);
@@ -14923,6 +16136,9 @@ async function placeBet() {
   }
   const isAdminBet = document.body.classList.contains("is-admin-bet-mode");
   if (isAdminBet) {
+    if (!state.adminSelectedPlayer && state.adminPlayersList && state.adminPlayersList.length > 0) {
+      state.adminSelectedPlayer = state.adminPlayersList[0];
+    }
     if (!state.adminSelectedPlayer) {
       toast("Please select a player to place bet for", "err");
       return;
@@ -14988,22 +16204,29 @@ async function placeBet() {
         placedAt: result.ticket.placedAt || new Date().toISOString(),
       };
       if (isAdminBet && state.adminSelectedPlayer) {
-        const nextBal = result.balance !== undefined ? Number(result.balance) : Math.max(0, Number(((state.adminSelectedPlayer.balance || 0) - state.stake).toFixed(2)));
-        syncPlayerBalanceEverywhere(state.adminSelectedPlayer.id, nextBal);
-      } else {
-        const nextBal = result.balance !== undefined ? Number(result.balance) : Math.max(0, Number(((state.balance || 0) - state.stake).toFixed(2)));
-        state.balance = nextBal;
-        if (state.sessionUser) {
-          state.sessionUser.balance = nextBal;
-          try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
+        state.adminSelectedPlayer.balance = result.balance;
+        onAdminBetPlayerChange();
+        const pInList = (state.adminPlayersList || []).find((p) => String(p.id) === String(state.adminSelectedPlayer.id));
+        if (pInList) {
+          pInList.balance = result.balance;
+          const select = $("admin-bet-player-select");
+          if (select) {
+            const opt = select.querySelector(`option[value="${pInList.id}"]`);
+            if (opt) {
+              const uname = pInList.username || pInList.phone || `Player #${pInList.id}`;
+              opt.textContent = `${uname} (${fmt(pInList.balance || 0)} ETB)`;
+            }
+          }
         }
+      } else {
+        state.balance = result.balance;
       }
       state.history.unshift(ticket);
       state.betPlacedSuccessTicket = ticket;
       state.slip = [];
       renderBalance();
       renderSlip();
-      updateSelectedOddsUI();
+      refreshHomeAndBoard();
       if (state.detailFixtureId) renderMatchDetail();
       toast(`Bet placed — ${ticket.id}`, "ok");
       refreshMyBetsIfVisible();
@@ -15030,16 +16253,7 @@ async function placeBet() {
     placedAt: new Date().toISOString(),
   };
 
-  if (isAdminBet && state.adminSelectedPlayer) {
-    const nextBal = Math.max(0, Number(((state.adminSelectedPlayer.balance || 0) - state.stake).toFixed(2)));
-    syncPlayerBalanceEverywhere(state.adminSelectedPlayer.id, nextBal);
-  } else {
-    state.balance = Math.max(0, Number(((state.balance || 0) - state.stake).toFixed(2)));
-    if (state.sessionUser) {
-      state.sessionUser.balance = state.balance;
-      try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
-    }
-  }
+  state.balance -= state.stake;
   state.history.unshift(ticket);
   state.betPlacedSuccessTicket = ticket;
   state.slip = [];
@@ -15047,7 +16261,7 @@ async function placeBet() {
 
   renderBalance();
   renderSlip();
-  updateSelectedOddsUI();
+  refreshHomeAndBoard();
   if (state.detailFixtureId) renderMatchDetail();
   toast(`Bet placed — ${id}`, "ok");
   refreshMyBetsIfVisible();
@@ -15303,21 +16517,31 @@ function formatKickoffDate(d) {
 }
 
 function resolveReceiptMarketName(marketName, marketKey) {
-  const m = String(marketName || "").trim().toLowerCase();
+  if (marketName && typeof marketName === "string" && marketName.trim()) {
+    const raw = marketName.trim();
+    const m = raw.toLowerCase();
+    // Only collapse generic short codes / shorthand names into standard full names
+    if (m === "1x2" || m === "1 x 2" || m === "match result") {
+      return "Match Result";
+    }
+    if (m === "dc" || m === "double chance") {
+      return "Double Chance";
+    }
+    if (m === "ou" || m === "total goals" || m === "total" || m === "over/under" || m === "over / under") {
+      return "Total Goals";
+    }
+    if (m === "btts" || m === "both teams" || m === "both teams to score" || m === "gg/ng") {
+      return "Both Teams To Score";
+    }
+    // Specific markets (e.g. "Yellow Cards: 1st Half Total", "Yellow Cards: Total", "Corners: Total", etc.) remain as is!
+    return raw;
+  }
   const k = String(marketKey || "").trim().toLowerCase();
-  if (k === "1x2" || m.includes("match result") || m === "1x2" || m === "1 x 2" || !m) {
-    return "Match Result";
-  }
-  if (k === "dc" || m.includes("double chance")) {
-    return "Double Chance";
-  }
-  if (k === "ou" || m.includes("total") || m.includes("over/under")) {
-    return "Total Goals";
-  }
-  if (k === "btts" || m.includes("both teams")) {
-    return "Both Teams To Score";
-  }
-  return marketName || "Match Result";
+  if (k === "1x2") return "Match Result";
+  if (k === "dc") return "Double Chance";
+  if (k === "ou" || k.startsWith("ou")) return "Total Goals";
+  if (k === "btts") return "Both Teams To Score";
+  return "Match Result";
 }
 
 function resolveEventCountryAndLeague(b) {
@@ -15406,6 +16630,24 @@ function markTicketAsPrinted(ticketId) {
   } catch (_) {}
 }
 
+function resolveMatchTeams(b) {
+  if (!b) return "Match";
+  if (b.fixtureName && String(b.fixtureName).trim()) {
+    return String(b.fixtureName).replace(/\s+-\s+|\s+vs\s+/gi, " v ").trim();
+  }
+  const h = b.homeName || (typeof b.home === "string" ? b.home : b.home?.name) || (b.teams && b.teams.home ? b.teams.home.name : "") || "";
+  const a = b.awayName || (typeof b.away === "string" ? b.away : b.away?.name) || (b.teams && b.teams.away ? b.teams.away.name : "") || "";
+  if (h && a) return `${h} v ${a}`;
+  if (b.fixtureId) {
+    const f = typeof findFixture === "function" ? findFixture(b.fixtureId) : null;
+    if (f && f.home?.name && f.away?.name) {
+      return `${f.home.name} v ${f.away.name}`;
+    }
+  }
+  return h || a || b.matchName || b.match || "Match";
+}
+window.resolveMatchTeams = resolveMatchTeams;
+
 function buildTicketReceiptHtml(ticket, options = {}) {
   ticket = ticket || state.betPlacedSuccessTicket || state.history[0] || {
     id: "H0001",
@@ -15466,16 +16708,14 @@ function buildTicketReceiptHtml(ticket, options = {}) {
     markTicketAsPrinted(betId);
   }
 
-  // Reprint banner shown on 2nd+ prints
-  const reprintBannerHtml = isReprint ? `
-    <div class="receipt-reprint-banner">
-      ⚠️ COPY — NOT ORIGINAL · THIS TICKET CANNOT BE USED MORE THAN ONCE
-    </div>` : "";
+  // Reprint banner (removed to match reference design with only watermarks)
+  const reprintBannerHtml = "";
 
-  // Watermark for reprints (diagonal text overlay)
+  // Watermark for reprints (diagonal text overlay: exactly 2 የማያገለግል watermarks)
   const watermarkHtml = isReprint ? `
     <div class="receipt-watermark-overlay" aria-hidden="true">
-      ${Array(6).fill(0).map(() => `<div class="receipt-watermark-row"><span>COPY</span><span>COPY</span><span>COPY</span><span>COPY</span></div>`).join("")}
+      <div class="receipt-watermark-item receipt-watermark-top">የማያገለግል</div>
+      <div class="receipt-watermark-item receipt-watermark-bottom">የማያገለግል</div>
     </div>` : "";
 
   const bonusHtml = bonus > 0 ? `
@@ -15499,14 +16739,7 @@ function buildTicketReceiptHtml(ticket, options = {}) {
   const barcodeSvg = generateBarcodeSvg(barcodePayload, 44);
 
   const eventsHtml = bets.map((b) => {
-    let match = "";
-    if (b.fixtureName) {
-      match = b.fixtureName.replace(/\s+-\s+|\s+vs\s+/gi, " v ");
-    } else if (b.homeName && b.awayName) {
-      match = `${b.homeName} v ${b.awayName}`;
-    } else {
-      match = "Match";
-    }
+    const match = resolveMatchTeams(b);
 
     const leagueStr = resolveEventCountryAndLeague(b);
     const kickoffStr = formatKickoffDate(b.kickoff);
@@ -15525,7 +16758,9 @@ function buildTicketReceiptHtml(ticket, options = {}) {
     const scores = getMatchExactScores(b, ticket, res);
     let scoresHtml = "";
     if (scores) {
-      scoresHtml = ` <span class="rec-match-scores">HT ${scores.ht} FT ${scores.ft}</span>`;
+      const isCardBet = String(b.marketName || b.market || "").toLowerCase().includes("card");
+      const cardPrefix = isCardBet ? "Cards: " : "";
+      scoresHtml = ` <span class="rec-match-scores">${cardPrefix}HT ${scores.ht} FT ${scores.ft}</span>`;
     } else if (!res && isBetOngoing(b, ticket)) {
       const liveScore = getMatchLiveScore(b, ticket);
       scoresHtml = ` <span class="rec-match-scores rec-match-scores--live">[${liveScore}]</span>`;
@@ -15656,13 +16891,6 @@ function buildTicketReceiptHtml(ticket, options = {}) {
       All Win Tickets are ONLY valid for 30 Days | Soccer Betting is 90 Minutes and Doesn't include Extra Time or Penalties.
     </div>
 
-    <div class="receipt-footer-age">
-      <div class="receipt-age-circle receipt-age-circle--small">21+</div>
-      <div class="receipt-footer-amharic">
-        <div>ከ21 ዓመት በታች ለሆኑ አይፈቀድም!</div>
-        <div>ህግና ደንቦች ተፈፃሚ ናቸው</div>
-      </div>
-    </div>
   `;
 }
 
@@ -15677,6 +16905,7 @@ let _currentCheckTicket = null;
 function showTicketCheckModal(ticket) {
   if (!ticket) return;
   _currentCheckTicket = ticket;
+  renderPrintTicket(ticket, { forceReprint: true, markPrinted: false });
   const modal = $("ticket-check-modal");
   const backdrop = $("ticket-check-modal-backdrop");
   const body = $("ticket-check-modal-body");
@@ -15796,7 +17025,7 @@ async function printTicketReceipt(ticket, options = {}) {
   renderPrintTicket(ticket, options);
   setTimeout(() => {
     window.print();
-  }, 50);
+  }, 120);
 }
 
 function openTicketPrintModal(ticket, options = {}) {
@@ -15832,6 +17061,18 @@ function openShareModal() {
     };
     localStorage.setItem("hope_booked_bets", JSON.stringify(bookedStore));
   } catch (_) {}
+
+  // Sync with central backend API for cross-device booking lookup (shop admin, cashier, etc.)
+  if (useApi() && api().bookBet) {
+    try {
+      api().bookBet({
+        code,
+        stake: state.stake || 20,
+        mode: state.slipMode || (state.slip.length > 1 ? "multiple" : "single"),
+        selections: state.slip,
+      }).catch((e) => console.warn("Backend booking deferred:", e));
+    } catch (_) {}
+  }
 
   // Update modal header / summary values
   const codeEl = $("share-code-val");
@@ -15899,9 +17140,297 @@ function closeShareModal() {
   if (modal) modal.hidden = true;
 }
 
-function loadBookedBetByCode(rawCode) {
-  const code = String(rawCode || "").replace(/[^0-9]/g, "").trim();
-  if (code.length !== 5) {
+function loadItemsIntoSlip(rawBets, stake) {
+  state.betPlacedSuccessTicket = null;
+  state.slip = (rawBets || []).map((b) => {
+    const teams = resolveMatchTeams(b);
+    let h = b.homeName || "";
+    let a = b.awayName || "";
+    if ((!h || !a) && teams.includes(" v ")) {
+      const parts = teams.split(" v ");
+      h = parts[0].trim();
+      a = parts[1].trim();
+    }
+    const country = b.country || b.league?.country || "World";
+    const leagueName = b.leagueName || b.league?.name || "League";
+    return {
+      key: b.key || slipKey(b.fixtureId || Math.floor(Math.random() * 900000) + 100000, b.marketKey || b.market || "1x2", b.value || b.selection || "home"),
+      fixtureId: b.fixtureId || Math.floor(Math.random() * 900000) + 100000,
+      market: b.marketKey || b.market || "1x2",
+      selection: b.value || b.selection || "home",
+      odd: parseFloat(b.odd) || 1.5,
+      fixtureName: b.fixtureName || `${h} vs ${a}`,
+      homeName: h,
+      awayName: a,
+      homeLogo: b.homeLogo || b.home?.logo || "",
+      awayLogo: b.awayLogo || b.away?.logo || "",
+      selectionName: b.selectionName || b.value || b.selection || "W1",
+      marketName: b.marketName || "Match Result",
+      kickoff: b.kickoff || b.date || new Date().toISOString(),
+      sport: b.sport || "Football",
+      country,
+      leagueName,
+      isLive: Boolean(b.isLive),
+    };
+  });
+  state.slipMode = state.slip.length > 1 ? "multiple" : "single";
+  if (stake) state.stake = Number(stake);
+  save();
+  renderSlip();
+  syncMobileSlipCount();
+}
+window.loadItemsIntoSlip = loadItemsIntoSlip;
+
+function renderCheckBetLoadedSlip(data, type = "booked") {
+  const panel = $("check-bet-result-panel");
+  if (!panel) return;
+
+  const rawBets = data.slip || data.bets || data.selections || [];
+  const bets = Array.isArray(rawBets) ? rawBets : [];
+  const code = String(data.code || data.bookingCode || data.cashierCode || data.id || "—").replace(/^BOOK-/i, "");
+  const stake = Number(data.stake || state.stake || 20);
+  const odds = Number(data.totalOdds || (bets.reduce((acc, b) => acc * (b.odd || 1), 1)) || 1);
+  const potentialWin = Number(data.potentialWin || data.totalWin || (stake * odds));
+
+  if (!bets.length) {
+    panel.hidden = false;
+    panel.innerHTML = `
+      <div style="padding: 24px; text-align: center; color: #d32f2f; background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; margin: 16px auto; max-width: 600px;">
+        <div style="font-size: 24px; margin-bottom: 8px;">✕</div>
+        <div style="font-size: 15px; font-weight: 800;">No Matches Found</div>
+        <div style="font-size: 12px; color: #666; margin-top: 4px;">Code "${escapeHtml(code)}" contains no selections.</div>
+      </div>`;
+    return;
+  }
+
+  const eventsHtml = bets.map((b, i) => {
+    const teams = resolveMatchTeams(b);
+    const country = b.country || b.league?.country || "World";
+    const league = b.leagueName || b.league?.name || "League";
+    const metaStr = `${country} · ${league}`;
+    const kickoff = formatKickoffDate(b.kickoff || b.date);
+    const market = resolveReceiptMarketName(b.marketName, b.marketKey || b.market);
+    const pick = normalizeReceiptPick(b.selectionName, b.marketName, b.homeName, b.awayName, b.selection || b.value);
+    const odd = Number(b.odd || 1).toFixed(2);
+
+    let statusBadge = "";
+    let itemClass = "";
+    if (type === "ticket") {
+      const res = typeof getBetSelectionResult === "function" ? getBetSelectionResult(b, data) : null;
+      if (res === "won" || b.status === "won") {
+        statusBadge = '<span class="cb-item-status is-won">✓ WON</span>';
+        itemClass = "cb-item-won";
+      } else if (res === "lost" || b.status === "lost") {
+        statusBadge = '<span class="cb-item-status is-lost">✕ LOST</span>';
+        itemClass = "cb-item-lost";
+      } else {
+        statusBadge = '<span class="cb-item-status is-open">⏳ IN COURSE</span>';
+      }
+    }
+
+    return `
+      <div class="cb-loaded-item ${itemClass}">
+        <div class="cb-loaded-item-top">
+          <div class="cb-loaded-item-top-left">
+            <span class="cb-loaded-num">${i + 1}</span>
+            <span class="cb-loaded-match">${escapeHtml(teams)}</span>
+          </div>
+          ${statusBadge}
+        </div>
+        <div class="cb-loaded-item-meta">
+          <span>${escapeHtml(metaStr)}</span>
+          <span>${kickoff}</span>
+        </div>
+        <div class="cb-loaded-item-pick">
+          <span class="cb-loaded-mkt">${escapeHtml(market)}</span>
+          <span class="cb-loaded-sel">${escapeHtml(pick)}</span>
+          <span class="cb-loaded-odd">Odd: <strong>${odd}</strong></span>
+        </div>
+      </div>`;
+  }).join("");
+
+  const isAdmin = document.body.classList.contains("is-admin-mode");
+  const badgeText = type === "ticket" ? `TICKET #${escapeHtml(code)}` : "BOOKED BET";
+  const badgeClass = type === "ticket" ? "cb-loaded-badge is-ticket" : "cb-loaded-badge";
+
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="cb-loaded-card">
+      <div class="cb-loaded-header">
+        <div class="cb-loaded-header-left">
+          <span class="${badgeClass}">${badgeText}</span>
+          <span class="cb-loaded-code-title">Code: <strong>*${escapeHtml(code)}*</strong> (${bets.length} Selections)</span>
+        </div>
+        <div class="cb-loaded-header-right">
+          <span class="cb-loaded-count-chip">${bets.length} Matches</span>
+        </div>
+      </div>
+
+      <div class="cb-loaded-events-list">
+        ${eventsHtml}
+      </div>
+
+      <div class="cb-loaded-summary-box">
+        <div class="cb-loaded-sum-col">
+          <span class="cb-sum-label">TOTAL ODDS</span>
+          <span class="cb-sum-val">${odds.toFixed(2)}</span>
+        </div>
+        <div class="cb-loaded-sum-col">
+          <span class="cb-sum-label">STAKE</span>
+          <div class="cb-stake-input-wrap">
+            <input type="number" id="cb-loaded-stake" value="${stake}" min="1" step="1" />
+            <span>ETB</span>
+          </div>
+        </div>
+        <div class="cb-loaded-sum-col cb-loaded-sum-col--win">
+          <span class="cb-sum-label">POSSIBLE WIN</span>
+          <span class="cb-sum-val cb-sum-val--win" id="cb-loaded-win">${fmt(potentialWin)} ETB</span>
+        </div>
+      </div>
+
+      <div class="cb-loaded-actions-bar">
+        ${isAdmin ? `
+          <button type="button" class="btn-cb-action btn-cb-place" id="btn-cb-cut-ticket">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Cut Ticket (ውርርድ ቁረጥ)
+          </button>
+        ` : `
+          <button type="button" class="btn-cb-action btn-cb-place" id="btn-cb-place-bet">
+            Place Bet
+          </button>
+        `}
+        <button type="button" class="btn-cb-action btn-cb-slip" id="btn-cb-load-slip">
+          Load to Betslip
+        </button>
+        <button type="button" class="btn-cb-action btn-cb-print" id="btn-cb-print-booked">
+          🖨️ ${type === 'ticket' ? 'Print Ticket' : 'Print Slip'}
+        </button>
+      </div>
+
+      ${type === "ticket" ? `
+        <div class="cb-loaded-receipt-toggle-wrap">
+          <button type="button" class="btn-cb-toggle-receipt" id="btn-cb-toggle-receipt">
+            📄 Show Official Ticket Receipt
+          </button>
+          <div id="cb-ticket-receipt-drawer" class="cb-ticket-receipt-drawer" hidden>
+            <div class="receipt-paper" style="box-shadow: 0 4px 18px rgba(0,0,0,0.15); border-radius: 4px; margin: 12px auto;">
+              ${buildTicketReceiptHtml(data, { forceReprint: true, markPrinted: false })}
+            </div>
+          </div>
+        </div>
+      ` : ''}
+    </div>`;
+
+  // Bind dynamic stake input
+  const stakeInput = $("cb-loaded-stake");
+  if (stakeInput) {
+    stakeInput.addEventListener("input", (e) => {
+      const newStake = Math.max(1, Number(e.target.value) || 0);
+      const newWin = newStake * odds;
+      const winEl = $("cb-loaded-win");
+      if (winEl) winEl.textContent = `${fmt(newWin)} ETB`;
+      state.stake = newStake;
+    });
+  }
+
+  // Bind Cut Ticket (for admin) or Place Bet (for player)
+  const cutBtn = $("btn-cb-cut-ticket") || $("btn-cb-place-bet");
+  if (cutBtn) {
+    cutBtn.addEventListener("click", async () => {
+      const chosenStake = Number(stakeInput?.value) || stake;
+      loadItemsIntoSlip(bets, chosenStake);
+      if (isAdmin) {
+        switchAdminTab("bet");
+        if (!state.adminSelectedPlayer) {
+          if (state.adminPlayersList && state.adminPlayersList.length > 0) {
+            state.adminSelectedPlayer = state.adminPlayersList[0];
+          } else if (typeof loadAdminBetPlayers === "function") {
+            try {
+              await loadAdminBetPlayers();
+            } catch (_) {}
+          }
+        }
+        setTimeout(() => {
+          if (typeof placeBet === "function") {
+            placeBet();
+          }
+        }, 200);
+      } else {
+        openMobileBetslip();
+        if (typeof placeBet === "function") {
+          placeBet();
+        }
+      }
+    });
+  }
+
+  // Bind Load to Betslip
+  const slipBtn = $("btn-cb-load-slip");
+  if (slipBtn) {
+    slipBtn.addEventListener("click", () => {
+      loadItemsIntoSlip(bets, Number(stakeInput?.value) || stake);
+      if (isAdmin) {
+        switchAdminTab("bet");
+      } else {
+        setView("sports");
+        openMobileBetslip();
+      }
+      toast(`Loaded ${bets.length} matches into betslip`, "ok");
+    });
+  }
+
+  // Bind Print Slip / Ticket
+  const printBtn = $("btn-cb-print-booked");
+  if (printBtn) {
+    printBtn.addEventListener("click", () => {
+      if (type === "ticket") {
+        printTicketReceipt(data, { forceReprint: true, markPrinted: false });
+      } else {
+        const mockTicket = {
+          id: `BOOK-${code}`,
+          cashierCode: code,
+          publicCode: code,
+          bets,
+          stake: Number(stakeInput?.value) || stake,
+          totalOdds: odds,
+          potentialWin: (Number(stakeInput?.value) || stake) * odds,
+          status: "booked",
+          placedAt: new Date().toISOString(),
+        };
+        printTicketReceipt(mockTicket, { forceReprint: true, markPrinted: false });
+      }
+    });
+  }
+
+  // Bind receipt drawer toggle
+  const toggleReceiptBtn = $("btn-cb-toggle-receipt");
+  if (toggleReceiptBtn) {
+    toggleReceiptBtn.addEventListener("click", () => {
+      const drawer = $("cb-ticket-receipt-drawer");
+      if (drawer) {
+        drawer.hidden = !drawer.hidden;
+        toggleReceiptBtn.textContent = drawer.hidden ? "📄 Show Official Ticket Receipt" : "✕ Hide Official Ticket Receipt";
+      }
+    });
+  }
+
+  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+window.renderCheckBetLoadedSlip = renderCheckBetLoadedSlip;
+
+async function loadBookedBetByCode(rawCode) {
+  const cleanStr = String(rawCode || "").trim();
+  const rawDigits = cleanStr.replace(/[^0-9]/g, "");
+  let code = rawDigits.length === 5 ? rawDigits : cleanStr;
+
+  if (!code || (code.length !== 5 && !cleanStr.toUpperCase().startsWith("BOOK-"))) {
+    if (cleanStr.length >= 3) {
+      const maybeTicket = findTicketByIdOrCashier(cleanStr);
+      if (maybeTicket || (useApi() && cleanStr.length >= 4)) {
+        await checkAndShowTicket(cleanStr);
+        return;
+      }
+    }
     toast("Enter a valid 5-digit booking code (5 numbers)", "err");
     return;
   }
@@ -15914,10 +17443,31 @@ function loadBookedBetByCode(rawCode) {
 
     let item = bookedStore[code];
 
-    // If not found in storage, generate a valid set of real matches from current fixtures
+    // Try central backend API for cross-device booking lookup
+    if ((!item || !item.slip || !item.slip.length) && useApi() && api().fetchBookedBet) {
+      try {
+        const res = await api().fetchBookedBet(code);
+        if (res && res.ok && res.booking) {
+          item = {
+            code: res.booking.code,
+            slip: res.booking.selections,
+            stake: res.booking.stake,
+            totalOdds: res.booking.totalOdds,
+            potentialWin: res.booking.potentialWin,
+            createdAt: res.booking.createdAt,
+          };
+          bookedStore[code] = item;
+          try {
+            localStorage.setItem("hope_booked_bets", JSON.stringify(bookedStore));
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    // If still not found in storage or server, generate fallback from active fixtures
     if (!item || !item.slip || !item.slip.length) {
       const availFixtures = (state.fixtures && state.fixtures.length) ? state.fixtures : buildMockFixtures();
-      const numSelections = 3; // 3 matches
+      const numSelections = 3;
       const selections = [];
       const codeNum = parseInt(code, 10) || 12345;
 
@@ -15952,7 +17502,7 @@ function loadBookedBetByCode(rawCode) {
         code,
         slip: selections,
         stake: 20,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
       bookedStore[code] = item;
       try {
@@ -15961,27 +17511,10 @@ function loadBookedBetByCode(rawCode) {
     }
 
     // Set state
-    state.betPlacedSuccessTicket = null; // Clear receipt
-    state.slip = JSON.parse(JSON.stringify(item.slip));
-    state.slipMode = state.slip.length > 1 ? "multiple" : "single";
-    if (item.stake) state.stake = Number(item.stake);
+    loadItemsIntoSlip(item.slip, item.stake || 20);
 
-    // Switch to betslip tab
-    setBetslipTab("slip");
-    save();
-    renderSlip();
-    refreshMatchViews();
-
-    // If on mobile screen, open the mobile betslip drawer
-    if (window.innerWidth <= 900 && typeof openMobileBetslip === "function") {
-      openMobileBetslip();
-    }
-
-    // Smooth scroll betslip into view so user sees loaded matches immediately
-    const slipContainer = $("slip-list") || $("panel-slip") || $("betslip");
-    if (slipContainer) {
-      slipContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
+    // Render teams directly on Check Bet page!
+    renderCheckBetLoadedSlip(item, "booked");
 
     // Clear inputs
     const input1 = $("load-booked-code");
@@ -15989,7 +17522,7 @@ function loadBookedBetByCode(rawCode) {
     const input2 = $("page-load-booked-code");
     if (input2) input2.value = "";
 
-    toast(`Loaded booked bet *${code}* (${state.slip.length} matches)`, "ok");
+    toast(`✓ Loaded booked bet *${code}* (${state.slip.length} teams)`, "ok");
   } catch (err) {
     console.error("Failed to load booked bet:", err);
     toast("Could not load booked bet", "err");
@@ -16111,10 +17644,6 @@ document.addEventListener("click", (e) => {
 
   if (typeof bindSuperAdminEvents === "function") bindSuperAdminEvents();
 
-  // Night mode toggle
-  const nightToggle = $("night-toggle");
-  if (nightToggle) on(nightToggle, "click", toggleNightMode);
-
   // Theme color picker dots
   document.addEventListener("click", (e) => {
     const dot = e.target.closest(".theme-color-dot");
@@ -16185,16 +17714,14 @@ document.addEventListener("click", (e) => {
     applySubNav("sports");
   });
 
-  on($("btn-mobile-sidebar"), "click", () => {
-    toggleDedicatedMobileMenu();
-  });
-
   on($("btn-mobile-account"), "click", () => {
     if (document.body.classList.contains("account-open")) closeMobileDrawers();
     else openAccountDrawer();
   });
 
   // Mobile header actions
+  on($("mobile-top-search-btn-guest"), "click", () => openMobileSearchModal());
+  on($("mobile-top-search-btn-auth"), "click", () => openMobileSearchModal());
   on($("mobile-btn-login"), "click", () => openAuthModal("login"));
   on($("mobile-btn-signup"), "click", () => openAuthModal("register"));
   on($("btn-mobile-guest-account"), "click", () => {
@@ -16215,21 +17742,247 @@ document.addEventListener("click", (e) => {
   // Mobile main navigation tabs
   document.querySelectorAll(".mobile-nav-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
+      if (tab.dataset.gameLink) {
+        window.location.href = tab.dataset.gameLink;
+        return;
+      }
       document.querySelectorAll(".mobile-nav-tab").forEach((t) => t.classList.remove("is-active"));
       tab.classList.add("is-active");
       const navTarget = tab.dataset.mobileNav;
-      // Track the active mobile tab on body for CSS-driven visibility
-      document.body.dataset.mobileTab = navTarget === "sports" ? "sport" : navTarget;
       if (navTarget === "sports") applySubNav("sports");
       else if (navTarget === "upcoming") applySubNav("upcoming");
       else if (navTarget === "live") applySubNav("inplay");
-      else if (navTarget === "race") toast("Race virtual games coming soon!", "ok");
       else if (navTarget === "tournament") applySubNav("daily");
-      else if (navTarget === "virtual") toast("Fury Flight virtual games coming soon!", "ok");
+      else if (navTarget === "virtual") toast("Virtual games coming soon!", "ok");
     });
   });
-  // Set initial tab state to sport (default active tab)
-  document.body.dataset.mobileTab = "sport";
+
+  // --- GAMES CATALOG & LAUNCHER MODAL (Matching media_1791182440686.png) ---
+  const GAMES_CATALOG = {
+    "aviator": {
+      id: "aviator",
+      title: "Aviator",
+      provider: "SPRIBE • Crash Game",
+      image: "assets/game_aviator.gif",
+      url: "game/aviator/index.html",
+      likes: 6544
+    },
+    "chicken road": {
+      id: "chicken road",
+      title: "Chicken Road",
+      provider: "InOut • Instant Multiplier",
+      image: "assets/game_chicken_road.png",
+      url: "game/chicken%20road/index.html",
+      likes: 5820
+    },
+    "fast keno": {
+      id: "fast keno",
+      title: "Fast Keno",
+      provider: "InOut • Instant Lottery",
+      image: "assets/game_fast_keno.gif",
+      url: "game/fast%20keno/index.html",
+      likes: 4930
+    },
+    "bingo": {
+      id: "bingo",
+      title: "Bingo",
+      provider: "Dallol • Ethiopian Bingo",
+      image: "assets/game_bingo.png",
+      url: "game/bingo/index.html",
+      likes: 7120
+    },
+    "bingo star": {
+      id: "bingo star",
+      title: "Bingo Star",
+      provider: "InOut • 90-Ball Auto Daub",
+      image: "assets/game_bingo_star.png",
+      url: "game/bingo%20star/index.html",
+      likes: 3450
+    },
+    "fish": {
+      id: "fish",
+      title: "Fish",
+      provider: "InOut • Ocean Reef Action",
+      image: "assets/game_fish.png",
+      url: "game/fish/index.html",
+      likes: 4210
+    },
+    "infinity": {
+      id: "infinity",
+      title: "Infinity",
+      provider: "InOut • 1s Candlestick Crash",
+      image: "assets/game_infinity.png",
+      url: "game/infinity/index.html",
+      likes: 5180
+    }
+  };
+  GAMES_CATALOG["chicken_road"] = GAMES_CATALOG["chicken road"];
+  GAMES_CATALOG["fast_keno"] = GAMES_CATALOG["fast keno"];
+  GAMES_CATALOG["bingo_star"] = GAMES_CATALOG["bingo star"];
+
+  let currentSelectedGame = null;
+
+  function findGame(keyOrUrl) {
+    if (!keyOrUrl) return GAMES_CATALOG["aviator"];
+    const normalized = String(keyOrUrl).toLowerCase().replace(/%20/g, " ");
+    if (GAMES_CATALOG[normalized]) return GAMES_CATALOG[normalized];
+    for (const k in GAMES_CATALOG) {
+      if (normalized.includes(k) || (GAMES_CATALOG[k].url && normalized.includes(GAMES_CATALOG[k].url.toLowerCase()))) {
+        return GAMES_CATALOG[k];
+      }
+    }
+    return GAMES_CATALOG["aviator"];
+  }
+
+  function openGameLauncherModal(keyOrUrl) {
+    const game = findGame(keyOrUrl);
+    currentSelectedGame = game;
+
+    const modal = $("game-launcher-modal");
+    const title = $("game-launcher-title");
+    const sub = $("game-launcher-sub");
+    const bg = $("game-launcher-bg");
+    const likes = $("game-launcher-likes-count");
+
+    if (title) title.textContent = game.title;
+    if (sub) sub.textContent = game.provider;
+    if (bg) bg.style.backgroundImage = `url('${game.image}')`;
+    if (likes) likes.textContent = String(game.likes || 6544);
+
+    if (modal) {
+      modal.hidden = false;
+    }
+  }
+
+  function closeGameLauncherModal() {
+    const modal = $("game-launcher-modal");
+    if (modal) {
+      modal.hidden = true;
+    }
+    currentSelectedGame = null;
+  }
+
+  function launchGame(game, mode) {
+    if (!game) return;
+    if (mode === "real") {
+      // "If it says 'play now', you must log in because it is for real money"
+      const isAuthed = !!state.sessionUser || !!localStorage.getItem("hope-bet-user");
+      if (!isAuthed) {
+        closeGameLauncherModal();
+        toast("Please log in to play for real money", "err");
+        try {
+          sessionStorage.setItem("hopebet_pending_game", JSON.stringify({
+            url: game.url,
+            mode: "real"
+          }));
+        } catch (_) {}
+        openAuthModal("login");
+        return;
+      }
+      if (window.HabeshaWallet && typeof window.HabeshaWallet.setMode === "function") {
+        window.HabeshaWallet.setMode("real");
+      }
+      closeGameLauncherModal();
+      const sep = game.url.includes("?") ? "&" : "?";
+      window.location.href = game.url + sep + "mode=real";
+    } else {
+      // "but if it is a demo, it lets you play."
+      if (window.HabeshaWallet && typeof window.HabeshaWallet.setMode === "function") {
+        window.HabeshaWallet.setMode("demo");
+        if (typeof window.HabeshaWallet.renewDemoBalance === "function") {
+          window.HabeshaWallet.renewDemoBalance();
+        }
+      }
+      closeGameLauncherModal();
+      const sep = game.url.includes("?") ? "&" : "?";
+      window.location.href = game.url + sep + "mode=demo";
+    }
+  }
+
+  // Bind game launcher modal buttons
+  on($("game-btn-play-now"), "click", () => {
+    if (currentSelectedGame) {
+      launchGame(currentSelectedGame, "real");
+    }
+  });
+
+  on($("game-btn-demo"), "click", () => {
+    if (currentSelectedGame) {
+      launchGame(currentSelectedGame, "demo");
+    }
+  });
+
+  on($("game-launcher-close"), "click", closeGameLauncherModal);
+
+  on($("game-launcher-modal"), "click", (e) => {
+    if (e.target === $("game-launcher-modal")) {
+      closeGameLauncherModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const modal = $("game-launcher-modal");
+      if (modal && !modal.hidden) {
+        closeGameLauncherModal();
+      }
+    }
+  });
+
+  // Universal Game Launcher and Nav Dropdown Handler
+  document.addEventListener("click", (e) => {
+    // 1. Direct chip click inside dropdown menu: Play Now vs Demo
+    const chip = e.target.closest("[data-game-action]");
+    if (chip) {
+      e.preventDefault();
+      e.stopPropagation();
+      const action = chip.dataset.gameAction;
+      const key = chip.dataset.gameKey;
+      const game = findGame(key);
+      launchGame(game, action);
+      return;
+    }
+
+    // 2. Click on game link / game tab anywhere on the site
+    const gameLink = e.target.closest("[data-game-link], [data-game-key]");
+    if (gameLink && !gameLink.closest("#game-launcher-modal")) {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = gameLink.dataset.gameKey || gameLink.dataset.gameLink;
+      openGameLauncherModal(key);
+      return;
+    }
+
+    // 3. Dropdown toggle
+    const gamesToggle = e.target.closest("#nav-games-toggle");
+    if (gamesToggle) {
+      e.preventDefault();
+      e.stopPropagation();
+      const wrap = gamesToggle.closest(".nav-games-dropdown-wrap");
+      if (wrap) {
+        wrap.classList.toggle("is-open");
+      }
+      return;
+    }
+
+    if (!e.target.closest(".nav-games-dropdown-wrap")) {
+      document.querySelectorAll(".nav-games-dropdown-wrap.is-open").forEach((w) => {
+        w.classList.remove("is-open");
+      });
+    }
+  });
+
+  // Subscribe to HabeshaWallet balance updates across tabs & games
+  if (window.HabeshaWallet && typeof window.HabeshaWallet.subscribe === "function") {
+    try {
+      window.HabeshaWallet.subscribe((newBal) => {
+        if (typeof newBal === "number" && !isNaN(newBal) && Math.abs(newBal - (Number(state.balance) || 0)) > 0.001) {
+          state.balance = newBal;
+          renderBalance();
+        }
+      });
+    } catch (_) {}
+  }
 
   // Mobile bottom navigation bar
   on($("mobile-bnav-menu"), "click", () => {
@@ -16244,8 +17997,16 @@ document.addEventListener("click", (e) => {
   document.querySelectorAll(".mmenu-nav-card").forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = btn.dataset.mmenu;
+      if (target === "games") {
+        const sub = $("mmenu-games-sublist");
+        if (sub) {
+          sub.hidden = !sub.hidden;
+        }
+        return;
+      }
       closeDedicatedMobileMenu();
-      if (target === "sport") applySubNav("sports");
+      if (target === "search") openMobileSearchModal();
+      else if (target === "sport") applySubNav("sports");
       else if (target === "upcoming") applySubNav("upcoming");
       else if (target === "live") applySubNav("inplay");
       else if (target === "tournament") applySubNav("daily");
@@ -16257,10 +18018,12 @@ document.addEventListener("click", (e) => {
   });
 
   on($("mmenu-app-android"), "click", () => {
-    toast("Android Application download coming soon!", "ok");
+    closeMobileDrawers();
+    triggerAppDownload();
   });
   on($("mmenu-app-ios"), "click", () => {
-    toast("iOS Application download coming soon!", "ok");
+    closeMobileDrawers();
+    openAppInstallModal();
   });
   on($("mobile-bnav-mybets"), "click", () => {
     closeMobileDrawers();
@@ -16317,13 +18080,6 @@ document.addEventListener("click", (e) => {
     toast("iOS app coming soon", "ok");
   });
 
-  on($("account-theme-switch-guest"), "click", () => {
-    toggleNightMode();
-  });
-  on($("account-theme-switch-signed"), "click", () => {
-    toggleNightMode();
-  });
-
   on($("account-deposit"), "click", () => {
     closeMobileDrawers();
     openAccountModal("payments");
@@ -16348,8 +18104,7 @@ document.addEventListener("click", (e) => {
       if (kind === "inplay") applySubNav("inplay");
       else if (kind === "my-bets") applySubNav("my-bets");
       else if (kind === "search") {
-        openMobileMenu();
-        $("event-search")?.focus();
+        openMobileSearchModal();
       } else if (kind === "check") {
         closeMobileDrawers();
         applySubNav("check-bet");
@@ -16373,6 +18128,7 @@ document.addEventListener("click", (e) => {
     renderMobileTimeStrip();
     refreshHomeAndBoard();
     if (!$("view-leagues")?.hidden) renderLeaguePage();
+    if (state.sportsMenuMode) renderFootballRegions();
   });
 
   on($("btn-close-sidebar"), "click", closeMobileDrawers);
@@ -16424,6 +18180,18 @@ document.addEventListener("click", (e) => {
     const isCollapsed = panel.classList.toggle("is-collapsed");
     toggle.classList.toggle("is-collapsed", isCollapsed);
     toggle.setAttribute("aria-expanded", String(!isCollapsed));
+    if (!isCollapsed) {
+      const input = $("event-search");
+      if (input) {
+        input.focus();
+        if (input.value.trim().length >= 2) {
+          const results = performEventSearch(input.value.trim());
+          renderEventSearchPopup(results, input.value.trim());
+        }
+      }
+    } else {
+      closeEventSearchPopup();
+    }
   });
 
   on(window, "resize", () => {
@@ -16529,9 +18297,11 @@ document.addEventListener("click", (e) => {
     if (!btn) return;
     state.timeFilter = btn.dataset.time;
     renderFilters();
+    renderMobileTimeStrip();
     const leaguesView = document.querySelector('[data-view="leagues"]');
     if (leaguesView && !leaguesView.hidden) renderLeaguePage();
     else if (!state.sportsMenuMode) refreshHomeAndBoard();
+    if (state.sportsMenuMode) renderFootballRegions();
   });
 
   on($("popular-carousel"), "click", (e) => {
@@ -16908,7 +18678,7 @@ document.addEventListener("click", (e) => {
       state.slip = state.slip.filter((b) => b.key !== btn.dataset.remove);
       save();
       renderSlip();
-      updateSelectedOddsUI();
+      refreshHomeAndBoard();
       if (state.detailFixtureId) renderMatchDetail();
       return;
     }
@@ -16939,7 +18709,7 @@ document.addEventListener("click", (e) => {
         state.slip = [state.slip[state.slip.length - 1]];
         save();
         renderSlip();
-        updateSelectedOddsUI();
+        refreshHomeAndBoard();
       }
     });
   });
@@ -16978,12 +18748,177 @@ document.addEventListener("click", (e) => {
     renderBalance();
   });
 
-  on($("event-search"), "input", (e) => {
-    state.eventSearch = e.target.value.trim();
-    const leaguesView = document.querySelector('[data-view="leagues"]');
-    if (leaguesView && !leaguesView.hidden) renderLeaguePage();
-    else if (!state.sportsMenuMode) refreshHomeAndBoard();
+  const searchInput = $("event-search");
+  if (searchInput) {
+    on(searchInput, "input", (e) => {
+      const val = e.target.value.trim();
+      state.eventSearch = val;
+      if (val.length >= 2) {
+        const results = performEventSearch(val);
+        renderEventSearchPopup(results, val);
+      } else {
+        closeEventSearchPopup();
+      }
+      const leaguesView = document.querySelector('[data-view="leagues"]');
+      if (leaguesView && !leaguesView.hidden) renderLeaguePage();
+      else if (!state.sportsMenuMode) refreshHomeAndBoard();
+    });
+
+    on(searchInput, "focus", (e) => {
+      const val = e.target.value.trim();
+      if (val.length >= 2) {
+        const results = performEventSearch(val);
+        renderEventSearchPopup(results, val);
+      }
+    });
+
+    on(searchInput, "keydown", (e) => {
+      if (e.key === "Escape") {
+        closeEventSearchPopup();
+        e.target.blur();
+      } else if (e.key === "Enter") {
+        const popup = $("event-search-popup");
+        if (popup && !popup.hidden) {
+          const first = popup.querySelector("[data-search-fixture], [data-search-league]");
+          if (first) {
+            first.click();
+            e.preventDefault();
+          }
+        }
+      }
+    });
+  }
+
+  // Handle clicks on search popup items, close button, and outside
+  document.addEventListener("click", (e) => {
+    const matchItem = e.target.closest("[data-search-fixture]");
+    if (matchItem) {
+      const fixtureId = Number(matchItem.dataset.searchFixture);
+      closeEventSearchPopup();
+      if (typeof closeMobileSearchModal === "function") closeMobileSearchModal();
+      if (typeof closeMobileDrawers === "function") closeMobileDrawers();
+      if (fixtureId) openMatchDetail(fixtureId);
+      return;
+    }
+
+    const leagueItem = e.target.closest("[data-search-league]");
+    if (leagueItem) {
+      const leagueId = Number(leagueItem.dataset.searchLeague);
+      closeEventSearchPopup();
+      if (typeof closeMobileSearchModal === "function") closeMobileSearchModal();
+      if (typeof closeMobileDrawers === "function") closeMobileDrawers();
+      if (leagueId) openLeaguePage([leagueId]);
+      return;
+    }
+
+    const closeBtn = e.target.closest("#event-search-popup-close");
+    if (closeBtn) {
+      closeEventSearchPopup();
+      return;
+    }
+
+    const popup = $("event-search-popup");
+    const input = $("event-search");
+    if (popup && !popup.hidden) {
+      if (!popup.contains(e.target) && e.target !== input && !input.contains(e.target)) {
+        closeEventSearchPopup();
+      }
+    }
   });
+
+  window.addEventListener("scroll", positionSearchPopup, true);
+  window.addEventListener("resize", positionSearchPopup);
+
+  function setupMobileEventSearch() {
+    const input = $("mobile-event-search-input");
+    const clearBtn = $("mobile-search-clear-btn");
+    const closeBtn = $("mobile-search-close-btn");
+    const backdrop = $("mobile-search-backdrop");
+    const resultsCloseBtn = $("mobile-search-results-close");
+    const suggestionsBox = $("mobile-search-suggestions");
+    const resultsBox = $("mobile-search-results-box");
+
+    if (closeBtn) on(closeBtn, "click", closeMobileSearchModal);
+    if (backdrop) on(backdrop, "click", closeMobileSearchModal);
+
+    if (resultsCloseBtn) {
+      on(resultsCloseBtn, "click", () => {
+        if (input) {
+          input.value = "";
+          input.focus();
+        }
+        if (clearBtn) clearBtn.hidden = true;
+        if (resultsBox) resultsBox.hidden = true;
+        if (suggestionsBox) suggestionsBox.hidden = false;
+      });
+    }
+
+    if (clearBtn) {
+      on(clearBtn, "click", () => {
+        if (input) {
+          input.value = "";
+          input.focus();
+        }
+        clearBtn.hidden = true;
+        if (resultsBox) resultsBox.hidden = true;
+        if (suggestionsBox) suggestionsBox.hidden = false;
+      });
+    }
+
+    if (suggestionsBox) {
+      suggestionsBox.addEventListener("click", (e) => {
+        const chip = e.target.closest("[data-search-suggest]");
+        if (!chip) return;
+        const term = chip.dataset.searchSuggest || chip.textContent.trim();
+        if (input) {
+          input.value = term;
+        }
+        runMobileSearch(term);
+      });
+    }
+
+    if (input) {
+      on(input, "input", (e) => {
+        runMobileSearch(e.target.value);
+      });
+
+      on(input, "keydown", (e) => {
+        if (e.key === "Escape") {
+          closeMobileSearchModal();
+        } else if (e.key === "Enter") {
+          const first = $("mobile-search-results-list")?.querySelector("[data-search-fixture], [data-search-league]");
+          if (first) {
+            first.click();
+            e.preventDefault();
+          }
+        }
+      });
+    }
+
+    const resultsList = $("mobile-search-results-list");
+    if (resultsList) {
+      resultsList.addEventListener("click", (e) => {
+        const matchItem = e.target.closest("[data-search-fixture]");
+        if (matchItem) {
+          const fixtureId = Number(matchItem.dataset.searchFixture);
+          closeMobileSearchModal();
+          if (typeof closeMobileDrawers === "function") closeMobileDrawers();
+          if (fixtureId) openMatchDetail(fixtureId);
+          return;
+        }
+        const leagueItem = e.target.closest("[data-search-league]");
+        if (leagueItem) {
+          const leagueId = Number(leagueItem.dataset.searchLeague);
+          closeMobileSearchModal();
+          if (typeof closeMobileDrawers === "function") closeMobileDrawers();
+          if (leagueId) openLeaguePage([leagueId]);
+          return;
+        }
+      });
+    }
+  }
+
+  setupMobileEventSearch();
 
   on($("ad-prev"), "click", () => {
     if (!state.adSlides.length) return;
@@ -17381,7 +19316,7 @@ document.addEventListener("click", (e) => {
     state.slip = [];
     save();
     renderSlip();
-    updateSelectedOddsUI();
+    refreshHomeAndBoard();
     if (isMobileLayout()) closeMobileDrawers();
   });
 
@@ -17444,9 +19379,8 @@ document.addEventListener("click", (e) => {
         return;
       }
       if (err.data?.notRegistered) {
-        toast(err.message || "Account not found. Please register first.", "err");
-        openAuthModal("register");
-        if ($("auth-phone")) $("auth-phone").value = phoneRaw;
+        toast(err.message || "Account not found. Please visit our betting shop to register.", "err");
+        openRegUnavailableModal();
         return;
       }
       if (err.status === 403 || err.data?.blocked) {
@@ -17486,6 +19420,60 @@ document.addEventListener("click", (e) => {
   on($("auth-modal"), "click", (e) => {
     if (e.target === $("auth-modal")) closeAuthModal();
   });
+
+  on($("reg-unavail-close"), "click", closeRegUnavailableModal);
+  on($("reg-unavail-modal"), "click", (e) => {
+    if (e.target === $("reg-unavail-modal")) closeRegUnavailableModal();
+  });
+  on($("reg-unavail-login-btn"), "click", () => {
+    closeRegUnavailableModal();
+    openAuthModal("login");
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if ($("reg-unavail-modal") && !$("reg-unavail-modal").hidden) closeRegUnavailableModal();
+      if ($("app-install-modal") && !$("app-install-modal").hidden) closeAppInstallModal();
+    }
+  });
+
+  // App Download & Install Listeners
+  on($("top-app-pill"), "click", triggerAppDownload);
+  on($("btn-top-app-download"), "click", triggerAppDownload);
+  on($("mobile-top-app-pill"), "click", triggerAppDownload);
+  on($("mobile-top-app-pill-auth"), "click", triggerAppDownload);
+
+  on($("app-modal-close"), "click", closeAppInstallModal);
+  on($("app-install-modal"), "click", (e) => {
+    if (e.target === $("app-install-modal")) closeAppInstallModal();
+  });
+
+  // PWA Prompt Support
+  let deferredAppPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredAppPrompt = e;
+    const pwaBtn = $("app-modal-btn-pwa");
+    if (pwaBtn) pwaBtn.hidden = false;
+  });
+
+  on($("app-modal-btn-pwa"), "click", async () => {
+    if (deferredAppPrompt) {
+      deferredAppPrompt.prompt();
+      const choice = await deferredAppPrompt.userChoice;
+      if (choice && choice.outcome === "accepted") {
+        toast("Konjo Bet App installed!", "ok");
+        closeAppInstallModal();
+      }
+      deferredAppPrompt = null;
+    }
+  });
+
+  // Register ServiceWorker for PWA
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+  }
 
   on($("auth-form"), "submit", async (e) => {
     e.preventDefault();
@@ -17533,8 +19521,7 @@ document.addEventListener("click", (e) => {
       if (state.authTab === "register") {
         const role = "player";
         const email = identifier;
-        const referralCode = $("auth-referral-code")?.value?.trim() || "";
-        const data = await api().register({ identifier: cleanRaw, email, password, phone, role, referralCode });
+        const data = await api().register({ identifier: cleanRaw, email, password, phone, role });
         state.sessionUser = data.user;
         try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
         toast("Account registered successfully", "ok");
@@ -17554,9 +19541,8 @@ document.addEventListener("click", (e) => {
         return;
       }
       if (err.data?.notRegistered) {
-        toast(err.message || "Account not found. Please register first.", "err");
-        openAuthModal("register");
-        if ($("auth-phone")) $("auth-phone").value = phoneRaw;
+        toast(err.message || "Account not found. Please visit our betting shop to register.", "err");
+        openRegUnavailableModal();
         return;
       }
       if (err.status === 403 || err.data?.blocked) {
@@ -17650,75 +19636,6 @@ document.addEventListener("click", (e) => {
       } catch (_) {}
     } catch (err) {
       toast(err.message || "Deposit request failed", "err");
-    } finally {
-      if (submitBtn) submitBtn.textContent = prevLabel;
-    }
-  });
-
-  // Withdraw form back button
-  on($("withdraw-form-back"), "click", closeWithdrawFormPanel);
-  // Withdraw form submit
-  on($("withdraw-form"), "submit", async (e) => {
-    e.preventDefault();
-    const amount = Number($("withdraw-amount")?.value);
-    const method = $("withdraw-method")?.value || "cbe";
-    const account = $("withdraw-account-number")?.value.trim();
-
-    if (!amount || amount < 500) {
-      toast("Minimum withdrawal is 500 ETB", "err");
-      return;
-    }
-    if (!account || account.length < 5) {
-      toast("Please enter a valid account or mobile number", "err");
-      return;
-    }
-
-    const currentBalance = Number(state.sessionUser?.balance !== undefined ? state.sessionUser.balance : (state.balance || 0));
-    if (currentBalance < amount) {
-      toast(`Insufficient balance (${currentBalance.toFixed(2)} ETB available)`, "err");
-      return;
-    }
-
-    const submitBtn = $("withdraw-submit");
-    const prevLabel = submitBtn?.textContent;
-    if (submitBtn) submitBtn.textContent = "Submitting…";
-
-    try {
-      if (useApi() && api().getToken()) {
-        const res = await api().requestWithdraw({ amount, method, account });
-        toast(res.message || "Withdrawal request submitted — pending review", "ok");
-        if (res.newBalance !== undefined) {
-          updateBalanceDisplay(res.newBalance);
-        }
-      } else {
-        const hist = JSON.parse(localStorage.getItem("hope-bet-withdraw-history") || "[]");
-        hist.unshift({
-          id: `WTH-${Date.now()}`,
-          amount,
-          method,
-          account,
-          status: "pending",
-          created_at: new Date().toISOString(),
-        });
-        localStorage.setItem("hope-bet-withdraw-history", JSON.stringify(hist));
-        toast("Withdrawal request submitted — pending review", "ok");
-      }
-
-      if ($("withdraw-account-number")) $("withdraw-account-number").value = "";
-      if ($("withdraw-amount")) $("withdraw-amount").value = "";
-      closeWithdrawFormPanel();
-
-      try {
-        if (useApi() && api().getToken()) {
-          const hist = await api().fetchWithdrawHistory();
-          renderWithdrawHistory(hist.withdrawals || []);
-        } else {
-          const hist = JSON.parse(localStorage.getItem("hope-bet-withdraw-history") || "[]");
-          renderWithdrawHistory(hist);
-        }
-      } catch (_) {}
-    } catch (err) {
-      toast(err.message || "Withdrawal request failed", "err");
     } finally {
       if (submitBtn) submitBtn.textContent = prevLabel;
     }
@@ -17963,7 +19880,7 @@ function init() {
               <div style="font-size:48px;margin-bottom:12px;">❌</div>
               <div style="font-size:17px;font-weight:800;color:#c62828;">Ticket Not Found</div>
               <div style="font-size:13px;color:#666;margin-top:8px;">No ticket found for ID: <strong>${escapeHtml(cleanId)}</strong></div>
-              <div style="margin-top:20px;"><a href="/" style="background:#ff9800;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:700;">Go to HopeBet</a></div>
+              <div style="margin-top:20px;"><a href="/" style="background:#ff9800;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:700;">Go to KonjoBet</a></div>
             </div>`;
           return;
         }
@@ -18073,7 +19990,7 @@ const SA_WORKSPACE_META = {
   dashboard: {
     eyebrow: "CONTROL CENTER",
     title: "System overview",
-    desc: "Monitor the full Konjo Bet operation from one secure workspace.",
+    desc: "Monitor the full Hope Bet operation from one secure workspace.",
   },
   admins: {
     eyebrow: "NETWORK MANAGEMENT",
@@ -18120,20 +20037,15 @@ const SA_WORKSPACE_META = {
     title: "Bonus rules",
     desc: "Configure the near-miss consolation system and its eligibility tiers.",
   },
+  games: {
+    eyebrow: "CASINO & ARCADE ENGINE",
+    title: "Game Profit & Margin Control",
+    desc: "Centrally configure house profit margins, RTP %, crash points, and risk parameters across all 7 games.",
+  },
   settings: {
     eyebrow: "PLATFORM CONFIGURATION",
     title: "Platform settings",
     desc: "Manage payment receivers, limits and global bonus eligibility.",
-  },
-  "game-control": {
-    eyebrow: "CASINO & MINI-GAMES",
-    title: "Game profit & RTP control",
-    desc: "Configure house edge, payout margins, and safety limits across Aviator and all mini-games.",
-  },
-  "online-requests": {
-    eyebrow: "ONLINE PLAYERS CASHIER",
-    title: "Online Player Requests (Deposit & Withdraw)",
-    desc: "Live control command center for online registered players: instantly approve or reject deposits & withdrawal payouts.",
   },
 };
 
@@ -18393,65 +20305,17 @@ function bindSuperAdminPortalEvents() {
     renderSuperAdminBonusTable(saState.bonusFilter);
   }));
 
-  bindSaOnce($("sa-game-control-form"), "submit", handleSuperAdminSaveGameControl);
-  bindSaOnce($("sa-game-control-refresh-btn"), "click", () => renderSuperAdminGameControl(true));
-  bindSaOnce($("sa-gc-global-margin-slider"), "input", (e) => {
-    const input = $("sa-gc-global-margin");
-    if (input) input.value = e.target.value;
+  bindSaOnce($("sa-save-game-controls-btn"), "click", handleSuperAdminSaveGameControls);
+  document.querySelectorAll("[data-game-preset]").forEach((btn) => bindSaOnce(btn, "click", () => {
+    handleSuperAdminApplyPreset(btn.dataset.gamePreset);
+  }));
+  bindSaOnce($("sa-games-global-margin"), "input", (event) => {
+    const val = parseFloat(event.target.value) || 10;
+    const dispMargin = $("sa-global-margin-display");
+    const dispRtp = $("sa-global-rtp-display");
+    if (dispMargin) dispMargin.textContent = `${val.toFixed(1)}%`;
+    if (dispRtp) dispRtp.textContent = `${(100 - val).toFixed(1)}%`;
   });
-  bindSaOnce($("sa-gc-global-margin"), "input", (e) => {
-    const slider = $("sa-gc-global-margin-slider");
-    if (slider) slider.value = e.target.value;
-  });
-  document.querySelectorAll(".sa-gc-preset-btn").forEach((btn) => {
-    bindSaOnce(btn, "click", () => {
-      applySuperAdminGameControlPreset(btn.dataset.preset);
-    });
-  });
-
-  bindSaOnce($("sa-online-requests-refresh-btn"), "click", () => renderSuperAdminOnlineRequests(true));
-  bindSaOnce($("sa-or-tab-deposits-btn"), "click", () => {
-    $("sa-or-tab-deposits-btn")?.classList.remove("sa-btn--secondary");
-    $("sa-or-tab-deposits-btn")?.classList.add("sa-btn--primary");
-    $("sa-or-tab-withdrawals-btn")?.classList.remove("sa-btn--primary");
-    $("sa-or-tab-withdrawals-btn")?.classList.add("sa-btn--secondary");
-    const depPanel = $("sa-or-panel-deposits");
-    const wthPanel = $("sa-or-panel-withdrawals");
-    if (depPanel) depPanel.hidden = false;
-    if (wthPanel) wthPanel.hidden = true;
-  });
-  bindSaOnce($("sa-or-tab-withdrawals-btn"), "click", () => {
-    $("sa-or-tab-withdrawals-btn")?.classList.remove("sa-btn--secondary");
-    $("sa-or-tab-withdrawals-btn")?.classList.add("sa-btn--primary");
-    $("sa-or-tab-deposits-btn")?.classList.remove("sa-btn--primary");
-    $("sa-or-tab-deposits-btn")?.classList.add("sa-btn--secondary");
-    const depPanel = $("sa-or-panel-deposits");
-    const wthPanel = $("sa-or-panel-withdrawals");
-    if (depPanel) depPanel.hidden = true;
-    if (wthPanel) wthPanel.hidden = false;
-  });
-  bindSaOnce($("sa-or-dep-search"), "input", (e) => {
-    saOnlineRequestsState.depSearch = e.target.value;
-    renderOnlineDepositsTable();
-  });
-  bindSaOnce($("sa-or-dep-status-filter"), "change", (e) => {
-    saOnlineRequestsState.depFilter = e.target.value;
-    renderOnlineDepositsTable();
-  });
-  bindSaOnce($("sa-or-wth-search"), "input", (e) => {
-    saOnlineRequestsState.wthSearch = e.target.value;
-    renderOnlineWithdrawalsTable();
-  });
-  bindSaOnce($("sa-or-wth-status-filter"), "change", (e) => {
-    saOnlineRequestsState.wthFilter = e.target.value;
-    renderOnlineWithdrawalsTable();
-  });
-
-  setInterval(() => {
-    if (saState && saState.initialized && saState.currentTab === "online-requests") {
-      renderSuperAdminOnlineRequests();
-    }
-  }, 15000);
 }
 
 function switchSuperAdminTab(targetTab) {
@@ -18482,9 +20346,8 @@ function switchSuperAdminTab(targetTab) {
   if (tab === "players") renderSuperAdminPlayersTable();
   if (tab === "finance") renderSuperAdminFinance();
   if (tab === "bonus") renderSuperAdminBonusTable(saState.bonusFilter || "all");
+  if (tab === "games") renderSuperAdminGameControls();
   if (tab === "settings") populateSuperAdminSettingsForm();
-  if (tab === "game-control") renderSuperAdminGameControl();
-  if (tab === "online-requests") renderSuperAdminOnlineRequests(true);
 }
 
 function saApiResultError(result, fallback) {
@@ -18503,8 +20366,9 @@ async function loadSuperAdminPortalData(force = false) {
     api().superAdminGetSettings().catch((error) => ({ __error: error })),
     api().superAdminGetBonusRules().catch((error) => ({ __error: error })),
     api().superAdminGetFinance().catch((error) => ({ __error: error })),
+    api().superAdminGetGameControls().catch((error) => ({ __error: error })),
   ]);
-  const [dashboardRes, adminsRes, playersRes, settingsRes, bonusRes, financeRes] = results;
+  const [dashboardRes, adminsRes, playersRes, settingsRes, bonusRes, financeRes, gameControlsRes] = results;
   let failures = 0;
 
   const dashboardError = saApiResultError(dashboardRes, "Dashboard data unavailable");
@@ -18523,6 +20387,13 @@ async function loadSuperAdminPortalData(force = false) {
   }
   const financeError = saApiResultError(financeRes, "Finance summary unavailable");
   if (financeError) failures += 1; else { saState.finance = financeRes.finance || financeRes; saState.loaded.finance = true; }
+  const gameControlsError = saApiResultError(gameControlsRes, "Game controls unavailable");
+  if (gameControlsError) {
+    saState.gameControls = null;
+  } else {
+    saState.gameControls = gameControlsRes.gameControls || gameControlsRes;
+    saState.loaded.games = true;
+  }
 
   state.bonusRules = saState.bonusRules;
   state.bonusEnabled = saState.bonusEnabled;
@@ -18535,13 +20406,13 @@ async function loadSuperAdminPortalData(force = false) {
   renderSuperAdminFinance();
   populateSuperAdminSettingsForm();
   renderSuperAdminBonusTable(saState.bonusFilter || "all");
+  if (saState.currentTab === "games") {
+    renderSuperAdminGameControls();
+  }
   saUpdateHeaderCounters();
 
   if (saState.currentTab && ["transactions", "deposits", "tickets", "reports", "audit"].includes(saState.currentTab)) {
     await loadSuperAdminWorkspaceData(saState.currentTab, true, saState.pages[saState.currentTab] || 1);
-  }
-  if (saState.currentTab === "online-requests") {
-    await renderSuperAdminOnlineRequests(true);
   }
   if (failures) {
     saSetGlobalStatus(`${failures} control center service${failures === 1 ? "" : "s"} could not be reached. Review the affected workspace.`, "warning");
@@ -18558,8 +20429,8 @@ function saUpdateHeaderCounters() {
     ["sa-tab-admins-count", saState.admins.length],
     ["sa-tab-players-count", saState.players.length],
     ["sa-tab-deposits-count", summary.pendingDeposits || 0],
-    ["sa-tab-online-requests-count", (summary.pendingDeposits || 0) + (summary.pendingWithdrawals || 0)],
     ["sa-tab-bonus-count", saState.bonusRules.filter((rule) => rule.enabled !== false).length],
+    ["sa-tab-games-count", 7],
   ];
   pairs.forEach(([id, value]) => { const el = $(id); if (el) el.textContent = String(value); });
   const balance = $("sa-stat-balance");
@@ -18822,243 +20693,10 @@ function renderSuperAdminDeposits() {
   const rows = saState.deposits || [];
   const summary = $("sa-deposits-summary");
   const pending = rows.filter((row) => row.status === "pending");
-  if (summary) summary.innerHTML = `<div><span>Showing</span><strong>${Number(saState.pagination.deposits?.total || rows.length).toLocaleString()}</strong><small>deposit requests</small></div><div><span>Pending on this page</span><strong>${pending.length}</strong><small>Actionable queue</small></div>`;
-  tbody.innerHTML = rows.length ? rows.map((deposit) => {
-    let actionHtml = `<span style="color:#9ca3af;font-size:11px;">—</span>`;
-    if (deposit.status === "pending") {
-      actionHtml = `
-        <div style="display:flex;gap:6px;justify-content:flex-end;">
-          <button type="button" class="sa-btn sa-btn--primary" style="padding:4px 10px;font-size:11px;background:#10b981;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saApproveDeposit('${deposit.id}')">✓ Approve</button>
-          <button type="button" class="sa-btn sa-btn--danger" style="padding:4px 10px;font-size:11px;background:#ef4444;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saRejectDeposit('${deposit.id}')">✕ Reject</button>
-        </div>`;
-    } else if (deposit.status === "approved") {
-      actionHtml = `<span style="color:#10b981;font-weight:700;font-size:11px;">✓ APPROVED</span>`;
-    } else if (deposit.status === "rejected") {
-      actionHtml = `<span style="color:#ef4444;font-weight:700;font-size:11px;">✕ REJECTED</span>`;
-    }
-    return `<tr><td><div class="sa-entity-cell"><span class="sa-entity-avatar sa-entity-avatar--player">♙</span><div><strong>${saText(deposit.username || deposit.userDisplayName)}</strong><small>#${Number(deposit.user_id || 0)} · ${saText(deposit.reference || "No reference")}</small></div></div></td><td>${saText(deposit.shopAdminName || "Direct registration")}</td><td><span class="sa-source-chip">${saText(deposit.method || "Unknown")}</span></td><td><strong class="sa-amount">${saMoney(deposit.amount)}</strong></td><td>${saText(deposit.reference)}</td><td>${saStatus(deposit.status)}</td><td>${saDate(deposit.created_at || deposit.reviewed_at)}</td><td style="text-align:right;">${actionHtml}</td></tr>`;
-  }).join("") : `<tr><td colspan="8" class="sa-table-empty">No deposits found.</td></tr>`;
+  if (summary) summary.innerHTML = `<div><span>Showing</span><strong>${Number(saState.pagination.deposits?.total || rows.length).toLocaleString()}</strong><small>deposit requests</small></div><div><span>Pending on this page</span><strong>${pending.length}</strong><small>Read-only review queue</small></div>`;
+  tbody.innerHTML = rows.length ? rows.map((deposit) => `<tr><td><div class="sa-entity-cell"><span class="sa-entity-avatar sa-entity-avatar--player">♙</span><div><strong>${saText(deposit.username || deposit.userDisplayName)}</strong><small>#${Number(deposit.user_id || 0)} · ${saText(deposit.reference || "No reference")}</small></div></div></td><td>${saText(deposit.shopAdminName || "Direct registration")}</td><td><span class="sa-source-chip">${saText(deposit.method || "Unknown")}</span></td><td><strong class="sa-amount">${saMoney(deposit.amount)}</strong></td><td>${saText(deposit.reference)}</td><td>${saStatus(deposit.status)}</td><td>${saDate(deposit.created_at || deposit.reviewed_at)}</td></tr>`).join("") : `<tr><td colspan="7" class="sa-table-empty">No deposits found.</td></tr>`;
   saRenderPagination("sa-deposits-pagination", saState.pagination.deposits, "deposits");
 }
-
-let saOnlineRequestsState = {
-  data: null,
-  depFilter: "pending",
-  wthFilter: "pending",
-  depSearch: "",
-  wthSearch: "",
-};
-
-async function renderSuperAdminOnlineRequests(force = false) {
-  try {
-    const res = await api().superAdminGetOnlineRequests();
-    if (!res || res.ok === false) return;
-    saOnlineRequestsState.data = res;
-
-    // Update KPI summary values
-    const depCnt = $("sa-online-pending-deposits-cnt");
-    if (depCnt) depCnt.textContent = String(res.pendingDepositsCount || 0);
-    const depAmt = $("sa-online-pending-deposits-amt");
-    if (depAmt) depAmt.textContent = `${saMoney(res.pendingDepositsAmount || 0)} waiting credit`;
-
-    const wthCnt = $("sa-online-pending-withdrawals-cnt");
-    if (wthCnt) wthCnt.textContent = String(res.pendingWithdrawalsCount || 0);
-    const wthAmt = $("sa-online-pending-withdrawals-amt");
-    if (wthAmt) wthAmt.textContent = `${saMoney(res.pendingWithdrawalsAmount || 0)} waiting payout`;
-
-    const badgeDep = $("sa-or-badge-dep");
-    if (badgeDep) badgeDep.textContent = String(res.pendingDepositsCount || 0);
-    const badgeWth = $("sa-or-badge-wth");
-    if (badgeWth) badgeWth.textContent = String(res.pendingWithdrawalsCount || 0);
-
-    const navBadge = $("sa-tab-online-requests-count");
-    if (navBadge) navBadge.textContent = String((res.pendingDepositsCount || 0) + (res.pendingWithdrawalsCount || 0));
-
-    renderOnlineDepositsTable();
-    renderOnlineWithdrawalsTable();
-  } catch (err) {
-    console.error("[online-requests] Error loading requests:", err);
-  }
-}
-
-function renderOnlineDepositsTable() {
-  const tbody = $("sa-or-deposits-tbody");
-  if (!tbody || !saOnlineRequestsState.data) return;
-
-  let list = saOnlineRequestsState.data.recentDeposits || [];
-  const statusFilter = saOnlineRequestsState.depFilter || "pending";
-  if (statusFilter !== "all") {
-    list = list.filter((d) => String(d.status).toLowerCase() === statusFilter);
-  }
-
-  const query = (saOnlineRequestsState.depSearch || "").toLowerCase();
-  if (query) {
-    list = list.filter((d) =>
-      (d.username || "").toLowerCase().includes(query) ||
-      (d.userDisplayName || "").toLowerCase().includes(query) ||
-      (d.reference || "").toLowerCase().includes(query) ||
-      (d.method || "").toLowerCase().includes(query) ||
-      String(d.user_id || "").includes(query)
-    );
-  }
-
-  const countEl = $("sa-or-dep-result-count");
-  if (countEl) countEl.textContent = `${list.length} deposit${list.length === 1 ? "" : "s"}`;
-
-  if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="sa-table-empty">No ${statusFilter === "all" ? "" : statusFilter} deposit requests found.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = list.map((d) => {
-    let actionHtml = `<span style="color:#9ca3af;font-size:11px;">—</span>`;
-    if (d.status === "pending") {
-      actionHtml = `
-        <div style="display:flex;gap:6px;justify-content:flex-end;">
-          <button type="button" class="sa-btn sa-btn--primary" style="padding:5px 12px;font-size:11px;background:#10b981;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saApproveDeposit('${d.id}')">✓ Approve & Credit</button>
-          <button type="button" class="sa-btn sa-btn--danger" style="padding:5px 12px;font-size:11px;background:#ef4444;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saRejectDeposit('${d.id}')">✕ Reject</button>
-        </div>`;
-    } else if (d.status === "approved") {
-      actionHtml = `<span style="color:#10b981;font-weight:700;font-size:11px;">✓ APPROVED</span>`;
-    } else if (d.status === "rejected") {
-      actionHtml = `<span style="color:#ef4444;font-weight:700;font-size:11px;">✕ REJECTED</span>`;
-    }
-
-    return `<tr>
-      <td>
-        <div class="sa-entity-cell">
-          <span class="sa-entity-avatar sa-entity-avatar--player" style="background:#059669;color:#fff;">♙</span>
-          <div>
-            <strong>${saText(d.username || d.userDisplayName)}</strong>
-            <small>Player #${Number(d.user_id || 0)}</small>
-          </div>
-        </div>
-      </td>
-      <td><span class="sa-source-chip" style="background:#374151;color:#e5e7eb;">${saText(d.shopAdminName || "Direct / Online")}</span></td>
-      <td><strong style="text-transform:uppercase;color:#60a5fa;">${saText(d.method || "—")}</strong></td>
-      <td><strong class="sa-amount" style="color:#10b981;font-size:14px;">${saMoney(d.amount)}</strong></td>
-      <td><code style="background:#111827;padding:3px 6px;border-radius:4px;color:#f3f4f6;font-size:12px;">${saText(d.reference || "—")}</code></td>
-      <td>${saStatus(d.status)}</td>
-      <td><small style="color:#9ca3af;">${saDate(d.created_at || d.reviewed_at)}</small></td>
-      <td style="text-align:right;">${actionHtml}</td>
-    </tr>`;
-  }).join("");
-}
-
-function renderOnlineWithdrawalsTable() {
-  const tbody = $("sa-or-withdrawals-tbody");
-  if (!tbody || !saOnlineRequestsState.data) return;
-
-  let list = saOnlineRequestsState.data.recentWithdrawals || [];
-  const statusFilter = saOnlineRequestsState.wthFilter || "pending";
-  if (statusFilter !== "all") {
-    list = list.filter((w) => String(w.status).toLowerCase() === statusFilter);
-  }
-
-  const query = (saOnlineRequestsState.wthSearch || "").toLowerCase();
-  if (query) {
-    list = list.filter((w) =>
-      (w.username || "").toLowerCase().includes(query) ||
-      (w.userDisplayName || "").toLowerCase().includes(query) ||
-      (w.userPhone || "").toLowerCase().includes(query) ||
-      (w.account || "").toLowerCase().includes(query) ||
-      (w.method || "").toLowerCase().includes(query) ||
-      String(w.user_id || "").includes(query)
-    );
-  }
-
-  const countEl = $("sa-or-wth-result-count");
-  if (countEl) countEl.textContent = `${list.length} withdrawal${list.length === 1 ? "" : "s"}`;
-
-  if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="sa-table-empty">No ${statusFilter === "all" ? "" : statusFilter} withdrawal requests found.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = list.map((w) => {
-    let actionHtml = `<span style="color:#9ca3af;font-size:11px;">—</span>`;
-    if (w.status === "pending") {
-      actionHtml = `
-        <div style="display:flex;gap:6px;justify-content:flex-end;">
-          <button type="button" class="sa-btn sa-btn--primary" style="padding:5px 12px;font-size:11px;background:#10b981;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saApproveWithdrawal('${w.id}')">✓ Approve & Mark Paid</button>
-          <button type="button" class="sa-btn sa-btn--danger" style="padding:5px 12px;font-size:11px;background:#ef4444;border:none;border-radius:4px;cursor:pointer;font-weight:700;" onclick="window.saRejectWithdrawal('${w.id}')">✕ Reject & Refund</button>
-        </div>`;
-    } else if (w.status === "approved") {
-      actionHtml = `<span style="color:#10b981;font-weight:700;font-size:11px;">✓ PAID / COMPLETED</span>`;
-    } else if (w.status === "rejected") {
-      actionHtml = `<span style="color:#ef4444;font-weight:700;font-size:11px;">✕ REJECTED & REFUNDED</span>`;
-    }
-
-    return `<tr>
-      <td>
-        <div class="sa-entity-cell">
-          <span class="sa-entity-avatar sa-entity-avatar--player" style="background:#d97706;color:#fff;">♙</span>
-          <div>
-            <strong>${saText(w.username || w.userDisplayName)}</strong>
-            <small>Player #${Number(w.user_id || 0)} · ${saText(w.userPhone || "—")}</small>
-          </div>
-        </div>
-      </td>
-      <td><span class="sa-source-chip" style="background:#374151;color:#e5e7eb;">${saText(w.shopAdminName || "Direct / Online")}</span></td>
-      <td><strong style="text-transform:uppercase;color:#ec4899;">${saText(w.method || "—")}</strong></td>
-      <td><strong class="sa-amount" style="color:#f59e0b;font-size:14px;">${saMoney(w.amount)}</strong></td>
-      <td><code style="background:#111827;padding:3px 6px;border-radius:4px;color:#f3f4f6;font-size:12px;font-weight:700;">${saText(w.account || "—")}</code></td>
-      <td><span style="color:#9ca3af;font-size:12px;">${saMoney(w.currentBalance || 0)}</span></td>
-      <td>${saStatus(w.status)}</td>
-      <td><small style="color:#9ca3af;">${saDate(w.created_at || w.reviewed_at)}</small></td>
-      <td style="text-align:right;">${actionHtml}</td>
-    </tr>`;
-  }).join("");
-}
-
-// Global action handlers accessible to inline button onclicks
-window.saApproveDeposit = async function (id) {
-  if (!confirm(`Are you sure you want to APPROVE deposit ${id} and credit the player wallet?`)) return;
-  try {
-    const res = await api().superAdminApproveDeposit(id);
-    toast(`Deposit ${id} approved! Player balance credited.`, "ok");
-    await renderSuperAdminOnlineRequests(true);
-    if (saState.currentTab === "deposits") loadSuperAdminWorkspaceData("deposits", true);
-  } catch (err) {
-    toast(err.message || "Failed to approve deposit", "err");
-  }
-};
-
-window.saRejectDeposit = async function (id) {
-  const note = prompt(`Enter rejection reason for deposit ${id}:`, "Invalid transaction reference");
-  if (note === null) return;
-  try {
-    await api().superAdminRejectDeposit(id, note);
-    toast(`Deposit ${id} rejected.`, "info");
-    await renderSuperAdminOnlineRequests(true);
-    if (saState.currentTab === "deposits") loadSuperAdminWorkspaceData("deposits", true);
-  } catch (err) {
-    toast(err.message || "Failed to reject deposit", "err");
-  }
-};
-
-window.saApproveWithdrawal = async function (id) {
-  if (!confirm(`Confirm that payment for withdrawal ${id} has been transferred to player's bank or Telebirr account?`)) return;
-  try {
-    await api().superAdminApproveWithdrawal(id);
-    toast(`Withdrawal ${id} approved & marked paid!`, "ok");
-    await renderSuperAdminOnlineRequests(true);
-  } catch (err) {
-    toast(err.message || "Failed to approve withdrawal", "err");
-  }
-};
-
-window.saRejectWithdrawal = async function (id) {
-  const note = prompt(`Enter rejection reason for withdrawal ${id} (funds will be immediately refunded to player's wallet):`, "Incorrect account details");
-  if (note === null) return;
-  try {
-    await api().superAdminRejectWithdrawal(id, note);
-    toast(`Withdrawal ${id} rejected and funds refunded to player wallet!`, "info");
-    await renderSuperAdminOnlineRequests(true);
-  } catch (err) {
-    toast(err.message || "Failed to reject withdrawal", "err");
-  }
-};
 
 function renderSuperAdminTickets() {
   const tbody = $("sa-tickets-tbody");
@@ -19109,16 +20747,6 @@ function populateSuperAdminSettingsForm() {
   if (oddEl) oddEl.value = cfg.bonus_min_odd_per_leg || 1.15;
   const enabledEl = $("sa-cfg-bonus-enabled");
   if (enabledEl) enabledEl.checked = cfg.bonus_enabled !== false && saState.bonusEnabled !== false;
-
-  const regBonusEnabledEl = $("sa-cfg-reg-bonus-enabled");
-  if (regBonusEnabledEl) regBonusEnabledEl.checked = Boolean(cfg.registration_bonus_enabled);
-  const regBonusAmountEl = $("sa-cfg-reg-bonus-amount");
-  if (regBonusAmountEl) regBonusAmountEl.value = Number(cfg.registration_bonus_amount ?? 0);
-
-  const refBonusEnabledEl = $("sa-cfg-ref-bonus-enabled");
-  if (refBonusEnabledEl) refBonusEnabledEl.checked = Boolean(cfg.referral_bonus_enabled);
-  const refBonusAmountEl = $("sa-cfg-ref-bonus-amount");
-  if (refBonusAmountEl) refBonusAmountEl.value = Number(cfg.referral_bonus_amount ?? 0);
 }
 
 window.openSuperAdminShopDetail = async function (adminId) {
@@ -19527,22 +21155,12 @@ async function handleSuperAdminSaveSettings(e) {
   const max_deposit = Number($("sa-cfg-max")?.value || 75000);
   const bonus_enabled = Boolean($("sa-cfg-bonus-enabled")?.checked);
   const bonus_min_odd_per_leg = Number($("sa-cfg-bonus-min-odd")?.value || 1.15);
-  const registration_bonus_enabled = Boolean($("sa-cfg-reg-bonus-enabled")?.checked);
-  const registration_bonus_amount = Math.max(0, Number($("sa-cfg-reg-bonus-amount")?.value || 0));
-  const referral_bonus_enabled = Boolean($("sa-cfg-ref-bonus-enabled")?.checked);
-  const referral_bonus_amount = Math.max(0, Number($("sa-cfg-ref-bonus-amount")?.value || 0));
 
   if (!Number.isFinite(min_deposit) || !Number.isFinite(max_deposit) || min_deposit <= 0 || max_deposit < min_deposit) {
     return toast("Deposit limits are invalid. Check the minimum and maximum values.", "err");
   }
   if (!Number.isFinite(bonus_min_odd_per_leg) || bonus_min_odd_per_leg < 1.01) {
     return toast("Minimum odd per selection must be at least 1.01.", "err");
-  }
-  if (!Number.isFinite(registration_bonus_amount) || registration_bonus_amount < 0) {
-    return toast("Registration bonus amount must be 0 or greater.", "err");
-  }
-  if (!Number.isFinite(referral_bonus_amount) || referral_bonus_amount < 0) {
-    return toast("Referral bonus amount must be 0 or greater.", "err");
   }
 
   const statusEl = $("sa-settings-status");
@@ -19559,10 +21177,6 @@ async function handleSuperAdminSaveSettings(e) {
       max_deposit,
       bonus_enabled,
       bonus_min_odd_per_leg,
-      registration_bonus_enabled,
-      registration_bonus_amount,
-      referral_bonus_enabled,
-      referral_bonus_amount,
     });
 
     saState.settings = {
@@ -19574,10 +21188,6 @@ async function handleSuperAdminSaveSettings(e) {
       max_deposit,
       bonus_enabled,
       bonus_min_odd_per_leg,
-      registration_bonus_enabled,
-      registration_bonus_amount,
-      referral_bonus_enabled,
-      referral_bonus_amount,
     };
     saState.bonusEnabled = bonus_enabled;
     state.bonusEnabled = bonus_enabled;
@@ -19608,236 +21218,304 @@ async function handleSuperAdminSaveSettings(e) {
   }
 }
 
-// ------------------------------------------------------------
-// SUPER ADMIN: GAME PROFIT & RTP CONTROL
-// ------------------------------------------------------------
+// ============================================================
+// SUPER ADMIN GAME PROFIT CONTROL
+// ============================================================
 
-function applySuperAdminGameControlPreset(preset) {
-  const presets = {
-    conservative: { margin: 5, aviatorCrashRate: 3, aviatorMaxMult: 250, danger: "low" },
-    standard: { margin: 15, aviatorCrashRate: 6, aviatorMaxMult: 100, danger: "medium" },
-    aggressive: { margin: 25, aviatorCrashRate: 10, aviatorMaxMult: 50, danger: "high" },
-    high: { margin: 35, aviatorCrashRate: 15, aviatorMaxMult: 25, danger: "high" },
-  };
-  const cfg = presets[preset] || presets.standard;
+function renderSuperAdminGameControls() {
+  const container = $("sa-games-cards-container");
+  if (!container) return;
 
-  const gm = $("sa-gc-global-margin");
-  const gms = $("sa-gc-global-margin-slider");
-  if (gm) gm.value = cfg.margin;
-  if (gms) gms.value = cfg.margin;
+  const controls = saState.gameControls || (typeof HabeshaWallet !== "undefined" && HabeshaWallet.getConfig && HabeshaWallet.getConfig());
+  if (!controls) {
+    container.innerHTML = `<div class="sa-table-empty">Loading game profit controls...</div>`;
+    api().superAdminGetGameControls().then((res) => {
+      saState.gameControls = res.gameControls || res;
+      renderSuperAdminGameControls();
+    }).catch((err) => {
+      container.innerHTML = `<div class="sa-table-empty" style="color: #ef4444;">Failed to load game controls: ${escapeHtml(err.message || String(err))}</div>`;
+    });
+    return;
+  }
 
-  const avMargin = $("sa-gc-game-aviator-margin");
-  const avCrash = $("sa-gc-game-aviator-crashrate");
-  const avMult = $("sa-gc-game-aviator-maxmult");
-  if (avMargin) avMargin.value = cfg.margin;
-  if (avCrash) avCrash.value = cfg.aviatorCrashRate;
-  if (avMult) avMult.value = cfg.aviatorMaxMult;
+  // Analytics summary calculation
+  let totalTurnover = 0;
+  let totalPayout = 0;
+  let totalRounds = 0;
 
-  const chMargin = $("sa-gc-game-chicken-margin");
-  const chDanger = $("sa-gc-game-chicken-danger");
-  if (chMargin) chMargin.value = cfg.margin;
-  if (chDanger) chDanger.value = cfg.danger;
-
-  ["keno", "fish", "infinity", "bingo"].forEach((game) => {
-    const el = $(`sa-gc-game-${game}-margin`);
-    if (el) el.value = cfg.margin;
+  const games = controls.games || {};
+  Object.values(games).forEach((g) => {
+    const s = g.stats || {};
+    totalTurnover += Number(s.totalTurnover || 0);
+    totalPayout += Number(s.totalPayout || 0);
+    totalRounds += Number(s.roundsPlayed || 0);
   });
 
-  document.querySelectorAll(".sa-gc-preset-btn").forEach((btn) => {
-    const isActive = btn.dataset.preset === preset;
-    btn.style.borderColor = isActive ? "#ef4444" : "rgba(255,255,255,0.1)";
-    btn.style.boxShadow = isActive ? "0 0 12px rgba(239, 68, 68, 0.4)" : "none";
+  const netProfit = totalTurnover - totalPayout;
+  const realizedMargin = totalTurnover > 0 ? ((netProfit / totalTurnover) * 100).toFixed(1) : (controls.global?.globalMargin || 10).toFixed(1);
+  const realizedRtp = totalTurnover > 0 ? ((totalPayout / totalTurnover) * 100).toFixed(1) : (controls.global?.globalRtp || 90).toFixed(1);
+
+  // Update KPI Cards
+  const turnoverEl = $("sa-game-stat-turnover");
+  const payoutEl = $("sa-game-stat-payout");
+  const profitEl = $("sa-game-stat-profit");
+  const marginEl = $("sa-game-stat-realized-margin");
+
+  if (turnoverEl) turnoverEl.textContent = `${fmt(totalTurnover)} ETB`;
+  if (payoutEl) payoutEl.textContent = `${fmt(totalPayout)} ETB`;
+  if (profitEl) {
+    profitEl.textContent = `${netProfit >= 0 ? "+" : ""}${fmt(netProfit)} ETB`;
+    profitEl.style.color = netProfit >= 0 ? "#10b981" : "#ef4444";
+  }
+  if (marginEl) marginEl.textContent = `${realizedMargin}% / ${realizedRtp}%`;
+
+  // Update Global Guard Controls
+  const globalMaint = $("sa-games-global-maintenance");
+  const globalProt = $("sa-games-global-protection");
+  const globalMargin = $("sa-games-global-margin");
+  const globalMarginDisp = $("sa-global-margin-display");
+  const globalRtpDisp = $("sa-global-rtp-display");
+  const globalMaxPayout = $("sa-games-global-max-payout");
+
+  if (globalMaint) globalMaint.checked = Boolean(controls.global?.maintenanceMode);
+  if (globalProt) globalProt.checked = controls.global?.autoProfitProtection !== false;
+  if (globalMargin) globalMargin.value = controls.global?.globalMargin || 10;
+  if (globalMarginDisp) globalMarginDisp.textContent = `${(controls.global?.globalMargin || 10).toFixed(1)}%`;
+  if (globalRtpDisp) globalRtpDisp.textContent = `${(100 - (controls.global?.globalMargin || 10)).toFixed(1)}%`;
+  if (globalMaxPayout) globalMaxPayout.value = controls.global?.maxPayoutPerRound || 50000;
+
+  // Render Game Cards
+  const gameCardsHtml = Object.keys(games).map((key) => {
+    const g = games[key];
+    const margin = Number(g.targetMargin || 10).toFixed(1);
+    const rtp = Number(g.rtp || (100 - margin)).toFixed(1);
+    const s = g.stats || {};
+    const gameTurnover = Number(s.totalTurnover || 0);
+    const gamePayout = Number(s.totalPayout || 0);
+    const gameProfit = gameTurnover - gamePayout;
+
+    let extraInputs = "";
+    if (g.id === "aviator") {
+      extraInputs = `
+        <div class="sa-game-field-group">
+          <label for="sa-game-earlycrash-${g.id}">Early Crash Rate (%)</label>
+          <input type="number" id="sa-game-earlycrash-${g.id}" min="0" max="60" step="1" value="${g.earlyCrashRate || 15}" />
+        </div>
+        <div class="sa-game-field-group">
+          <label for="sa-game-maxmult-${g.id}">Max Multiplier</label>
+          <input type="number" id="sa-game-maxmult-${g.id}" min="2" max="1000" step="1" value="${g.maxMultiplier || 100}" />
+        </div>
+      `;
+    } else if (g.id === "chicken_road") {
+      extraInputs = `
+        <div class="sa-game-field-group">
+          <label for="sa-game-speed-${g.id}">Speed Factor</label>
+          <input type="number" id="sa-game-speed-${g.id}" min="0.5" max="3.0" step="0.1" value="${g.crashSpeedFactor || 1.2}" />
+        </div>
+        <div class="sa-game-field-group">
+          <label for="sa-game-maxmult-${g.id}">Max Multiplier</label>
+          <input type="number" id="sa-game-maxmult-${g.id}" min="5" max="500" step="1" value="${g.maxMultiplier || 50}" />
+        </div>
+      `;
+    } else if (g.id === "fast_keno") {
+      extraInputs = `
+        <div class="sa-game-field-group" style="grid-column: span 2;">
+          <label for="sa-game-maxmult-${g.id}">Max Win Multiplier</label>
+          <input type="number" id="sa-game-maxmult-${g.id}" min="50" max="10000" step="50" value="${g.maxMultiplier || 1000}" />
+        </div>
+      `;
+    } else if (g.id === "bingo_star") {
+      extraInputs = `
+        <div class="sa-game-field-group" style="grid-column: span 2;">
+          <label for="sa-game-starfreq-${g.id}">Bonus Star Frequency</label>
+          <select id="sa-game-starfreq-${g.id}">
+            <option value="low" ${g.bonusStarFrequency === "low" ? "selected" : ""}>Low</option>
+            <option value="medium" ${g.bonusStarFrequency === "medium" || !g.bonusStarFrequency ? "selected" : ""}>Medium</option>
+            <option value="high" ${g.bonusStarFrequency === "high" ? "selected" : ""}>High</option>
+          </select>
+        </div>
+      `;
+    } else if (g.id === "fish") {
+      extraInputs = `
+        <div class="sa-game-field-group" style="grid-column: span 2;">
+          <label for="sa-game-golden-${g.id}">Golden Ring Chance (%)</label>
+          <input type="number" id="sa-game-golden-${g.id}" min="1" max="25" step="0.5" value="${((g.goldenRingChance || 0.05) * 100).toFixed(1)}" />
+        </div>
+      `;
+    } else if (g.id === "infinity") {
+      extraInputs = `
+        <div class="sa-game-field-group" style="grid-column: span 2;">
+          <label for="sa-game-volatility-${g.id}">Curve Volatility</label>
+          <select id="sa-game-volatility-${g.id}">
+            <option value="low" ${g.volatility === "low" ? "selected" : ""}>Low</option>
+            <option value="medium" ${g.volatility === "medium" || !g.volatility ? "selected" : ""}>Medium</option>
+            <option value="high" ${g.volatility === "high" ? "selected" : ""}>High</option>
+          </select>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="sa-game-card" data-game-card-id="${g.id}">
+        <div class="sa-game-card-head">
+          <div class="sa-game-card-info">
+            <span class="sa-game-card-icon">${g.icon || "🎮"}</span>
+            <div>
+              <h3 class="sa-game-card-title">${escapeHtml(g.name)}</h3>
+              <span class="sa-game-card-cat">${escapeHtml(g.category || "Game")}</span>
+            </div>
+          </div>
+          <label class="sa-toggle-switch" title="Toggle active status for this game">
+            <input type="checkbox" id="sa-game-enabled-${g.id}" ${g.enabled !== false ? "checked" : ""} />
+            <span class="sa-toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="sa-game-slider-section">
+          <div class="sa-game-slider-meta">
+            <span class="sa-game-margin-tag">House Margin: <span id="sa-game-margin-val-${g.id}">${margin}%</span></span>
+            <span class="sa-game-rtp-tag" id="sa-game-rtp-val-${g.id}">RTP: ${rtp}%</span>
+          </div>
+          <input type="range" class="sa-range-slider" id="sa-game-margin-${g.id}" min="2" max="35" step="0.5" value="${margin}" data-game-id="${g.id}" />
+        </div>
+
+        <div class="sa-game-fields-grid">
+          ${extraInputs}
+          <div class="sa-game-field-group">
+            <label for="sa-game-minbet-${g.id}">Min Bet (ETB)</label>
+            <input type="number" id="sa-game-minbet-${g.id}" min="1" step="1" value="${g.minBet || 1}" />
+          </div>
+          <div class="sa-game-field-group">
+            <label for="sa-game-maxbet-${g.id}">Max Bet (ETB)</label>
+            <input type="number" id="sa-game-maxbet-${g.id}" min="10" step="50" value="${g.maxBet || 5000}" />
+          </div>
+          <div class="sa-game-field-group" style="grid-column: span 2;">
+            <label for="sa-game-maxwin-${g.id}">Max Win Cap (ETB)</label>
+            <input type="number" id="sa-game-maxwin-${g.id}" min="500" step="500" value="${g.maxWin || 25000}" />
+          </div>
+        </div>
+
+        <div class="sa-game-stats-footer">
+          <span>Turnover: <strong>${fmt(gameTurnover)}</strong></span>
+          <span>Payout: <strong>${fmt(gamePayout)}</strong></span>
+          <span>Net: <strong style="color: ${gameProfit >= 0 ? '#10b981' : '#ef4444'}">${gameProfit >= 0 ? "+" : ""}${fmt(gameProfit)}</strong></span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  container.innerHTML = gameCardsHtml;
+
+  // Bind live slider update listeners
+  container.querySelectorAll('input[type="range"][data-game-id]').forEach((slider) => {
+    slider.addEventListener("input", (e) => {
+      const gid = e.target.dataset.gameId;
+      const marginVal = parseFloat(e.target.value) || 10;
+      const rtpVal = (100 - marginVal).toFixed(1);
+      const marginDisp = $(`sa-game-margin-val-${gid}`);
+      const rtpDisp = $(`sa-game-rtp-val-${gid}`);
+      if (marginDisp) marginDisp.textContent = `${marginVal.toFixed(1)}%`;
+      if (rtpDisp) rtpDisp.textContent = `RTP: ${rtpVal}%`;
+    });
   });
 }
 
-async function renderSuperAdminGameControl(force = false) {
-  const statusEl = $("sa-game-control-status");
+async function handleSuperAdminApplyPreset(preset) {
+  if (!preset) return;
+  const labels = {
+    balanced: "Balanced (10% House Edge / 90% RTP)",
+    high_profit: "High Profit (18% House Edge / 82% RTP)",
+    promo: "Player Promo (4% House Edge / 96% RTP)",
+  };
+  const label = labels[preset] || preset;
+  if (!confirm(`Apply the "${label}" preset across all games?`)) return;
+
   try {
-    if (statusEl) {
-      statusEl.style.color = "#94a3b8";
-      statusEl.textContent = "Loading live game stats & profit settings...";
+    const res = await api().superAdminSetGamePreset(preset);
+    saState.gameControls = res.gameControls || res;
+    if (typeof HabeshaWallet !== "undefined" && HabeshaWallet.refreshConfigFromApi) {
+      HabeshaWallet.refreshConfigFromApi();
     }
-    const res = await api().superAdminGetGameProfitControl();
-    if (!res || !res.ok) throw new Error(res?.error || "Failed to load profit configuration");
-
-    // Populate Stats
-    const stats = res.stats || {};
-    const turnoverEl = $("sa-gc-stat-turnover");
-    const betsCountEl = $("sa-gc-stat-bets-count");
-    const payoutEl = $("sa-gc-stat-payout");
-    const winsCountEl = $("sa-gc-stat-wins-count");
-    const profitEl = $("sa-gc-stat-profit");
-    const marginEl = $("sa-gc-stat-margin");
-
-    if (turnoverEl) turnoverEl.textContent = saMoney(stats.totalTurnover || 0);
-    if (betsCountEl) betsCountEl.textContent = `Total rounds: ${fmt(stats.totalBets || 0)}`;
-    if (payoutEl) payoutEl.textContent = saMoney(stats.totalPayout || 0);
-    if (winsCountEl) winsCountEl.textContent = `Won rounds: ${fmt(stats.totalWins || 0)}`;
-    if (profitEl) {
-      const netProfit = Number(stats.netProfit) || 0;
-      profitEl.textContent = saMoney(netProfit);
-      profitEl.style.color = netProfit >= 0 ? "#10b981" : "#ef4444";
-    }
-    if (marginEl) {
-      const m = Number(stats.profitMargin) || 0;
-      marginEl.textContent = `${m.toFixed(1)}%`;
-      marginEl.style.color = m >= 15 ? "#10b981" : m >= 0 ? "#f59e0b" : "#ef4444";
-    }
-
-    // Populate Settings Form
-    const cfg = res.config || {};
-    const gm = $("sa-gc-global-margin");
-    const gms = $("sa-gc-global-margin-slider");
-    if (gm) gm.value = cfg.globalMargin ?? 15;
-    if (gms) gms.value = cfg.globalMargin ?? 15;
-
-    const maxWin = $("sa-gc-max-win");
-    if (maxWin) maxWin.value = cfg.maxWinPayoutCap ?? 50000;
-
-    const enforce = $("sa-gc-margin-enabled");
-    if (enforce) enforce.checked = cfg.profitControlEnabled !== false;
-
-    const maint = $("sa-gc-maintenance-mode");
-    if (maint) maint.checked = Boolean(cfg.maintenanceMode);
-
-    // Per-game configs
-    const games = cfg.games || {};
-
-    // Aviator
-    const av = games.aviator || {};
-    const avEn = $("sa-gc-game-aviator-enabled");
-    const avMg = $("sa-gc-game-aviator-margin");
-    const avCr = $("sa-gc-game-aviator-crashrate");
-    const avMx = $("sa-gc-game-aviator-maxmult");
-    if (avEn) avEn.checked = av.enabled !== false;
-    if (avMg) avMg.value = av.targetMargin ?? 15;
-    if (avCr) avCr.value = av.instantCrashRate ?? 6;
-    if (avMx) avMx.value = av.maxMultiplier ?? 100;
-
-    // Chicken
-    const ch = games.chicken || {};
-    const chEn = $("sa-gc-game-chicken-enabled");
-    const chMg = $("sa-gc-game-chicken-margin");
-    const chDg = $("sa-gc-game-chicken-danger");
-    if (chEn) chEn.checked = ch.enabled !== false;
-    if (chMg) chMg.value = ch.targetMargin ?? 15;
-    if (chDg) chDg.value = ch.dangerLevel || "medium";
-
-    // Fast Keno
-    const kn = games.keno || {};
-    const knEn = $("sa-gc-game-keno-enabled");
-    const knMg = $("sa-gc-game-keno-margin");
-    if (knEn) knEn.checked = kn.enabled !== false;
-    if (knMg) knMg.value = kn.targetMargin ?? 12;
-
-    // Fish
-    const fs = games.fish || {};
-    const fsEn = $("sa-gc-game-fish-enabled");
-    const fsMg = $("sa-gc-game-fish-margin");
-    if (fsEn) fsEn.checked = fs.enabled !== false;
-    if (fsMg) fsMg.value = fs.targetMargin ?? 15;
-
-    // Infinity
-    const inf = games.infinity || {};
-    const infEn = $("sa-gc-game-infinity-enabled");
-    const infMg = $("sa-gc-game-infinity-margin");
-    if (infEn) infEn.checked = inf.enabled !== false;
-    if (infMg) infMg.value = inf.targetMargin ?? 15;
-
-    // Bingo
-    const bg = games.bingo || {};
-    const bgEn = $("sa-gc-game-bingo-enabled");
-    const bgMg = $("sa-gc-game-bingo-margin");
-    if (bgEn) bgEn.checked = bg.enabled !== false;
-    if (bgMg) bgMg.value = bg.targetMargin ?? 15;
-
-    // Also update HabeshaWallet local cache if available
-    if (window.HabeshaWallet && typeof window.HabeshaWallet.updateAdminConfig === "function") {
-      window.HabeshaWallet.updateAdminConfig(cfg);
-    }
-
-    if (statusEl) {
-      statusEl.style.color = "#4ade80";
-      statusEl.textContent = force ? "✓ Stats refreshed!" : "";
-      if (force) setTimeout(() => { statusEl.textContent = ""; }, 3000);
-    }
+    renderSuperAdminGameControls();
+    toast(`Preset applied: ${label}`, "ok");
   } catch (err) {
-    console.error("renderSuperAdminGameControl error:", err);
-    if (statusEl) {
-      statusEl.style.color = "#f87171";
-      statusEl.textContent = `Error: ${err.message}`;
-    }
+    toast(err.message || "Failed to apply preset", "err");
   }
 }
 
-async function handleSuperAdminSaveGameControl(event) {
-  event.preventDefault();
-  const statusEl = $("sa-game-control-status");
-  const saveBtn = $("sa-save-game-control-btn");
-
-  const payload = {
-    globalMargin: Number($("sa-gc-global-margin")?.value || 15),
-    maxWinPayoutCap: Number($("sa-gc-max-win")?.value || 50000),
-    profitControlEnabled: Boolean($("sa-gc-margin-enabled")?.checked),
-    maintenanceMode: Boolean($("sa-gc-maintenance-mode")?.checked),
-    games: {
-      aviator: {
-        enabled: Boolean($("sa-gc-game-aviator-enabled")?.checked),
-        targetMargin: Number($("sa-gc-game-aviator-margin")?.value || 15),
-        instantCrashRate: Number($("sa-gc-game-aviator-crashrate")?.value || 6),
-        maxMultiplier: Number($("sa-gc-game-aviator-maxmult")?.value || 100),
-      },
-      chicken: {
-        enabled: Boolean($("sa-gc-game-chicken-enabled")?.checked),
-        targetMargin: Number($("sa-gc-game-chicken-margin")?.value || 15),
-        dangerLevel: $("sa-gc-game-chicken-danger")?.value || "medium",
-      },
-      keno: {
-        enabled: Boolean($("sa-gc-game-keno-enabled")?.checked),
-        targetMargin: Number($("sa-gc-game-keno-margin")?.value || 12),
-      },
-      fish: {
-        enabled: Boolean($("sa-gc-game-fish-enabled")?.checked),
-        targetMargin: Number($("sa-gc-game-fish-margin")?.value || 15),
-      },
-      infinity: {
-        enabled: Boolean($("sa-gc-game-infinity-enabled")?.checked),
-        targetMargin: Number($("sa-gc-game-infinity-margin")?.value || 15),
-      },
-      bingo: {
-        enabled: Boolean($("sa-gc-game-bingo-enabled")?.checked),
-        targetMargin: Number($("sa-gc-game-bingo-margin")?.value || 15),
-      },
-    },
-  };
+async function handleSuperAdminSaveGameControls(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const saveBtn = $("sa-save-game-controls-btn");
+  if (saveBtn) saveBtn.disabled = true;
 
   try {
-    if (saveBtn) saveBtn.disabled = true;
-    if (statusEl) {
-      statusEl.style.color = "#94a3b8";
-      statusEl.textContent = "Saving profit controls to network...";
-    }
-    const res = await api().superAdminSaveGameProfitControl(payload);
-    if (!res || !res.ok) throw new Error(res?.error || "Failed to save profit controls");
+    const controls = saState.gameControls || {};
+    const globalMarginVal = parseFloat($("sa-games-global-margin")?.value) || 10;
+    const globalPayload = {
+      maintenanceMode: Boolean($("sa-games-global-maintenance")?.checked),
+      globalMargin: globalMarginVal,
+      globalRtp: parseFloat((100 - globalMarginVal).toFixed(1)),
+      maxPayoutPerRound: parseFloat($("sa-games-global-max-payout")?.value) || 50000,
+      autoProfitProtection: Boolean($("sa-games-global-protection")?.checked),
+    };
 
-    // Also update HabeshaWallet local cache
-    if (window.HabeshaWallet && typeof window.HabeshaWallet.updateAdminConfig === "function") {
-      window.HabeshaWallet.updateAdminConfig(res.config || payload);
-    }
+    const gamesPayload = {};
+    const existingGames = controls.games || {};
+    const gameKeys = ["aviator", "chicken_road", "fast_keno", "bingo", "bingo_star", "fish", "infinity"];
 
-    if (statusEl) {
-      statusEl.style.color = "#4ade80";
-      statusEl.textContent = "✓ Saved! New margins & RTP applied platform-wide across all games.";
-      setTimeout(() => { statusEl.textContent = ""; }, 5000);
+    gameKeys.forEach((gid) => {
+      const orig = existingGames[gid] || {};
+      const marginVal = parseFloat($(`sa-game-margin-${gid}`)?.value) || orig.targetMargin || 10;
+      const rtpVal = parseFloat((100 - marginVal).toFixed(1));
+      const enabledVal = $(`sa-game-enabled-${gid}`) ? Boolean($(`sa-game-enabled-${gid}`).checked) : true;
+      const minBetVal = parseFloat($(`sa-game-minbet-${gid}`)?.value) || orig.minBet || 1;
+      const maxBetVal = parseFloat($(`sa-game-maxbet-${gid}`)?.value) || orig.maxBet || 5000;
+      const maxWinVal = parseFloat($(`sa-game-maxwin-${gid}`)?.value) || orig.maxWin || 25000;
+
+      const updatedGame = {
+        ...orig,
+        id: gid,
+        enabled: enabledVal,
+        targetMargin: marginVal,
+        rtp: rtpVal,
+        minBet: minBetVal,
+        maxBet: maxBetVal,
+        maxWin: maxWinVal,
+      };
+
+      if (gid === "aviator") {
+        updatedGame.earlyCrashRate = parseFloat($(`sa-game-earlycrash-${gid}`)?.value) || orig.earlyCrashRate || 15;
+        updatedGame.maxMultiplier = parseFloat($(`sa-game-maxmult-${gid}`)?.value) || orig.maxMultiplier || 100;
+      } else if (gid === "chicken_road") {
+        updatedGame.crashSpeedFactor = parseFloat($(`sa-game-speed-${gid}`)?.value) || orig.crashSpeedFactor || 1.2;
+        updatedGame.maxMultiplier = parseFloat($(`sa-game-maxmult-${gid}`)?.value) || orig.maxMultiplier || 50;
+      } else if (gid === "fast_keno") {
+        updatedGame.maxMultiplier = parseFloat($(`sa-game-maxmult-${gid}`)?.value) || orig.maxMultiplier || 1000;
+      } else if (gid === "bingo_star") {
+        updatedGame.bonusStarFrequency = $(`sa-game-starfreq-${gid}`)?.value || orig.bonusStarFrequency || "medium";
+      } else if (gid === "fish") {
+        const goldenVal = parseFloat($(`sa-game-golden-${gid}`)?.value) || 5;
+        updatedGame.goldenRingChance = parseFloat((goldenVal / 100).toFixed(3));
+      } else if (gid === "infinity") {
+        updatedGame.volatility = $(`sa-game-volatility-${gid}`)?.value || orig.volatility || "medium";
+      }
+
+      gamesPayload[gid] = updatedGame;
+    });
+
+    const res = await api().superAdminSaveGameControls({
+      global: globalPayload,
+      games: gamesPayload,
+    });
+
+    saState.gameControls = res.gameControls || res;
+    if (typeof HabeshaWallet !== "undefined" && HabeshaWallet.refreshConfigFromApi) {
+      HabeshaWallet.refreshConfigFromApi();
     }
-    toast("Game profit control settings applied successfully!", "ok");
+    renderSuperAdminGameControls();
+    toast("All game profit margins and risk parameters saved successfully!", "ok");
   } catch (err) {
-    console.error("handleSuperAdminSaveGameControl error:", err);
-    if (statusEl) {
-      statusEl.style.color = "#f87171";
-      statusEl.textContent = `Error: ${err.message}`;
-    }
-    toast(err.message || "Failed to save profit control settings", "err");
+    toast(err.message || "Failed to save game controls", "err");
   } finally {
     if (saveBtn) saveBtn.disabled = false;
   }
@@ -19887,7 +21565,7 @@ function renderAdminRegistrationChart(containerId, daily) {
       const isLast = i === 6;
       return `
         <circle cx="${xs[i]}" cy="${y}" r="${isLast ? 3.5 : 2.8}" fill="#1b7a37" />
-        ${isLast ? `<text x="${xs[i] - 14}" y="${y - 6}" fill="#1b7a37" font-size="10.5" font-weight="700" text-anchor="end">Konjo Bet</text>` : ""}
+        ${isLast ? `<text x="${xs[i] - 14}" y="${y - 6}" fill="#1b7a37" font-size="10.5" font-weight="700" text-anchor="end">Hope Bet</text>` : ""}
         <text x="${xs[i]}" y="${y - 6}" fill="#222" font-size="10.5" font-weight="700" text-anchor="middle">${v}</text>
       `;
     })
@@ -19923,7 +21601,7 @@ function renderAdminRegistrationChart(containerId, daily) {
       <!-- Legend at bottom -->
       <g transform="translate(330, 138)">
         <line x1="0" y1="-3" x2="16" y2="-3" stroke="#1b7a37" stroke-width="2"/>
-        <text x="22" y="0" fill="#2e383d" font-size="10.5" font-weight="600">Konjo Bet</text>
+        <text x="22" y="0" fill="#2e383d" font-size="10.5" font-weight="600">Hope Bet</text>
       </g>
     </svg>
   `;
@@ -20212,6 +21890,8 @@ function updateAdminHeaderAndViews() {
     if (subNav) subNav.hidden = true;
     if (adminHeader) adminHeader.hidden = false;
     if (adminFooter) adminFooter.hidden = false;
+    const adminMobBar = $("admin-mobile-bottom-bar");
+    if (adminMobBar) adminMobBar.hidden = false;
     if (betslip) {
       betslip.hidden = true;
       betslip.style.display = "none";
@@ -20231,6 +21911,10 @@ function updateAdminHeaderAndViews() {
     if (subNav) subNav.hidden = false;
     if (adminHeader) adminHeader.hidden = true;
     if (adminFooter) adminFooter.hidden = true;
+    const adminMobBar = $("admin-mobile-bottom-bar");
+    if (adminMobBar) adminMobBar.hidden = true;
+    const adminMobSheet = $("admin-mob-sheet-backdrop");
+    if (adminMobSheet) adminMobSheet.hidden = true;
     if (betslip) {
       betslip.hidden = false;
       betslip.style.display = "";
@@ -20359,10 +22043,18 @@ async function loadAdminPlayers(filters = {}) {
     }
   }
 
+  if (!players.length && (!useApi() || !api().getToken())) {
+    // Fallback demo players
+    players = [
+      { id: 2, username: "+251937888888", name: "Player 1", phone: "+251937888888", email: "player1@hope.bet", balance: 950, betsCount: 1, createdAt: "2026-09-07T09:32:00Z", status: "active" },
+      { id: 4, username: "testplayer1", name: "Abebe Kebede", phone: "+251911223344", email: "abebe@example.com", balance: 350, betsCount: 0, createdAt: "2026-09-07T10:00:00Z", status: "active" }
+    ];
+  }
+
   if (countEl) countEl.textContent = `Showing ${players.length} player${players.length === 1 ? "" : "s"}`;
 
   if (!players.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="admin-table-empty">No players found. Click '+ New Player' to create one.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="admin-table-empty">No players found matching your criteria.</td></tr>`;
     return;
   }
 
@@ -20401,12 +22093,6 @@ function openAdminNewPlayerModal() {
   backdrop.hidden = false;
   const form = $("admin-new-player-form");
   if (form) form.reset();
-  const balInput = $("admin-np-balance");
-  const currentFloat = state.adminStats ? Number(state.adminStats.balance || 0) : 0;
-  if (balInput) {
-    balInput.max = currentFloat;
-    balInput.placeholder = currentFloat > 0 ? `Max ${fmt(currentFloat)} ETB` : "0 (No float)";
-  }
 }
 
 function closeAdminNewPlayerModal() {
@@ -20912,72 +22598,10 @@ async function loadAdminBetPlayers() {
   onAdminBetPlayerChange();
 }
 
-function syncPlayerBalanceEverywhere(playerId, newBalance) {
-  const pid = String(playerId);
-  const bal = Number(newBalance || 0);
-
-  // 1. Update in adminPlayersList
-  if (Array.isArray(state.adminPlayersList)) {
-    const p = state.adminPlayersList.find((x) => String(x.id) === pid);
-    if (p) p.balance = bal;
-  }
-
-  // 2. Update in adminTransferPlayers
-  if (Array.isArray(state.adminTransferPlayers)) {
-    const p = state.adminTransferPlayers.find((x) => String(x.id) === pid);
-    if (p) p.balance = bal;
-  }
-
-  // 3. Update in adminSelectedPlayer
-  if (state.adminSelectedPlayer && String(state.adminSelectedPlayer.id) === pid) {
-    state.adminSelectedPlayer.balance = bal;
-  }
-
-  // 4. Update admin-bet-player-select dropdown option
-  const select = $("admin-bet-player-select");
-  if (select) {
-    const opt = select.querySelector(`option[value="${pid}"]`);
-    if (opt) {
-      const p = (state.adminPlayersList || []).find((x) => String(x.id) === pid) || state.adminSelectedPlayer;
-      const uname = p?.username || p?.phone || `Player #${pid}`;
-      opt.textContent = `${uname} (${fmt(bal)} ETB)`;
-    }
-  }
-
-  // 5. Update admin-bet-player-balance if this player is selected
-  if (!select || select.value === pid) {
-    const balEl = $("admin-bet-player-balance");
-    if (balEl) balEl.textContent = `ETB ${fmt(bal)}`;
-  }
-
-  // 6. Update transfer select dropdown option if present
-  const transferSelect = $("admin-transfer-player-select");
-  if (transferSelect) {
-    const opt = transferSelect.querySelector(`option[value="${pid}"]`);
-    if (opt) {
-      const p = (state.adminTransferPlayers || []).find((x) => String(x.id) === pid);
-      if (p && typeof adminTransferPlayerLabel === "function") opt.textContent = adminTransferPlayerLabel(p);
-    }
-  }
-
-  // 7. If currently logged in sessionUser is this player, update sessionUser and state.balance
-  if (state.sessionUser && String(state.sessionUser.id) === pid) {
-    state.balance = bal;
-    state.sessionUser.balance = bal;
-    try { localStorage.setItem("hope-bet-user", JSON.stringify(state.sessionUser)); } catch (_) {}
-    renderBalance();
-  }
-}
-
 function onAdminBetPlayerChange() {
   const select = $("admin-bet-player-select");
   const playerId = select ? select.value : "";
   const player = (state.adminPlayersList || []).find((p) => String(p.id) === String(playerId));
-  if (player && state.adminSelectedPlayer && String(state.adminSelectedPlayer.id) === String(playerId)) {
-    if (state.adminSelectedPlayer.balance !== undefined && player.balance !== state.adminSelectedPlayer.balance) {
-      player.balance = state.adminSelectedPlayer.balance;
-    }
-  }
   state.adminSelectedPlayer = player || null;
 
   const balEl = $("admin-bet-player-balance");
@@ -21021,21 +22645,29 @@ async function handleAdminBetFastDeposit(amount) {
     if (useApi() && api().getToken()) {
       const res = await api().topUpPlayer(player.id, amount);
       if (res && res.ok) {
-        const nextBal = res.newBalance !== undefined ? res.newBalance : (res.balance !== undefined ? res.balance : (player.balance || 0) + amount);
-        syncPlayerBalanceEverywhere(player.id, nextBal);
+        player.balance = res.newBalance;
         if (res.adminBalance !== undefined) {
           updateAdminHeaderBalance(res.adminBalance);
+        }
+        onAdminBetPlayerChange();
+        const select = $("admin-bet-player-select");
+        if (select) {
+          const opt = select.querySelector(`option[value="${player.id}"]`);
+          if (opt) {
+            const uname = player.username || player.phone || `Player #${player.id}`;
+            opt.textContent = `${uname} (${fmt(player.balance || 0)} ETB)`;
+          }
         }
         toast(`Fast deposit ${amount} ETB to ${player.username || `#${player.id}`} complete!`, "ok");
       } else {
         toast(res?.error || "Deposit failed", "err");
       }
     } else {
-      const nextBal = (player.balance || 0) + amount;
-      syncPlayerBalanceEverywhere(player.id, nextBal);
+      player.balance = (player.balance || 0) + amount;
       if (state.adminStats && state.adminStats.balance !== undefined) {
         updateAdminHeaderBalance(Math.max(0, state.adminStats.balance - amount));
       }
+      onAdminBetPlayerChange();
       toast(`Fast deposit ${amount} ETB to ${player.username} (demo)!`, "ok");
     }
   } catch (err) {
@@ -21082,10 +22714,18 @@ async function handleAdminBetCustomTransfer() {
     if (useApi() && api().getToken()) {
       const res = await api().topUpPlayer(player.id, amount);
       if (res && res.ok) {
-        const nextBal = res.newBalance !== undefined ? res.newBalance : (res.balance !== undefined ? res.balance : (player.balance || 0) + amount);
-        syncPlayerBalanceEverywhere(player.id, nextBal);
+        player.balance = res.newBalance;
         if (res.adminBalance !== undefined) {
           updateAdminHeaderBalance(res.adminBalance);
+        }
+        onAdminBetPlayerChange();
+        const select = $("admin-bet-player-select");
+        if (select) {
+          const opt = select.querySelector(`option[value="${player.id}"]`);
+          if (opt) {
+            const uname = player.username || player.phone || `Player #${player.id}`;
+            opt.textContent = `${uname} (${fmt(player.balance || 0)} ETB)`;
+          }
         }
         toast(`Transferred ${fmt(amount)} ETB to ${player.username || `#${player.id}`}!`, "ok");
         if (amtInput) amtInput.value = "";
@@ -21093,11 +22733,11 @@ async function handleAdminBetCustomTransfer() {
         toast(res?.error || "Transfer failed", "err");
       }
     } else {
-      const nextBal = (player.balance || 0) + amount;
-      syncPlayerBalanceEverywhere(player.id, nextBal);
+      player.balance = (player.balance || 0) + amount;
       if (state.adminStats && state.adminStats.balance !== undefined) {
         updateAdminHeaderBalance(Math.max(0, state.adminStats.balance - amount));
       }
+      onAdminBetPlayerChange();
       toast(`Transferred ${fmt(amount)} ETB (demo)!`, "ok");
       if (amtInput) amtInput.value = "";
     }
@@ -21115,7 +22755,16 @@ async function refreshAdminBetPlayerBalance() {
     if (useApi() && api().getToken()) {
       const res = await api().fetchAdminPlayers({ id: player.id });
       if (res && res.ok && Array.isArray(res.players) && res.players[0]) {
-        syncPlayerBalanceEverywhere(player.id, res.players[0].balance);
+        player.balance = res.players[0].balance;
+        onAdminBetPlayerChange();
+        const select = $("admin-bet-player-select");
+        if (select) {
+          const opt = select.querySelector(`option[value="${player.id}"]`);
+          if (opt) {
+            const uname = player.username || player.phone || `Player #${player.id}`;
+            opt.textContent = `${uname} (${fmt(player.balance || 0)} ETB)`;
+          }
+        }
         toast("Player balance updated", "ok");
       }
     }
@@ -21285,9 +22934,8 @@ async function handleAdminTransferSubmit(e) {
 
       if (res && res.ok) {
         toast(res.message || `${opType === "withdraw" ? "Withdrawal" : "Deposit"} of ${amount} ETB completed`, "ok");
-        if (res.newBalance !== undefined) {
-          syncPlayerBalanceEverywhere(playerId, res.newBalance);
-        }
+        const player = (state.adminTransferPlayers || []).find((p) => String(p.id) === String(playerId));
+        if (player) player.balance = res.newBalance;
         if (res.adminBalance !== undefined) updateAdminHeaderBalance(res.adminBalance);
         onAdminTransferPlayerChange();
         if (amountInput) amountInput.value = "";
@@ -21308,8 +22956,7 @@ async function handleAdminTransferSubmit(e) {
         toast("Player has insufficient balance for withdrawal", "err");
         return;
       }
-      const newBal = opType === "withdraw" ? Number(player.balance || 0) - amount : Number(player.balance || 0) + amount;
-      syncPlayerBalanceEverywhere(playerId, newBal);
+      player.balance = opType === "withdraw" ? Number(player.balance || 0) - amount : Number(player.balance || 0) + amount;
       if (Number.isFinite(demoFloat)) updateAdminHeaderBalance(opType === "withdraw" ? demoFloat + amount : demoFloat - amount);
       onAdminTransferPlayerChange();
       toast(`${opType === "withdraw" ? "Withdrawal" : "Deposit"} of ${amount} ETB completed (demo)`, "ok");
@@ -21781,85 +23428,148 @@ function loadAdminReportView(reportType) {
 }
 
 function bindAdminEvents() {
+  const switchAdminTab = (tab) => {
+    state.adminTab = tab;
+    document.querySelectorAll(".admin-nav-item").forEach((b) => b.classList.toggle("is-active", b.dataset.adminTab === tab));
+    document.querySelectorAll(".admin-mob-tab").forEach((b) => b.classList.toggle("is-active", b.dataset.adminTab === tab));
+
+    const transMenu = $("admin-nav-trans-menu");
+    if (tab === "transactions") {
+      if (transMenu) transMenu.hidden = !transMenu.hidden;
+    } else {
+      if (transMenu) transMenu.hidden = true;
+    }
+
+    const reportMenu = $("admin-nav-report-menu");
+    if (tab === "report") {
+      if (reportMenu) reportMenu.hidden = !reportMenu.hidden;
+    } else {
+      if (reportMenu) reportMenu.hidden = true;
+    }
+
+    const adminMobSheet = $("admin-mob-sheet-backdrop");
+    if (adminMobSheet) adminMobSheet.hidden = true;
+
+    const betslip = $("betslip-panel");
+    const sidebar = $("sidebar");
+
+    if (tab === "bet") {
+      document.body.classList.add("is-admin-bet-mode");
+      const betBar = $("admin-bet-bar");
+      if (betBar) betBar.hidden = false;
+      const subNav = $("sub-nav");
+      if (subNav) subNav.hidden = false;
+      if (betslip) {
+        betslip.hidden = false;
+        betslip.style.display = "";
+      }
+      if (sidebar) {
+        sidebar.hidden = false;
+        sidebar.style.display = "";
+      }
+      setView("sports");
+      applySubNav("sports");
+      loadAdminBetPlayers();
+      refreshAdminHeaderBalance();
+    } else {
+      document.body.classList.remove("is-admin-bet-mode");
+      const betBar = $("admin-bet-bar");
+      if (betBar) betBar.hidden = true;
+      const subNav = $("sub-nav");
+      if (subNav) subNav.hidden = true;
+      if (betslip) {
+        betslip.hidden = true;
+        betslip.style.display = "none";
+      }
+      if (sidebar) {
+        sidebar.hidden = true;
+        sidebar.style.display = "none";
+      }
+
+      if (tab === "dashboard") {
+        setView("admin-dashboard");
+        renderAdminDashboard();
+      } else if (tab === "players") {
+        setView("admin-players");
+        loadAdminPlayers();
+      } else if (tab === "deposit") {
+        setView("admin-deposit");
+        loadAdminDepositView();
+        refreshAdminHeaderBalance();
+      } else if (tab === "sport-coupons") {
+        setView("admin-coupons");
+        loadAdminCoupons(window.adminCouponFilters || {});
+      } else if (tab === "check-bet") {
+        setView("check-bet");
+        setTimeout(() => {
+          const el = $("page-check-bet-id") || $("check-bet-id");
+          if (el) el.focus();
+        }, 100);
+      } else if (tab === "transactions") {
+        setView("admin-transactions");
+        loadAdminTransactionsView();
+      } else if (tab === "report") {
+        setView("admin-report");
+        loadAdminReportView();
+      }
+    }
+  };
+
   document.querySelectorAll(".admin-nav-item").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const tab = btn.dataset.adminTab;
-      document.querySelectorAll(".admin-nav-item").forEach((b) => b.classList.toggle("is-active", b === btn));
-      state.adminTab = tab;
-
-      const transMenu = $("admin-nav-trans-menu");
-      if (tab === "transactions") {
-        if (transMenu) transMenu.hidden = !transMenu.hidden;
-      } else {
-        if (transMenu) transMenu.hidden = true;
-      }
-
-      const reportMenu = $("admin-nav-report-menu");
-      if (tab === "report") {
-        if (reportMenu) reportMenu.hidden = !reportMenu.hidden;
-      } else {
-        if (reportMenu) reportMenu.hidden = true;
-      }
-
-      const betslip = $("betslip-panel");
-      const sidebar = $("sidebar");
-
-      if (tab === "bet") {
-        document.body.classList.add("is-admin-bet-mode");
-        const betBar = $("admin-bet-bar");
-        if (betBar) betBar.hidden = false;
-        const subNav = $("sub-nav");
-        if (subNav) subNav.hidden = false;
-        if (betslip) {
-          betslip.hidden = false;
-          betslip.style.display = "";
-        }
-        if (sidebar) {
-          sidebar.hidden = false;
-          sidebar.style.display = "";
-        }
-        setView("sports");
-        applySubNav("sports");
-        loadAdminBetPlayers();
-        refreshAdminHeaderBalance();
-      } else {
-        document.body.classList.remove("is-admin-bet-mode");
-        const betBar = $("admin-bet-bar");
-        if (betBar) betBar.hidden = true;
-        const subNav = $("sub-nav");
-        if (subNav) subNav.hidden = true;
-        if (betslip) {
-          betslip.hidden = true;
-          betslip.style.display = "none";
-        }
-        if (sidebar) {
-          sidebar.hidden = true;
-          sidebar.style.display = "none";
-        }
-
-        if (tab === "dashboard") {
-          setView("admin-dashboard");
-          renderAdminDashboard();
-        } else if (tab === "players") {
-          setView("admin-players");
-          loadAdminPlayers();
-        } else if (tab === "deposit") {
-          setView("admin-deposit");
-          loadAdminDepositView();
-          refreshAdminHeaderBalance();
-        } else if (tab === "sport-coupons") {
-          setView("admin-coupons");
-          loadAdminCoupons(window.adminCouponFilters || {});
-        } else if (tab === "transactions") {
-          setView("admin-transactions");
-          loadAdminTransactionsView();
-        } else if (tab === "report") {
-          setView("admin-report");
-          loadAdminReportView();
-        }
-      }
+      switchAdminTab(btn.dataset.adminTab);
     });
   });
+
+  // Bind Admin Mobile Bottom Bar Tabs
+  document.querySelectorAll(".admin-mob-tab[data-admin-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      switchAdminTab(btn.dataset.adminTab);
+    });
+  });
+
+  // Bind Admin Mobile More Menu Toggle & Sheet
+  const mobMoreBtn = $("admin-mob-more-btn");
+  const mobSheet = $("admin-mob-sheet-backdrop");
+  const mobSheetClose = $("admin-mob-sheet-close");
+  if (mobMoreBtn && mobSheet && !mobMoreBtn.__bound) {
+    mobMoreBtn.__bound = true;
+    mobMoreBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      mobSheet.hidden = !mobSheet.hidden;
+    });
+  }
+  if (mobSheetClose && mobSheet && !mobSheetClose.__bound) {
+    mobSheetClose.__bound = true;
+    mobSheetClose.addEventListener("click", () => {
+      mobSheet.hidden = true;
+    });
+  }
+  if (mobSheet && !mobSheet.__bound) {
+    mobSheet.__bound = true;
+    mobSheet.addEventListener("click", (e) => {
+      if (e.target === mobSheet) mobSheet.hidden = true;
+    });
+  }
+
+  // Bind Admin Mobile Sheet Items
+  document.querySelectorAll(".admin-mob-sheet-item[data-admin-tab]").forEach((btn) => {
+    if (btn.__bound) return;
+    btn.__bound = true;
+    btn.addEventListener("click", () => {
+      switchAdminTab(btn.dataset.adminTab);
+      if (mobSheet) mobSheet.hidden = true;
+    });
+  });
+
+  const mobSheetLogout = $("admin-mob-sheet-logout");
+  if (mobSheetLogout && !mobSheetLogout.__bound) {
+    mobSheetLogout.__bound = true;
+    mobSheetLogout.addEventListener("click", () => {
+      if (mobSheet) mobSheet.hidden = true;
+      logoutAdmin();
+    });
+  }
 
   // Bind Admin Logout Button
   const adminLogoutBtn = $("admin-logout-btn");
@@ -21880,6 +23590,16 @@ function bindAdminEvents() {
       e.preventDefault();
       e.stopPropagation();
       toast(`Logged in as Admin (${state.sessionUser?.username || "Shop Admin"})`, "info");
+    });
+  }
+
+  // Bind Admin Bet Bar Quick Check Button
+  const quickCheckBtn = $("admin-bet-quick-check-btn");
+  if (quickCheckBtn && !quickCheckBtn.__bound) {
+    quickCheckBtn.__bound = true;
+    quickCheckBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      switchAdminTab("check-bet");
     });
   }
 
@@ -22082,11 +23802,6 @@ function bindAdminEvents() {
       if (!username) return toast("Username/Phone is required", "err");
       if (!password || password.length < 6) return toast("Password must be at least 6 characters", "err");
 
-      const currentFloat = state.adminStats ? Number(state.adminStats.balance || 0) : null;
-      if (initialBalance > 0 && currentFloat !== null && currentFloat < initialBalance) {
-        return toast(`Initial balance exceeds your available float (${fmt(currentFloat)} ETB). Contact Super Admin.`, "err");
-      }
-
       try {
         const submitBtn = $("admin-np-btn-submit");
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Creating..."; }
@@ -22095,14 +23810,6 @@ function bindAdminEvents() {
 
         if (res && res.ok) {
           toast(res.message || "Player created successfully", "ok");
-          if (res.adminBalance !== undefined && state.adminStats) {
-            state.adminStats.balance = res.adminBalance;
-            state.adminStats.availability = res.adminBalance;
-            const balEl = $("admin-header-balance");
-            const availEl = $("admin-header-availability");
-            if (balEl) balEl.textContent = `ETB ${fmt(res.adminBalance)}`;
-            if (availEl) availEl.textContent = `ETB ${Math.round(res.adminBalance)}`;
-          }
           closeAdminNewPlayerModal();
           await loadAdminPlayers();
         } else {
@@ -22111,8 +23818,7 @@ function bindAdminEvents() {
       } catch (err) {
         const submitBtn = $("admin-np-btn-submit");
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Create Player"; }
-        const msg = err?.data?.error || err.message || "Failed to create player";
-        toast(msg, "err");
+        toast(err.message || "Failed to create player", "err");
       }
     });
   }
@@ -22151,10 +23857,6 @@ function bindAdminEvents() {
         const res = await api().topUpPlayer(userId, amount);
         if (res && res.ok) {
           toast(`Deposited ${fmt(amount)} ETB successfully`, "ok");
-          const nextBal = res.newBalance !== undefined ? res.newBalance : res.balance;
-          if (nextBal !== undefined) {
-            syncPlayerBalanceEverywhere(userId, nextBal);
-          }
           // Update admin float in state and header
           if (res.adminBalance !== undefined && state.adminStats) {
             state.adminStats.balance = res.adminBalance;

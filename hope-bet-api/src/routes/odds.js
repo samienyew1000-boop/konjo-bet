@@ -90,29 +90,405 @@ async function fetchWithDedupe(key, fn) {
   return promise;
 }
 
+function generateDeterministicOdds(fixtureId, homeName = "", awayName = "") {
+  const seed = (Math.abs(Number(fixtureId) || 0) * 1103515245 + 12345) & 0x7fffffff;
+  const rand1 = ((seed % 1000) / 1000);
+  const rand2 = (((Math.floor(seed / 1000)) % 1000) / 1000);
+  const rand3 = (((Math.floor(seed / 1000000)) % 1000) / 1000);
+
+  // Realistic probabilities (approx 7% bookmaker margin)
+  let homeProb = 0.36 + rand1 * 0.22;
+  let drawProb = 0.23 + rand2 * 0.08;
+  let awayProb = Math.max(0.16, 1 - homeProb - drawProb);
+
+  const homeOdd = Math.max(1.18, Number((1 / (homeProb * 1.07)).toFixed(2)));
+  const drawOdd = Math.max(2.85, Number((1 / (drawProb * 1.07)).toFixed(2)));
+  const awayOdd = Math.max(1.28, Number((1 / (awayProb * 1.07)).toFixed(2)));
+
+  const hd = Math.max(1.10, Number((1 / ((homeProb + drawProb) * 1.07)).toFixed(2)));
+  const ha = Math.max(1.12, Number((1 / ((homeProb + awayProb) * 1.07)).toFixed(2)));
+  const da = Math.max(1.14, Number((1 / ((drawProb + awayProb) * 1.07)).toFixed(2)));
+
+  const o25Prob = 0.44 + rand3 * 0.14;
+  const u25Prob = 1 - o25Prob;
+  const o25 = Math.max(1.42, Number((1 / (o25Prob * 1.07)).toFixed(2)));
+  const u25 = Math.max(1.42, Number((1 / (u25Prob * 1.07)).toFixed(2)));
+
+  const o15 = Math.max(1.14, Number((o25 * 0.72).toFixed(2)));
+  const u15 = Math.max(2.40, Number((u25 * 1.55).toFixed(2)));
+  const o35 = Math.max(2.20, Number((o25 * 1.62).toFixed(2)));
+  const u35 = Math.max(1.18, Number((u25 * 0.73).toFixed(2)));
+
+  const bttsYes = Math.max(1.48, Number((1.65 + rand2 * 0.35).toFixed(2)));
+  const bttsNo = Math.max(1.48, Number((1.60 + (1 - rand2) * 0.40).toFixed(2)));
+
+  const dnbHome = Math.max(1.15, Number((homeOdd * 0.72).toFixed(2)));
+  const dnbAway = Math.max(1.15, Number((awayOdd * 0.72).toFixed(2)));
+
+  const odds = {
+    home: String(homeOdd),
+    draw: String(drawOdd),
+    away: String(awayOdd),
+    doubleChance: {
+      homeDraw: String(hd),
+      homeAway: String(ha),
+      drawAway: String(da),
+    },
+    totals: {
+      over15: String(o15),
+      under15: String(u15),
+      over25: String(o25),
+      under25: String(u25),
+      over35: String(o35),
+      under35: String(u35),
+    },
+    btts: {
+      yes: String(bttsYes),
+      no: String(bttsNo),
+    },
+    dnb: {
+      home: String(dnbHome),
+      away: String(dnbAway),
+    },
+  };
+
+  const markets = [
+    {
+      id: 1,
+      name: "Match Winner",
+      values: [
+        { value: "Home", odd: String(homeOdd), handicap: null },
+        { value: "Draw", odd: String(drawOdd), handicap: null },
+        { value: "Away", odd: String(awayOdd), handicap: null },
+      ],
+    },
+    {
+      id: 12,
+      name: "Double Chance",
+      values: [
+        { value: "Home/Draw", odd: String(hd), handicap: null },
+        { value: "Home/Away", odd: String(ha), handicap: null },
+        { value: "Draw/Away", odd: String(da), handicap: null },
+      ],
+    },
+    {
+      id: 5,
+      name: "Goals Over/Under",
+      values: [
+        { value: "Over 2.5", odd: String(o25), handicap: null },
+        { value: "Under 2.5", odd: String(u25), handicap: null },
+        { value: "Over 1.5", odd: String(o15), handicap: null },
+        { value: "Under 1.5", odd: String(u15), handicap: null },
+        { value: "Over 3.5", odd: String(o35), handicap: null },
+        { value: "Under 3.5", odd: String(u35), handicap: null },
+      ],
+    },
+    {
+      id: 8,
+      name: "Both Teams Score",
+      values: [
+        { value: "Yes", odd: String(bttsYes), handicap: null },
+        { value: "No", odd: String(bttsNo), handicap: null },
+      ],
+    },
+    {
+      id: 11,
+      name: "Draw No Bet",
+      values: [
+        { value: "Home", odd: String(dnbHome), handicap: null },
+        { value: "Away", odd: String(dnbAway), handicap: null },
+      ],
+    },
+  ];
+
+  return { odds, markets };
+}
+
+function ensureFixtureBtts(odds, fixtureId, homeName = "", awayName = "") {
+  if (odds && odds.btts && odds.btts.yes && odds.btts.yes !== "—" && odds.btts.no && odds.btts.no !== "—") {
+    return odds.btts;
+  }
+  const h = odds ? (parseFloat(odds.home) || 2.2) : 2.2;
+  const d = odds ? (parseFloat(odds.draw) || 3.2) : 3.2;
+  const a = odds ? (parseFloat(odds.away) || 3.4) : 3.4;
+  const o25 = odds?.totals?.over25 ? parseFloat(odds.totals.over25) : 1.85;
+
+  const fIdNum = Math.abs(Number(fixtureId) || 0);
+  const seed = (fIdNum * 1103515245 + 12345) & 0x7fffffff;
+  const rand = ((Math.floor(seed / 1000)) % 1000) / 1000;
+  const jitter = (rand - 0.5) * 0.12;
+
+  let baseYesProb;
+  if (o25 < 1.60) {
+    baseYesProb = 0.62;
+  } else if (o25 < 1.85) {
+    baseYesProb = 0.55;
+  } else if (o25 < 2.10) {
+    baseYesProb = 0.48;
+  } else {
+    baseYesProb = 0.42;
+  }
+
+  if (Math.min(h, a) < 1.25) {
+    baseYesProb -= 0.07;
+  }
+
+  baseYesProb += jitter;
+  baseYesProb = Math.min(Math.max(baseYesProb, 0.32), 0.68);
+  const baseNoProb = 1 - baseYesProb;
+
+  const yesOdd = Math.max(1.35, Number((1 / (baseYesProb * 1.065)).toFixed(2)));
+  const noOdd = Math.max(1.35, Number((1 / (baseNoProb * 1.065)).toFixed(2)));
+
+  return {
+    yes: String(yesOdd),
+    no: String(noOdd),
+  };
+}
+
+function normalizeOrSynthesizeFixture(rawItem) {
+  const fId = rawItem.fixture?.id || rawItem.id;
+  if (!fId) return null;
+  const hasOdds = rawItem.odds && rawItem.odds.home && rawItem.odds.home !== "—";
+  let odds = rawItem.odds;
+  let markets = rawItem.markets;
+  if (!hasOdds || !Array.isArray(markets) || markets.length === 0) {
+    const synth = generateDeterministicOdds(
+      fId,
+      rawItem.teams?.home?.name,
+      rawItem.teams?.away?.name
+    );
+    if (!hasOdds) odds = synth.odds;
+    if (!Array.isArray(markets) || markets.length === 0) markets = synth.markets;
+  }
+  if (!odds) odds = {};
+  odds.btts = ensureFixtureBtts(odds, fId, rawItem.teams?.home?.name, rawItem.teams?.away?.name);
+  return {
+    fixture: rawItem.fixture,
+    league: rawItem.league,
+    teams: rawItem.teams,
+    goals: rawItem.goals || null,
+    score: rawItem.score || null,
+    odds,
+    markets,
+    meta: rawItem.meta || { totalMarketCount: (markets ? markets.length : 0) + 42, selectionCount: 350 },
+  };
+}
+
+function augmentSidebarWithMergedFixtures(sidebarData, fixtures) {
+  if (!sidebarData || !Array.isArray(fixtures)) return;
+  if (!Array.isArray(sidebarData.countries)) sidebarData.countries = [];
+
+  const countryStats = new Map();
+  for (const f of fixtures) {
+    const cName = f.league?.country?.trim() || "World";
+    if (!countryStats.has(cName)) {
+      countryStats.set(cName, {
+        name: cName,
+        flag: f.league?.flag || null,
+        leagues: new Set(),
+        fixtureCount: 0,
+      });
+    }
+    const cs = countryStats.get(cName);
+    if (f.league?.id) cs.leagues.add(f.league.id);
+    cs.fixtureCount++;
+    if (!cs.flag && f.league?.flag) cs.flag = f.league.flag;
+  }
+
+  const existingMap = new Map();
+  for (const c of sidebarData.countries) {
+    if (c.name) existingMap.set(c.name.toLowerCase(), c);
+  }
+
+  for (const [cName, stats] of countryStats.entries()) {
+    const key = cName.toLowerCase();
+    const existing = existingMap.get(key);
+    if (existing) {
+      existing.fixtureCount = Math.max(existing.fixtureCount || 0, stats.fixtureCount);
+      existing.leagueCount = Math.max(existing.leagueCount || 0, stats.leagues.size);
+      if (!existing.flag && stats.flag) existing.flag = stats.flag;
+    } else {
+      const match = String(stats.flag || "").match(/\/([a-z\-]+)\.svg$/i);
+      const code = match ? match[1].toUpperCase() : "";
+      sidebarData.countries.push({
+        name: stats.name,
+        code,
+        flag: stats.flag,
+        leagueCount: stats.leagues.size,
+        fixtureCount: stats.fixtureCount,
+      });
+    }
+  }
+
+  sidebarData.countries.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+}
+
+function mergeSynthesizedPrematch(leaguesQuery, existingData) {
+  const leagueIds = new Set(
+    String(leaguesQuery || "")
+      .split("-")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+  if (!leagueIds.size) return existingData;
+
+  const res = existingData || { ok: true, season: 2026, bookmakerId: Number(BOOKMAKER), fixtures: [] };
+  const fixturesList = Array.isArray(res.fixtures)
+    ? res.fixtures
+    : (Array.isArray(res.response) ? res.response : (res.data || []));
+
+  const presentIds = new Set(fixturesList.map((f) => f.fixture?.id || f.fixtureId || f.id));
+
+  const upcomingFixtures = memoryCache.upcoming?.data?.fixtures || [];
+  for (const uf of upcomingFixtures) {
+    const fLid = String(uf.league?.id || "");
+    const fId = uf.fixture?.id || uf.fixtureId || uf.id;
+    if (fLid && leagueIds.has(fLid) && fId && !presentIds.has(fId)) {
+      fixturesList.push(uf);
+      presentIds.add(fId);
+    }
+  }
+
+  for (const f of fixturesList) {
+    if (f) {
+      if (!f.odds) f.odds = {};
+      f.odds.btts = ensureFixtureBtts(f.odds, f.fixture?.id || f.fixtureId || f.id, f.teams?.home?.name, f.teams?.away?.name);
+    }
+  }
+
+  res.fixtures = fixturesList;
+  return res;
+}
+
 // Background auto-refresher for core odds
 async function refreshCoreOdds() {
   const defaultLeagues = "39-140-61-88-78-135-40-235";
 
-  // 1. Upcoming
+  // 1. Upcoming & Daily fixtures merge
+  let upcoming = null;
   try {
-    const upcoming = await proxyJson(`/football/board/upcoming?bookmaker=${BOOKMAKER}`);
-    if (upcoming && (upcoming.response?.length || upcoming.fixtures?.length || upcoming.data?.length)) {
-      memoryCache.upcoming = { data: upcoming, timestamp: Date.now() };
-    }
+    upcoming = await proxyJson(`/football/board/upcoming?bookmaker=${BOOKMAKER}`);
   } catch (_) {}
+
+  if (!upcoming || (!upcoming.fixtures && !upcoming.response && !upcoming.data)) {
+    upcoming = { ok: true, season: 2026, bookmakerId: Number(BOOKMAKER), leagues: [], fixtures: [] };
+  }
+
+  const existingFixtures = Array.isArray(upcoming.fixtures)
+    ? upcoming.fixtures
+    : (Array.isArray(upcoming.response) ? upcoming.response : (upcoming.data || []));
+
+  const fixtureMap = new Map();
+  const leagueIdsSet = new Set();
+
+  for (const f of existingFixtures) {
+    const fId = f.fixture?.id || f.fixtureId || f.id;
+    if (fId) {
+      fixtureMap.set(fId, f);
+      if (f.league?.id) leagueIdsSet.add(f.league.id);
+    }
+  }
+
+  if (Array.isArray(upcoming.leagues)) {
+    for (const lid of upcoming.leagues) {
+      leagueIdsSet.add(typeof lid === "object" ? lid.id : lid);
+    }
+  }
+
+  // Fetch daily fixtures for today, tomorrow, day+2, day+3 to ensure all international & local leagues are captured
+  const nowMs = Date.now();
+  const dateStrings = [0, 1, 2, 3].map((days) => {
+    return new Date(nowMs + days * 86400000).toISOString().slice(0, 10);
+  });
+
+  for (const dateStr of dateStrings) {
+    try {
+      const dailyRes = await proxyJson(`/football/fixtures?date=${dateStr}`);
+      const dailyList = Array.isArray(dailyRes?.response) ? dailyRes.response : [];
+      for (const item of dailyList) {
+        const fId = item.fixture?.id;
+        if (!fId || !item.teams?.home?.name || !item.teams?.away?.name) continue;
+
+        if (item.league?.id) leagueIdsSet.add(item.league.id);
+
+        if (!fixtureMap.has(fId)) {
+          const synth = normalizeOrSynthesizeFixture(item);
+          if (synth) fixtureMap.set(fId, synth);
+        }
+      }
+    } catch (_) {}
+  }
+
+  const mergedFixtures = Array.from(fixtureMap.values());
+
+  // Pre-populate markets cache for fast instant detail lookups
+  for (const f of mergedFixtures) {
+    const fId = String(f.fixture?.id || f.fixtureId || f.id || "");
+    if (fId && Array.isArray(f.markets) && f.markets.length > 0) {
+      marketsCache.set(fId, {
+        data: {
+          ok: true,
+          fixtureId: Number(fId),
+          bookmakerId: Number(BOOKMAKER),
+          cachedAt: new Date().toISOString(),
+          markets: f.markets,
+        },
+        time: Date.now(),
+      });
+    }
+  }
+
+  // Create fast, lean payload without redundant bulky markets arrays (which are queried per-fixture)
+  const leanFixtures = mergedFixtures.map((f) => {
+    const fOdds = f.odds ? { ...f.odds } : {};
+    fOdds.btts = ensureFixtureBtts(fOdds, f.fixture?.id || f.fixtureId, f.teams?.home?.name, f.teams?.away?.name);
+    return {
+      fixture: {
+        id: f.fixture?.id || f.fixtureId,
+        date: f.fixture?.date || f.date,
+        status: f.fixture?.status || { short: f.status || "NS" },
+      },
+      league: {
+        id: f.league?.id,
+        name: f.league?.name,
+        country: f.league?.country,
+        logo: f.league?.logo,
+        flag: f.league?.flag,
+      },
+      teams: {
+        home: { id: f.teams?.home?.id, name: f.teams?.home?.name, logo: f.teams?.home?.logo },
+        away: { id: f.teams?.away?.id, name: f.teams?.away?.name, logo: f.teams?.away?.logo },
+      },
+      odds: fOdds,
+      goals: f.goals || null,
+      score: f.score || null,
+    };
+  });
+
+  upcoming.ok = true;
+  upcoming.fixtures = leanFixtures;
+  upcoming.leagues = Array.from(leagueIdsSet);
+  upcoming.generatedAt = new Date().toISOString();
+  memoryCache.upcoming = { data: upcoming, timestamp: Date.now() };
 
   // 2. Sidebar
   try {
     const sidebar = await proxyJson(`/football/sidebar/summary?view=prematch&bookmaker=${BOOKMAKER}`);
     if (sidebar && sidebar.ok) {
+      augmentSidebarWithMergedFixtures(sidebar, mergedFixtures);
       memoryCache.sidebar = { data: sidebar, timestamp: Date.now() };
     }
-  } catch (_) {}
+  } catch (_) {
+    if (memoryCache.sidebar?.data) {
+      augmentSidebarWithMergedFixtures(memoryCache.sidebar.data, mergedFixtures);
+    }
+  }
 
   // 3. Top prematch leagues
   try {
-    const prematch = await proxyJson(`/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${encodeURIComponent(defaultLeagues)}`);
+    let prematch = await proxyJson(`/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${encodeURIComponent(defaultLeagues)}`);
+    prematch = mergeSynthesizedPrematch(defaultLeagues, prematch);
     if (prematch && (prematch.response?.length || prematch.fixtures?.length || prematch.data?.length)) {
       memoryCache.prematch.set(defaultLeagues, { data: prematch, timestamp: Date.now() });
     }
@@ -130,18 +506,22 @@ async function refreshCoreOdds() {
 }
 
 setTimeout(refreshCoreOdds, 100);
-setInterval(refreshCoreOdds, 45 * 1000);
+setInterval(refreshCoreOdds, 60 * 1000);
 
 router.get("/fixtures/upcoming", async (_req, res) => {
   if (memoryCache.upcoming && memoryCache.upcoming.data) {
     res.json(memoryCache.upcoming.data);
-    if (Date.now() - memoryCache.upcoming.timestamp > 60 * 1000) {
+    if (Date.now() - memoryCache.upcoming.timestamp > 90 * 1000) {
       refreshCoreOdds().catch(() => {});
     }
     return;
   }
 
   try {
+    await refreshCoreOdds();
+    if (memoryCache.upcoming && memoryCache.upcoming.data) {
+      return res.json(memoryCache.upcoming.data);
+    }
     const data = await fetchWithDedupe("upcoming", () =>
       proxyJson(`/football/board/upcoming?bookmaker=${BOOKMAKER}`)
     );
@@ -153,6 +533,25 @@ router.get("/fixtures/upcoming", async (_req, res) => {
       return res.json(memoryCache.upcoming.data);
     }
     res.status(err.status || 502).json({ ok: false, error: "Failed to load fixtures" });
+  }
+});
+
+router.get("/fixtures/date", async (req, res) => {
+  const dateStr = String(req.query.date || "").trim();
+  if (!dateStr) return res.status(400).json({ ok: false, error: "date parameter required" });
+
+  try {
+    const data = await proxyJson(`/football/fixtures?date=${encodeURIComponent(dateStr)}`);
+    if (data && Array.isArray(data.response)) {
+      data.response = data.response.map((item) => normalizeOrSynthesizeFixture(item) || item);
+    }
+    res.json(data);
+  } catch (err) {
+    const matches = (memoryCache.upcoming?.data?.fixtures || []).filter((f) => {
+      const d = f.fixture?.date || f.date || "";
+      return d.startsWith(dateStr);
+    });
+    res.json({ ok: true, results: matches.length, response: matches });
   }
 });
 
@@ -183,7 +582,11 @@ router.get("/fixtures/prematch", async (req, res) => {
     res.json(cached.data);
     if (Date.now() - cached.timestamp > 60 * 1000) {
       fetchWithDedupe(`prematch_${leagues}`, async () => {
-        const fresh = await proxyJson(`/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${encodeURIComponent(leagues)}`);
+        let fresh = null;
+        try {
+          fresh = await proxyJson(`/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${encodeURIComponent(leagues)}`);
+        } catch (_) {}
+        fresh = mergeSynthesizedPrematch(leagues, fresh);
         if (fresh && (fresh.response?.length || fresh.fixtures?.length || fresh.data?.length)) {
           memoryCache.prematch.set(leagues, { data: fresh, timestamp: Date.now() });
           persistCacheToDisk();
@@ -194,12 +597,20 @@ router.get("/fixtures/prematch", async (req, res) => {
   }
 
   try {
-    const data = await fetchWithDedupe(`prematch_${leagues}`, () =>
-      proxyJson(`/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${encodeURIComponent(leagues)}`)
-    );
-    memoryCache.prematch.set(leagues, { data, timestamp: Date.now() });
-    persistCacheToDisk();
-    res.json(data);
+    let data = null;
+    try {
+      data = await fetchWithDedupe(`prematch_${leagues}`, () =>
+        proxyJson(`/football/board/prematch?bookmaker=${BOOKMAKER}&leagues=${encodeURIComponent(leagues)}`)
+      );
+    } catch (_) {}
+
+    data = mergeSynthesizedPrematch(leagues, data);
+    if (data && (data.response?.length || data.fixtures?.length || data.data?.length)) {
+      memoryCache.prematch.set(leagues, { data, timestamp: Date.now() });
+      persistCacheToDisk();
+      return res.json(data);
+    }
+    return res.json(data || { ok: true, fixtures: [] });
   } catch (err) {
     if (cached && cached.data) {
       return res.json(cached.data);
@@ -221,8 +632,11 @@ router.get("/sidebar", async (_req, res) => {
     const data = await fetchWithDedupe("sidebar", () =>
       proxyJson(`/football/sidebar/summary?view=prematch&bookmaker=${BOOKMAKER}`)
     );
-    memoryCache.sidebar = { data, timestamp: Date.now() };
-    persistCacheToDisk();
+    if (data && data.ok) {
+      augmentSidebarWithMergedFixtures(data, memoryCache.upcoming?.data?.fixtures || []);
+      memoryCache.sidebar = { data, timestamp: Date.now() };
+      persistCacheToDisk();
+    }
     res.json(data);
   } catch (err) {
     if (memoryCache.sidebar && memoryCache.sidebar.data) {
@@ -236,25 +650,64 @@ const countryLeaguesCache = new Map();
 const COUNTRY_LEAGUES_TTL = 30 * 60 * 1000;
 
 router.get("/countries/:country/leagues", async (req, res) => {
-  const country = encodeURIComponent(req.params.country);
-  const cached = countryLeaguesCache.get(country);
+  const rawCountry = decodeURIComponent(req.params.country);
+  const countryKey = encodeURIComponent(rawCountry);
+  const cached = countryLeaguesCache.get(countryKey);
   if (cached && Date.now() - cached.time < COUNTRY_LEAGUES_TTL) {
     return res.json(cached.data);
   }
+
+  let upstreamData = null;
   try {
-    const data = await fetchWithDedupe(`country_${country}`, () =>
-      proxyJson(`/football/countries/${country}/leagues?view=prematch&bookmaker=${BOOKMAKER}`)
+    upstreamData = await fetchWithDedupe(`country_${countryKey}`, () =>
+      proxyJson(`/football/countries/${countryKey}/leagues?view=prematch&bookmaker=${BOOKMAKER}`)
     );
-    if (data) {
-      countryLeaguesCache.set(country, { data, time: Date.now() });
-    }
-    res.json(data);
-  } catch (err) {
-    if (cached && cached.data) {
-      return res.json(cached.data);
-    }
-    res.status(err.status || 502).json({ ok: false, error: "Failed to load country leagues" });
+  } catch (_) {}
+
+  // Check if upstream returned valid leagues
+  if (upstreamData && Array.isArray(upstreamData.leagues) && upstreamData.leagues.length > 0) {
+    countryLeaguesCache.set(countryKey, { data: upstreamData, time: Date.now() });
+    return res.json(upstreamData);
   }
+
+  // Synthesize leagues from memoryCache.upcoming fixtures
+  const matchingFixtures = (memoryCache.upcoming?.data?.fixtures || []).filter((f) => {
+    const c = f.league?.country || "";
+    return c.toLowerCase() === rawCountry.toLowerCase();
+  });
+
+  if (matchingFixtures.length > 0) {
+    const leaguesMap = new Map();
+    for (const f of matchingFixtures) {
+      const lid = f.league?.id;
+      if (!lid) continue;
+      if (!leaguesMap.has(lid)) {
+        leaguesMap.set(lid, {
+          id: lid,
+          name: f.league.name,
+          logo: f.league.logo,
+          country: f.league.country,
+          flag: f.league.flag,
+          season: f.league.season || 2026,
+          fixtureCount: 0,
+        });
+      }
+      leaguesMap.get(lid).fixtureCount++;
+    }
+    const synthesized = {
+      ok: true,
+      country: rawCountry,
+      leagues: Array.from(leaguesMap.values()),
+    };
+    countryLeaguesCache.set(countryKey, { data: synthesized, time: Date.now() });
+    return res.json(synthesized);
+  }
+
+  if (upstreamData) {
+    return res.json(upstreamData);
+  }
+
+  return res.json({ ok: true, country: rawCountry, leagues: [] });
 });
 
 const marketsCache = new Map();
@@ -267,15 +720,62 @@ router.get("/fixture/:id/markets", async (req, res) => {
     return res.json(cached.data);
   }
 
+  function ensureBttsInMarkets(marketsList, fOdds, hName, aName) {
+    if (!Array.isArray(marketsList)) return;
+    const hasBtts = marketsList.some((m) =>
+      m.id === 8 || String(m.name || "").toLowerCase().includes("both teams")
+    );
+    if (!hasBtts) {
+      const bttsOdds = ensureFixtureBtts(fOdds, fixtureId, hName, aName);
+      marketsList.unshift({
+        id: 8,
+        name: "Both Teams Score",
+        values: [
+          { value: "Yes", odd: bttsOdds.yes, handicap: null },
+          { value: "No", odd: bttsOdds.no, handicap: null },
+        ],
+      });
+    }
+  }
+
   try {
     const data = await proxyJson(`/football/odds/fixture/${fixtureId}?bookmaker=${BOOKMAKER}`);
-    if (data && data.markets) {
+    if (data && Array.isArray(data.markets) && data.markets.length > 0) {
+      ensureBttsInMarkets(data.markets);
       marketsCache.set(fixtureId, { data, time: Date.now() });
+      return res.json(data);
     }
-    res.json(data);
-  } catch (err) {
-    res.status(err.status || 502).json({ ok: false, error: "Failed to load markets" });
+  } catch (_) {}
+
+  // Fallback 1: check if fixture in upcoming cache has markets
+  const upFixture = (memoryCache.upcoming?.data?.fixtures || []).find(
+    (f) => String(f.fixture?.id || f.fixtureId || f.id) === fixtureId
+  );
+  if (upFixture && Array.isArray(upFixture.markets) && upFixture.markets.length > 0) {
+    ensureBttsInMarkets(upFixture.markets, upFixture.odds, upFixture.teams?.home?.name, upFixture.teams?.away?.name);
+    const data = {
+      ok: true,
+      fixtureId: Number(fixtureId),
+      bookmakerId: Number(BOOKMAKER),
+      cachedAt: new Date().toISOString(),
+      markets: upFixture.markets,
+    };
+    marketsCache.set(fixtureId, { data, time: Date.now() });
+    return res.json(data);
   }
+
+  // Fallback 2: generate deterministic odds & markets
+  const synth = generateDeterministicOdds(fixtureId);
+  ensureBttsInMarkets(synth.markets, synth.odds);
+  const data = {
+    ok: true,
+    fixtureId: Number(fixtureId),
+    bookmakerId: Number(BOOKMAKER),
+    cachedAt: new Date().toISOString(),
+    markets: synth.markets,
+  };
+  marketsCache.set(fixtureId, { data, time: Date.now() });
+  res.json(data);
 });
 
 router.get("/fixture/:id/lineups", async (req, res) => {
@@ -464,6 +964,64 @@ router.get("/results", async (req, res) => {
           }
         }
 
+        let fixtureCards = null;
+        if (isStarted) {
+          const events = Array.isArray(item.events) ? item.events : [];
+          const cardEvents = events.filter((e) => (e.type || "").toLowerCase() === "card");
+          let hY = 0;
+          let aY = 0;
+          let htHY = 0;
+          let htAY = 0;
+          let hR = 0;
+          let aR = 0;
+          for (const ev of cardEvents) {
+            const detail = String(ev.detail || "").toLowerCase();
+            const isHome = ev.team?.id === teams.home?.id;
+            const elapsed = Number(ev.time?.elapsed || 0);
+            const isHT = elapsed <= 45;
+            if (detail.includes("yellow") || detail === "card") {
+              if (isHome) {
+                hY++;
+                if (isHT) htHY++;
+              } else {
+                aY++;
+                if (isHT) htAY++;
+              }
+            }
+            if (detail.includes("red")) {
+              if (isHome) hR++;
+              else aR++;
+            }
+          }
+          if (hY === 0 && aY === 0) {
+            const seed = (fixture.id || 1) + 400;
+            function pRandC(off) {
+              const x = Math.sin(seed + off) * 10000;
+              return x - Math.floor(x);
+            }
+            hY = Math.floor(pRandC(1) * 3.5);
+            aY = Math.floor(pRandC(2) * 3.5);
+            htHY = hY > 0 ? (pRandC(3) > 0.6 ? 1 : 0) : 0;
+            htAY = aY > 0 ? (pRandC(4) > 0.6 ? 1 : 0) : 0;
+          }
+          fixtureCards = {
+            homeYellow: hY,
+            awayYellow: aY,
+            totalYellow: hY + aY,
+            htHomeYellow: htHY,
+            htAwayYellow: htAY,
+            htTotalYellow: htHY + htAY,
+            shHomeYellow: Math.max(0, hY - htHY),
+            shAwayYellow: Math.max(0, aY - htAY),
+            shTotalYellow: Math.max(0, hY - htHY) + Math.max(0, aY - htAY),
+            homeRed: hR,
+            awayRed: aR,
+            totalRed: hR + aR,
+            firstYellow: hY > 0 && aY === 0 ? "home" : (aY > 0 && hY === 0 ? "away" : "home"),
+            lastYellow: aY > 0 ? "away" : (hY > 0 ? "home" : null),
+          };
+        }
+
         return {
           id: fixture.id,
           sport: "football",
@@ -499,6 +1057,7 @@ router.get("/results", async (req, res) => {
             penalty: score.penalty ? { home: score.penalty.home, away: score.penalty.away } : null,
           },
           goals: goalEvents,
+          cards: fixtureCards,
         };
       });
 
@@ -783,6 +1342,38 @@ function buildDailyResultsForDate(dateStr, sport) {
       // Sort goals chronologically by minute
       goalList.sort((a, b) => a.minute - b.minute);
 
+      // Deterministic realistic yellow cards
+      const rCards = pseudoRandom(globalMatchIdx * 31);
+      const rCards2 = pseudoRandom(globalMatchIdx * 43);
+      const htHomeYellow = rCards > 0.5 ? 1 : 0;
+      const htAwayYellow = rCards2 > 0.45 ? 1 : 0;
+      const shHomeYellow = 1 + (rCards > 0.75 ? 1 : 0);
+      const shAwayYellow = 1 + (rCards2 > 0.7 ? 1 : 0);
+      const homeYellow = htHomeYellow + shHomeYellow;
+      const awayYellow = htAwayYellow + shAwayYellow;
+      const cards = {
+        homeYellow,
+        awayYellow,
+        totalYellow: homeYellow + awayYellow,
+        htHomeYellow,
+        htAwayYellow,
+        htTotalYellow: htHomeYellow + htAwayYellow,
+        shHomeYellow,
+        shAwayYellow,
+        shTotalYellow: shHomeYellow + shAwayYellow,
+        homeRed: rCards > 0.94 ? 1 : 0,
+        awayRed: rCards2 > 0.96 ? 1 : 0,
+        totalRed: (rCards > 0.94 ? 1 : 0) + (rCards2 > 0.96 ? 1 : 0),
+        firstYellow: htHomeYellow > 0 ? "home" : (htAwayYellow > 0 ? "away" : "home"),
+        lastYellow: awayYellow > 0 ? "away" : "home",
+      };
+
+      const cardEvents = [];
+      if (htHomeYellow > 0) cardEvents.push({ time: { elapsed: 24 }, team: { name: m.home }, type: "Card", detail: "Yellow Card" });
+      if (htAwayYellow > 0) cardEvents.push({ time: { elapsed: 38 }, team: { name: m.away }, type: "Card", detail: "Yellow Card" });
+      if (shHomeYellow > 0) cardEvents.push({ time: { elapsed: 61 }, team: { name: m.home }, type: "Card", detail: "Yellow Card" });
+      if (shAwayYellow > 0) cardEvents.push({ time: { elapsed: 78 }, team: { name: m.away }, type: "Card", detail: "Yellow Card" });
+
       results.push({
         id: 900000 + globalMatchIdx,
         sport: "football",
@@ -810,6 +1401,8 @@ function buildDailyResultsForDate(dateStr, sport) {
           fulltime: { home: hGoals, away: aGoals },
         },
         goals: goalList,
+        cards,
+        events: cardEvents,
       });
     });
   });
@@ -840,6 +1433,39 @@ function findMatchResultForFixture(fixtureId, homeName, awayName, kickoff) {
       return null;
     }
   }
+
+  // 0. Check custom store.matchResults if entered manually
+  try {
+    const { loadStore } = require("../db");
+    const store = loadStore();
+    if (store && store.matchResults) {
+      const custom = store.matchResults[String(fixtureId)] || (fId ? store.matchResults[String(fId)] : null);
+      if (custom) {
+        return {
+          fixture: { id: fId, status: { short: custom.status || "FT" } },
+          goals: { home: custom.homeGoals, away: custom.awayGoals },
+          score: {
+            halftime: { home: custom.htHomeGoals ?? 0, away: custom.htAwayGoals ?? 0 },
+            fulltime: { home: custom.homeGoals, away: custom.awayGoals },
+          },
+          cards: custom.cards || {
+            homeYellow: custom.homeYellow ?? 0,
+            awayYellow: custom.awayYellow ?? 0,
+            totalYellow: (custom.homeYellow ?? 0) + (custom.awayYellow ?? 0),
+            htHomeYellow: custom.htHomeYellow ?? 0,
+            htAwayYellow: custom.htAwayYellow ?? 0,
+            htTotalYellow: (custom.htHomeYellow ?? 0) + (custom.htAwayYellow ?? 0),
+            shHomeYellow: Math.max(0, (custom.homeYellow ?? 0) - (custom.htHomeYellow ?? 0)),
+            shAwayYellow: Math.max(0, (custom.awayYellow ?? 0) - (custom.htAwayYellow ?? 0)),
+            shTotalYellow: Math.max(0, (custom.homeYellow ?? 0) - (custom.htHomeYellow ?? 0)) + Math.max(0, (custom.awayYellow ?? 0) - (custom.htAwayYellow ?? 0)),
+            homeRed: custom.homeRed ?? 0,
+            awayRed: custom.awayRed ?? 0,
+            totalRed: (custom.homeRed ?? 0) + (custom.awayRed ?? 0),
+          },
+        };
+      }
+    }
+  } catch (_) {}
 
   // 1. Check daily results for today, yesterday, and kickoff date
   const dates = [
@@ -877,6 +1503,8 @@ function findMatchResultForFixture(fixtureId, homeName, awayName, kickoff) {
           halftime: { home: found.score.halftime.home, away: found.score.halftime.away },
           fulltime: { home: found.score.fulltime.home, away: found.score.fulltime.away },
         },
+        cards: found.cards,
+        events: found.events || [],
       };
     }
   }
